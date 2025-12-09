@@ -68,18 +68,28 @@ class WhatsAppService {
     });
 
     this.client.onMessage((message) => {
-        // Handle incoming messages
-        if (this.io) {
-            this.io.emit('message', message);
-        }
+      // Handle incoming messages
+      if (this.io) {
+        this.io.emit('message', message);
+      }
     });
   }
-  
+
   async getClient() {
     if (!this.client) {
       await this.initialize();
     }
     return this.client;
+  }
+
+  async sendToStatus(content, type = 'text') {
+    const client = await this.getClient();
+    if (type === 'image') {
+      // Assuming content is { path: '...', caption: '...' }
+      return await client.sendImageStatus(content.path, { caption: content.caption });
+    } else {
+      return await client.sendTextStatus(content);
+    }
   }
 }
 

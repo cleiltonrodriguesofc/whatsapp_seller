@@ -1,0 +1,22 @@
+[0m[7m[1m[31m FAIL [39m[22m[27m[0m [2mtests/[22m[1mscheduler.test.js[22m
+  [1m● [22mTest suite failed to run
+
+    ReferenceError: Cannot access 'mockSendText' before initialization
+
+    [0m [90m 18 |[39m jest[33m.[39mmock([32m'../src/services/whatsappService'[39m[33m,[39m () [33m=>[39m ({
+     [90m 19 |[39m     getClient[33m:[39m jest[33m.[39mfn()[33m.[39mmockResolvedValue({
+    [31m[1m>[22m[39m[90m 20 |[39m         sendText[33m:[39m mockSendText
+     [90m    |[39m                   [31m[1m^[22m[39m
+     [90m 21 |[39m     })
+     [90m 22 |[39m }))[33m;[39m
+     [90m 23 |[39m[0m
+
+      [2mat mockSendText ([22m[0m[36mtests/scheduler.test.js[39m[0m[2m:20:19)[22m
+      [2mat Object.require ([22msrc/services/schedulerService.js[2m:4:25)[22m
+      [2mat Object.require ([22m[0m[36mtests/scheduler.test.js[39m[0m[2m:2:26)[22m
+
+[1mTest Suites: [22m[1m[31m1 failed[39m[22m, 1 total
+[1mTests:       [22m0 total
+[1mSnapshots:   [22m0 total
+[1mTime:[22m        1.095 s
+[2mRan all test suites[22m[2m matching [22mtests/scheduler.test.js[2m.[22m

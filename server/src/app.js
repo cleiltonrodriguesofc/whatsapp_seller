@@ -38,12 +38,22 @@ if (process.env.NODE_ENV !== 'test') {
     whatsappService.setSocketIO(io);
     whatsappService.initialize().then(() => {
         console.log('WhatsApp Agent Initialized');
+
+        // Initialize Scheduler
+        const schedulerService = require('./services/schedulerService');
+        schedulerService.initialize();
+
     }).catch(err => {
         console.error('Failed to initialize WhatsApp Agent:', err);
     });
 }
 
-// Routes (Placeholder)
+// Routes
+const campaignRoutes = require('./routes/campaignRoutes');
+const whatsappRoutes = require('./routes/whatsappRoutes');
+
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 app.get('/', (req, res) => {
     res.send('WhatsApp Sales Agent API');
 });
