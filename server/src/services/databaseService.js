@@ -110,6 +110,16 @@ class DatabaseService {
             WHERE ci.campaign_id = ?
         `).all(campaignId);
     }
+
+    addCampaignItems(campaignId, items) {
+        const insert = this.db.prepare('INSERT INTO campaign_items (campaign_id, contact_id) VALUES (@campaignId, @contactId)');
+        const insertMany = this.db.transaction((items) => {
+            for (const item of items) {
+                insert.run({ campaignId, contactId: item });
+            }
+        });
+        insertMany(items);
+    }
 }
 
 module.exports = new DatabaseService();

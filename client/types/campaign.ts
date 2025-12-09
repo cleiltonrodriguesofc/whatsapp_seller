@@ -5,6 +5,7 @@ export interface Campaign {
     message: string;
     status: 'pending' | 'processing' | 'completed' | 'paused';
     type: 'message' | 'status';
+    audience_type: 'all' | 'selected';
     scheduled_at: string;
     created_at: string;
 }
