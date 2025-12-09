@@ -6,7 +6,8 @@ const { app, server } = require('../src/app');
 jest.mock('../src/services/databaseService', () => ({
     getCampaigns: jest.fn().mockReturnValue([]),
     createCampaign: jest.fn().mockReturnValue({ lastInsertRowid: 1 }),
-    getContacts: jest.fn().mockReturnValue([])
+    getContacts: jest.fn().mockReturnValue([]),
+    addCampaignItems: jest.fn()
 }));
 
 jest.mock('../src/services/whatsappService', () => ({
@@ -50,5 +51,21 @@ describe('API Endpoints', () => {
             expect(res.statusCode).toEqual(200);
             expect(res.body).toHaveProperty('status', 'CONNECTED');
         });
+    });
+
+    test('POST /api/campaigns should create a campaign with selected audience', async () => {
+        const res = await request(app)
+            .post('/api/campaigns')
+            .send({
+                name: 'VIP Campaign',
+                message: 'Exclusive offer',
+                type: 'message',
+                audience_type: 'selected',
+                selected_contacts: ['123@c.us', '456@c.us']
+            });
+
+        expect(res.statusCode).toBe(201);
+        expect(res.body).toHaveProperty('id');
+        expect(res.body.message).toBe('Campaign created');
     });
 });
