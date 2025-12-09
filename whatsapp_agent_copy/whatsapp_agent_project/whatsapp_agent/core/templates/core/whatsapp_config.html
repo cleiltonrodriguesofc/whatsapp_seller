@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuração do WhatsApp - WhatsApp Sales Agent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Configuração do WhatsApp</h1>
+</div>
+
+<!-- Configuração da API -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Configurações da API</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'core:whatsapp_config' %}">
+            {% csrf_token %}
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label for="id_provider" class="form-label">Provedor</label>
+                    {{ form.provider }}
+                    <small class="text-muted">Selecione o provedor da API do WhatsApp</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="id_phone_number" class="form-label">Número de Telefone</label>
+                    {{ form.phone_number }}
+                    <small class="text-muted">Formato: código do país + DDD + número (ex: 5511999999999)</small>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label for="id_token" class="form-label">Token</label>
+                    {{ form.token }}
+                    <small class="text-muted">Token de autenticação da API</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="id_instance" class="form-label">ID da Instância</label>
+                    {{ form.instance }}
+                    <small class="text-muted">ID da instância do WhatsApp</small>
+                </div>
+            </div>
+            <div class="mb-3 form-check">
+                {{ form.is_active }}
+                <label class="form-check-label" for="id_is_active">Configuração Ativa</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+        </form>
+    </div>
+</div>
+
+
+<!-- Webhook Info -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-info-circle"></i> Informações do Webhook</h5>
+    </div>
+    <div class="card-body">
+        <p>Configure o webhook no painel do seu provedor de API com a seguinte URL:</p>
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" value="{{ webhook_url }}" id="webhook_url" readonly>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
+                <i class="fas fa-copy"></i>
+            </button>
+        </div>
+        <p>Esta URL receberá as notificações de mensagens do WhatsApp.</p>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="mb-4">
+    <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Voltar
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyWebhookUrl() {
+        var webhookUrl = document.getElementById("webhook_url");
+        webhookUrl.select();
+        webhookUrl.setSelectionRange(0, 99999); // For mobile
+        document.execCommand("copy");
+        alert("URL do webhook copiada para a área de transferência!");
+    }
+</script>
+{% endblock %}

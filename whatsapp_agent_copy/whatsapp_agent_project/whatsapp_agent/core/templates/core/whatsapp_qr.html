@@ -1,0 +1,380 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Conectar WhatsApp - QR Code{% endblock %}
+
+{% block extra_css %}
+<style>
+.qr-container {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.qr-code {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    display: inline-block;
+    margin: 20px 0;
+    border: 2px solid #25d366;
+}
+
+.qr-placeholder {
+    width: 256px;
+    height: 256px;
+    background: #f8f9fa;
+    border: 2px dashed #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px auto;
+    border-radius: 10px;
+}
+
+.status-indicator {
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+.status-waiting {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-connected {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.whatsapp-steps {
+    text-align: left;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.whatsapp-steps .step {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 10px;
+}
+
+.whatsapp-steps .step-number {
+    width: 30px;
+    height: 30px;
+    background: #25d366;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.connection-timer {
+    font-size: 18px;
+    font-weight: bold;
+    color: #25d366;
+}
+
+.refresh-button {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.phone-preview {
+    max-width: 300px;
+    margin: 0 auto;
+    background: #25d366;
+    color: white;
+    padding: 20px;
+    border-radius: 25px;
+    position: relative;
+}
+
+.phone-preview::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="qr-container">
+                <div class="status-indicator status-waiting" id="statusIndicator">
+                    <i class="fas fa-qrcode"></i> Aguardando conexão...
+                </div>
+                
+                <h3><i class="fab fa-whatsapp text-success"></i> Conectar WhatsApp</h3>
+                <p class="text-muted">Escaneie o QR Code com seu WhatsApp para conectar</p>
+                
+                <div class="qr-code" id="qrCodeContainer">
+                    {% if connection.qr_code %}
+                        <div id="qrcode"></div>
+                    {% else %}
+                        <div class="qr-placeholder">
+                            <div class="text-center">
+                                <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                                <p class="mt-2 text-muted">Gerando QR Code...</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="connection-timer" id="connectionTimer">
+                    Tempo restante: <span id="timeLeft">05:00</span>
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary" onclick="refreshQR()">
+                        <i class="fas fa-sync refresh-button" id="refreshIcon"></i> Atualizar QR Code
+                    </button>
+                    <a href="{% url 'whatsapp_setup' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="whatsapp-steps">
+                <h5><i class="fas fa-mobile-alt"></i> Como conectar:</h5>
+                
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>
+                        <strong>Abra o WhatsApp</strong><br>
+                        <small>No seu celular</small>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>
+                        <strong>Toque em "Mais opções"</strong><br>
+                        <small>Os três pontinhos no canto superior direito</small>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>
+                        <strong>Selecione "WhatsApp Web"</strong><br>
+                        <small>Na lista de opções</small>
+                    </div>
+                </div>
+                
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div>
+                        <strong>Escaneie o código</strong><br>
+                        <small>Aponte a câmera para o QR Code acima</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="phone-preview mt-3">
+                <div class="text-center">
+                    <i class="fab fa-whatsapp fa-2x mb-2"></i>
+                    <h6>{{ connection.get_formatted_phone }}</h6>
+                    <p class="small mb-0">Será conectado ao Sales Agent</p>
+                </div>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+                <h6><i class="fas fa-info-circle"></i> Dica</h6>
+                <p class="small mb-0">Mantenha seu celular conectado à internet durante o processo de conexão.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle"></i> WhatsApp Conectado!
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fab fa-whatsapp fa-4x text-success mb-3"></i>
+                <h4>Conexão realizada com sucesso!</h4>
+                <p>Seu WhatsApp está agora conectado ao Sales Agent.</p>
+                <p class="small text-muted">Você pode começar a usar todas as funcionalidades inteligentes.</p>
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'dashboard' %}" class="btn btn-success">
+                    <i class="fas fa-tachometer-alt"></i> Ir para Dashboard
+                </a>
+                <a href="{% url 'whatsapp_groups' %}" class="btn btn-info">
+                    <i class="fas fa-users"></i> Ver Grupos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+let connectionTimer;
+let timeLeft = 300; // 5 minutos
+let checkInterval;
+
+// Gerar QR Code se disponível
+{% if connection.qr_code %}
+QRCode.toCanvas(document.getElementById('qrcode'), '{{ connection.qr_code|escapejs }}', {
+    width: 256,
+    height: 256,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    margin: 2
+}, function (error) {
+    if (error) console.error(error);
+});
+{% endif %}
+
+// Timer de conexão
+function startTimer() {
+    connectionTimer = setInterval(function() {
+        timeLeft--;
+        
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        
+        document.getElementById('timeLeft').textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 0) {
+            clearInterval(connectionTimer);
+            document.getElementById('timeLeft').textContent = '00:00';
+            document.getElementById('statusIndicator').innerHTML = 
+                '<i class="fas fa-clock"></i> QR Code expirado';
+            document.getElementById('statusIndicator').className = 'status-indicator status-error';
+        }
+    }, 1000);
+}
+
+// Verificar status da conexão e buscar QR Code
+function checkConnectionStatus() {
+    fetch('{% url "whatsapp_status" %}')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Status data:', data);
+            
+            if (data.microservice_status) {
+                const microStatus = data.microservice_status;
+                
+                if (microStatus.success && microStatus.data) {
+                    const statusData = microStatus.data;
+                    
+                    if (statusData.connected) {
+                        // WhatsApp conectado
+                        clearInterval(connectionTimer);
+                        clearInterval(checkInterval);
+                        
+                        document.getElementById('statusIndicator').innerHTML = 
+                            '<i class="fas fa-check-circle"></i> Conectado com sucesso!';
+                        document.getElementById('statusIndicator').className = 'status-indicator status-connected';
+                        
+                        // Mostrar modal de sucesso
+                        const modal = new bootstrap.Modal(document.getElementById('successModal'));
+                        modal.show();
+                        
+                    } else if (microStatus.qr_image) {
+                        // QR Code disponível como imagem base64
+                        const qrContainer = document.getElementById('qrCodeContainer');
+                        qrContainer.innerHTML = `<img src="${microStatus.qr_image}" alt="QR Code" style="width: 256px; height: 256px; border-radius: 10px;">`;
+                        
+                        document.getElementById('statusIndicator').innerHTML = 
+                            '<i class="fas fa-qrcode"></i> Escaneie o QR Code';
+                        document.getElementById('statusIndicator').className = 'status-indicator status-waiting';
+                        
+                    } else if (statusData.qrAvailable) {
+                        // QR Code disponível mas ainda não carregado
+                        document.getElementById('statusIndicator').innerHTML = 
+                            '<i class="fas fa-spinner fa-spin"></i> Carregando QR Code...';
+                        document.getElementById('statusIndicator').className = 'status-indicator status-waiting';
+                    }
+                } else {
+                    // Erro no microserviço
+                    document.getElementById('statusIndicator').innerHTML = 
+                        '<i class="fas fa-exclamation-triangle"></i> Microserviço offline';
+                    document.getElementById('statusIndicator').className = 'status-indicator status-error';
+                }
+            } else {
+                // Microserviço não disponível
+                document.getElementById('statusIndicator').innerHTML = 
+                    '<i class="fas fa-exclamation-triangle"></i> Conectando ao microserviço...';
+                document.getElementById('statusIndicator').className = 'status-indicator status-error';
+            }
+        })
+        .catch(error => {
+            console.log('Status check error:', error);
+            document.getElementById('statusIndicator').innerHTML = 
+                '<i class="fas fa-exclamation-triangle"></i> Erro de conexão';
+            document.getElementById('statusIndicator').className = 'status-indicator status-error';
+        });
+}
+
+// Atualizar QR Code
+function refreshQR() {
+    const refreshIcon = document.getElementById('refreshIcon');
+    refreshIcon.classList.add('refresh-button');
+    
+    // Simular atualização (em produção, faria nova requisição)
+    setTimeout(() => {
+        refreshIcon.classList.remove('refresh-button');
+        location.reload();
+    }, 2000);
+}
+
+// Iniciar timer e verificação de status
+startTimer();
+checkInterval = setInterval(checkConnectionStatus, 3000);
+// Verificar status imediatamente
+checkConnectionStatus();
+
+// Cleanup ao sair da página
+window.addEventListener('beforeunload', function() {
+    if (connectionTimer) clearInterval(connectionTimer);
+    if (checkInterval) clearInterval(checkInterval);
+});
+</script>
+{% endblock %}
+

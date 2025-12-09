@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Vendas - WhatsApp Sales Agent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Vendas</h1>
+</div>
+
+<!-- Sales List -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Cliente</th>
+                        <th>Quantidade</th>
+                        <th>Valor Total</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sales %}
+                        {% for sale in sales %}
+                        <tr>
+                            <td>{{ sale.product.name }}</td>
+                            <td>{{ sale.conversation.contact.phone_number }}</td>
+                            <td>{{ sale.quantity }}</td>
+                            <td>R$ {{ sale.total_price }}</td>
+                            <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if sale.status == 'pending' %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% elif sale.status == 'completed' %}
+                                    <span class="badge bg-success">Concluída</span>
+                                {% elif sale.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelada</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'core:sale_detail' sale.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">Nenhuma venda encontrada</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

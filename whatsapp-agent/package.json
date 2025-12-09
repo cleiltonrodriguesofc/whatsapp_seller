@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-agent",
+  "version": "1.0.0",
+  "description": "WhatsApp Agent",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@wppconnect-team/wppconnect": "^1.37.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.0"
+  },
+  "resolutions": {
+    "got": "11.8.5"
+  }
+}
