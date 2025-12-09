@@ -41,6 +41,7 @@ describe('Database Service', () => {
             message: 'Hello World',
             status: 'pending',
             type: 'message',
+            audience_type: 'all',
             scheduled_at: new Date().toISOString()
         };
 
