@@ -29,7 +29,18 @@ export default function CampaignList({ refreshTrigger }: { refreshTrigger: numbe
             {campaigns.map(campaign => (
                 <div key={campaign.id} className="bg-[var(--wa-panel-bg)] p-4 rounded-lg flex justify-between items-center border-b border-gray-800 last:border-0 hover:bg-[#202c33] cursor-pointer transition-colors">
                     <div>
-                        <h4 className="text-[var(--wa-text-primary)] font-medium">{campaign.name}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-[var(--wa-text-primary)] font-medium">{campaign.name}</h4>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-bold ${campaign.type === 'status' ? 'bg-pink-900 text-pink-200' : 'bg-blue-900 text-blue-200'
+                                }`}>
+                                {campaign.type}
+                            </span>
+                            {campaign.type === 'message' && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 uppercase tracking-wide">
+                                    {campaign.audience_type === 'selected' ? 'Selected' : 'All'}
+                                </span>
+                            )}
+                        </div>
                         <p className="text-[var(--wa-text-secondary)] text-sm truncate max-w-[300px]">{campaign.message}</p>
                         <p className="text-xs text-gray-500 mt-1">
                             {new Date(campaign.scheduled_at).toLocaleString()}
