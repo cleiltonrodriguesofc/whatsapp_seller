@@ -33,6 +33,7 @@ class DatabaseService {
                 status TEXT DEFAULT 'pending', -- pending, active, completed, paused
                 type TEXT DEFAULT 'message', -- message, status (story)
                 scheduled_at DATETIME,
+                audience_type TEXT DEFAULT 'all',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `).run();
@@ -62,15 +63,23 @@ class DatabaseService {
             )
         `).run();
 
+
+        // Migration: Ensure audience_type exists
+        try {
+            this.db.prepare("ALTER TABLE campaigns ADD COLUMN audience_type TEXT DEFAULT 'all'").run();
+        } catch (error) {
+            // Column likely exists, ignore
+        }
+
         console.log('Database initialized successfully');
     }
 
     // Contact Methods
     saveContact(contact) {
         const stmt = this.db.prepare(`
-            INSERT OR REPLACE INTO contacts (id, name, number, pushname, isMyContact, profilePicUrl)
-            VALUES (@id, @name, @number, @pushname, @isMyContact, @profilePicUrl)
-        `);
+            INSERT OR REPLACE INTO contacts(id, name, number, pushname, isMyContact, profilePicUrl)
+            VALUES(@id, @name, @number, @pushname, @isMyContact, @profilePicUrl)
+                `);
         return stmt.run(contact);
     }
 
@@ -81,9 +90,9 @@ class DatabaseService {
     // Campaign Methods
     createCampaign(campaign) {
         const stmt = this.db.prepare(`
-            INSERT INTO campaigns (name, message, status, type, scheduled_at, audience_type)
-            VALUES (@name, @message, @status, @type, @scheduled_at, @audience_type)
-        `);
+            INSERT INTO campaigns(name, message, status, type, scheduled_at, audience_type)
+            VALUES(@name, @message, @status, @type, @scheduled_at, @audience_type)
+                `);
         return stmt.run(campaign);
     }
 
@@ -108,7 +117,7 @@ class DatabaseService {
             FROM campaign_items ci
             JOIN contacts c ON ci.contact_id = c.id
             WHERE ci.campaign_id = ?
-        `).all(campaignId);
+            `).all(campaignId);
     }
 
     addCampaignItems(campaignId, items) {
