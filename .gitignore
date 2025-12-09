@@ -1,0 +1,7 @@
+
+node_modules/
+venv/
+.env
+tokens/
+.wwebjs_cache/
+*.log

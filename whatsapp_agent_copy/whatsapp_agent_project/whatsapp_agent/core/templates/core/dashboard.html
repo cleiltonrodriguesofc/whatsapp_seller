@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - WhatsApp Sales Agent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Dashboard</h1>
+    <div>
+        <button type="button" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-download"></i> Exportar
+        </button>
+    </div>
+</div>
+
+<p class="lead mb-4">
+    Bem-vindo ao seu Agente de Vendas WhatsApp. Aqui você pode monitorar suas conversas, vendas e gerenciar produtos.
+</p>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card card-stats h-100">
+            <div class="card-body text-center">
+                <div class="icon mb-2"><i class="fas fa-box fa-2x"></i></div>
+                <div class="number h3">{{ products_count|default:"0" }}</div>
+                <div class="label text-uppercase text-muted small">Produtos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card card-stats h-100">
+            <div class="card-body text-center">
+                <div class="icon mb-2"><i class="fas fa-address-book fa-2x"></i></div>
+                <div class="number h3">{{ contacts_count|default:"0" }}</div>
+                <div class="label text-uppercase text-muted small">Contatos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card card-stats h-100">
+            <div class="card-body text-center">
+                <div class="icon mb-2"><i class="fas fa-comments fa-2x"></i></div>
+                <div class="number h3">{{ active_conversations_count|default:"0" }}</div>
+                <div class="label text-uppercase text-muted small">Conversas Ativas</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card card-stats h-100">
+            <div class="card-body text-center">
+                <div class="icon mb-2"><i class="fas fa-shopping-cart fa-2x"></i></div>
+                <div class="number h3">{{ sales_count|default:"0" }}</div>
+                <div class="label text-uppercase text-muted small">Vendas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Sales Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Vendas nos Últimos 30 Dias</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="sales-chart" data-labels="{{ sales_chart_labels|safe }}" data-values="{{ sales_chart_values|safe }}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Pending Sales -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Vendas Pendentes</h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="display-4 text-primary">{{ pending_sales_count|default:"0" }}</div>
+                <p class="text-muted mb-3">Aguardando Processamento</p>
+                <a href="{% url 'core:sale_list' %}" class="btn btn-sm btn-primary">Ver Todas</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Conversations -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Conversas Recentes</h5>
+                <a href="{% url 'core:conversation_list' %}" class="btn btn-sm btn-link">Ver Todas</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Contato</th>
+                                <th>Nome</th>
+                                <th>Início</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_conversations %}
+                                {% for conversation in recent_conversations %}
+                                    <tr>
+                                        <td>{{ conversation.contact.phone_number }}</td>
+                                        <td>{{ conversation.contact.name }}</td>
+                                        <td>{{ conversation.started_at|date:"d/m/Y H:i" }}</td>
+                                        <td>
+                                            <a href="{% url 'core:conversation_detail' conversation.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Nenhuma conversa ativa</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Recent Sales -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Vendas Recentes</h5>
+                <a href="{% url 'core:sale_list' %}" class="btn btn-sm btn-link">Ver Todas</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Contato</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_sales %}
+                                {% for sale in recent_sales %}
+                                    <tr>
+                                        <td>{{ sale.product.name }}</td>
+                                        <td>{{ sale.conversation.contact.name }}</td>
+                                        <td>R$ {{ sale.total_price }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if sale.status == 'completed' %}success{% elif sale.status == 'pending' %}warning{% else %}danger{% endif %}">
+                                                {{ sale.get_status_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">Nenhuma venda recente</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Ações Rápidas</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 col-sm-6 mb-3">
+                <a href="{% url 'core:product_add' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-plus-circle"></i> Adicionar Produto
+                </a>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <a href="{% url 'core:bulk_message' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-paper-plane"></i> Enviar Mensagem em Massa
+                </a>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <a href="{% url 'core:status_update_add' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-image"></i> Criar Status
+                </a>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <a href="{% url 'core:whatsapp_config' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-cog"></i> Configurar WhatsApp
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Chart.js sales chart
+    const ctx = document.getElementById('sales-chart');
+    if (ctx) {
+        const labels = JSON.parse(ctx.getAttribute('data-labels') || "[]");
+        const values = JSON.parse(ctx.getAttribute('data-values') || "[]");
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Vendas',
+                    data: values,
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

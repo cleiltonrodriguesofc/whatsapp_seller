@@ -1,0 +1,38 @@
+{
+  "name": "whatsapp-microservice",
+  "version": "1.0.0",
+  "description": "Microserviço Node.js para integração com WhatsApp usando WPPConnect",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/fixed_app.js",
+    "dev": "nodemon src/fixed_app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@wppconnect-team/wppconnect": "^1.37.2",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "node-schedule": "^2.1.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.31.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}

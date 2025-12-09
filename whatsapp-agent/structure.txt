@@ -1,0 +1,10 @@
+whatsapp-agent/
+├── public/              # Frontend files
+│   ├── index.html
+│   ├── styles.css
+│   └── script.js
+├── src/
+│   ├── server.js       # Main backend file
+│   └── whatsapp.js     # WhatsApp client logic
+├── package.json
+└── .env

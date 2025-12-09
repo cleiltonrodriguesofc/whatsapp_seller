@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Conversas - WhatsApp Sales Agent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Conversas</h1>
+</div>
+
+<!-- Conversations List -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Contato</th>
+                        <th>Nome</th>
+                        <th>Início</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if conversations %}
+                        {% for conversation in conversations %}
+                        <tr>
+                            <td>{{ conversation.contact.phone_number }}</td>
+                            <td>{{ conversation.contact.name|default:"Desconhecido" }}</td>
+                            <td>{{ conversation.started_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if conversation.status == 'active' %}
+                                    <span class="badge bg-success">Ativa</span>
+                                {% elif conversation.status == 'waiting' %}
+                                    <span class="badge bg-warning">Aguardando</span>
+                                {% elif conversation.status == 'closed' %}
+                                    <span class="badge bg-secondary">Encerrada</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'core:conversation_detail' conversation.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-comments"></i> Ver
+                                    </a>
+                                    {% if conversation.status == 'active' %}
+                                    <a href="{% url 'core:conversation_close' conversation.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Encerrar
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhuma conversa encontrada</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+<!-- Sidebar Navigation Component -->
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <i class="fab fa-whatsapp"></i> WhatsApp Agent
+    </div>
+    <div class="sidebar-sticky">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'core:dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/products/' in request.path %}active{% endif %}" href="{% url 'core:product_list' %}">
+                    <i class="fas fa-box"></i> Produtos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/conversations/' in request.path %}active{% endif %}" href="{% url 'core:conversation_list' %}">
+                    <i class="fas fa-comments"></i> Conversas
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/sales/' in request.path %}active{% endif %}" href="{% url 'core:sale_list' %}">
+                    <i class="fas fa-shopping-cart"></i> Vendas
+                </a>
+            </li>
+            
+            <div class="sidebar-heading">Configurações</div>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if '/contacts/' in request.path %}active{% endif %}" href="{% url 'core:contact_list' %}">
+                    <i class="fas fa-address-book"></i> Contatos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/groups/' in request.path %}active{% endif %}" href="{% url 'core:group_list' %}">
+                    <i class="fas fa-users"></i> Grupos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/status-updates/' in request.path %}active{% endif %}" href="{% url 'core:status_update_list' %}">
+                    <i class="fas fa-image"></i> Status
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/bulk-message/' in request.path %}active{% endif %}" href="{% url 'core:bulk_message' %}">
+                    <i class="fas fa-paper-plane"></i> Mensagem em Massa
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/config/' in request.path %}active{% endif %}" href="{% url 'core:whatsapp_config' %}">
+                    <i class="fas fa-cog"></i> Configuração WhatsApp
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

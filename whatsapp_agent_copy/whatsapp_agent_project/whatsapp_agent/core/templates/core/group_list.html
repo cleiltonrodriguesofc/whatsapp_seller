@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Grupos - WhatsApp Sales Agent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Grupos</h1>
+    <a href="{% url 'core:group_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Adicionar Grupo
+    </a>
+</div>
+
+<!-- Groups List -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>ID do Grupo</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if groups %}
+                        {% for group in groups %}
+                        <tr>
+                            <td>{{ group.name }}</td>
+                            <td>{{ group.group_id }}</td>
+                            <td>
+                                {% if group.is_allowed %}
+                                    <span class="badge bg-success">Permitido</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Bloqueado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'core:group_edit' group.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'core:group_delete' group.id %}" class="btn btn-sm btn-outline-danger btn-delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center">Nenhum grupo encontrado</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
