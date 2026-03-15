@@ -47,13 +47,13 @@ class CampaignModel(Base):
     title = Column(String, nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"))
     scheduled_at = Column(DateTime)
-    status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING)
+    status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
     custom_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     sent_at = Column(DateTime, nullable=True)
     
     # Recurring Scheduling (Alarm style)
-    is_recurring = Column(Boolean, default=False)
+    is_recurring = Column(Boolean, default=False, index=True)
     recurrence_days = Column(String, nullable=True) # "mon,tue,wed,thu,fri,sat,sun"
     send_time = Column(String, nullable=True) # "HH:MM"
     last_run_at = Column(DateTime, nullable=True) # To prevent double-send in the same day

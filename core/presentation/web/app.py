@@ -110,9 +110,8 @@ async def send_campaign(campaign: Campaign, db: Session):
     message = campaign.custom_message or f"Confira nosso produto: {campaign.product.name} - {campaign.product.affiliate_link}"
     
     # Target groups list from campaign
-    # (Note: SQLCampaignRepository needs to handle group storage, for now we assume groups are sent)
     for group_jid in campaign.target_groups:
-        success = whatsapp_service.send_text(group_jid, message)
+        success = await whatsapp_service.send_text(group_jid, message)
         if success:
             success_count += 1
             
@@ -128,7 +127,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     campaigns = campaign_repo.list_all()
     
     whatsapp_service = EvolutionWhatsAppService()
-    wa_status = whatsapp_service.get_status()
+    wa_status = await whatsapp_service.get_status()
     
     return templates.TemplateResponse("dashboard.html", {
         "request": request, 
@@ -146,7 +145,7 @@ async def connect_whatsapp_page(request: Request):
 @app.post("/whatsapp/connect")
 async def get_whatsapp_qr():
     whatsapp_service = EvolutionWhatsAppService()
-    qrcode_base64 = whatsapp_service.get_qrcode()
+    qrcode_base64 = await whatsapp_service.get_qrcode()
     if qrcode_base64:
         return {"success": True, "qrcode": qrcode_base64}
     return {"success": False, "error": "Failed to generate QR code"}
@@ -154,13 +153,13 @@ async def get_whatsapp_qr():
 @app.get("/whatsapp/status")
 async def get_whatsapp_status():
     whatsapp_service = EvolutionWhatsAppService()
-    status = whatsapp_service.get_status()
+    status = await whatsapp_service.get_status()
     return status
 
 @app.post("/whatsapp/disconnect")
 async def disconnect_whatsapp():
     whatsapp_service = EvolutionWhatsAppService()
-    success = whatsapp_service.disconnect_instance()
+    success = await whatsapp_service.disconnect_instance()
     return {"success": success}
 
 @app.get("/whatsapp/groups")
@@ -175,8 +174,8 @@ async def get_whatsapp_groups(db: Session = Depends(get_db)):
         return {"success": True, "groups": targets, "source": "database"}
     
     # 2. Fallback to API if DB is empty
-    groups = whatsapp_service.get_groups()
-    chats = whatsapp_service.get_contacts()
+    groups = await whatsapp_service.get_groups()
+    chats = await whatsapp_service.get_contacts()
     
     targets = []
     for g in groups:
@@ -196,8 +195,8 @@ async def sync_whatsapp_targets(db: Session = Depends(get_db)):
     whatsapp_service = EvolutionWhatsAppService()
     target_repo = SQLTargetRepository(db)
     
-    groups = whatsapp_service.get_groups()
-    chats = whatsapp_service.get_contacts()
+    groups = await whatsapp_service.get_groups()
+    chats = await whatsapp_service.get_contacts()
     
     targets = []
     for g in groups:
@@ -213,7 +212,7 @@ async def sync_whatsapp_targets(db: Session = Depends(get_db)):
 @app.post("/whatsapp/test")
 async def send_test_message(phone: str = Form(...), message: str = Form(...)):
     whatsapp_service = EvolutionWhatsAppService()
-    success = whatsapp_service.send_text(phone, message)
+    success = await whatsapp_service.send_text(phone, message)
     return {"success": success}
 
 @app.get("/products", response_class=HTMLResponse)
@@ -272,24 +271,21 @@ async def create_campaign(
         try:
             dt_scheduled = datetime.fromisoformat(scheduled_at)
         except ValueError:
-            # Handle cases where scheduled_at might be empty or invalid for non-recurring
-            # For recurring, scheduled_at might not be strictly necessary if send_time is used.
-            # For now, if it's invalid, it remains None.
             pass
             
     # Combine recurrence days into a string
     days_str = ",".join(recurrence_days) if recurrence_days else None
 
-    scheduler.execute(
+    await scheduler.execute(
         title=title,
         product_id=product_id,
         target_groups=groups,
         scheduled_at=dt_scheduled,
-        custom_message=custom_message, # Pass custom_message
+        custom_message=custom_message,
         is_recurring=is_recurring,
         recurrence_days=days_str,
         send_time=send_time,
-        use_ai=not bool(custom_message) # Use AI if no custom message is provided
+        use_ai=not bool(custom_message)
     )
     
     return RedirectResponse(url="/campaigns", status_code=303)
