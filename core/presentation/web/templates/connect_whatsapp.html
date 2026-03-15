@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block page_title %}WhatsApp Management{% endblock %}
+{% block page_subtitle %}Manage your instance connection and test configurations.{% endblock %}
+
+{% block content %}
+<div class="stat-grid" style="margin-bottom: 2.5rem;">
+    <div class="card stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">📱</div>
+        <div class="stat-data">
+            <h4>Connection Status</h4>
+            <p id="mgmt-status-text">Checking...</p>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start;">
+    <!-- Connection Card -->
+    <div class="card animate-fade-in">
+        <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Device Connection</h2>
+        
+        <div id="qr-section" style="text-align: center; display: none;">
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Scan the secure QR code to link your account.</p>
+            <div id="qr-container" style="background: white; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <div id="qr-loading" style="width: 240px; height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #1e293b;">
+                    <div class="spinner" style="width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                </div>
+                <img id="qr-image" src="" alt="QR Code" style="width: 240px; height: 240px; display: none;">
+            </div>
+            <button id="btn-generate" onclick="generateQR()" class="btn btn-primary" style="width: 100%;">Generate New QR</button>
+        </div>
+
+        <div id="connected-section" style="text-align: center; display: none; padding: 2rem 0;">
+            <div style="font-size: 4rem; margin-bottom: 1.5rem;">✅</div>
+            <h3 style="color: white; margin-bottom: 1rem;">Instance is Active</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Your device is currently linked and ready for automated campaigns.</p>
+            <button onclick="disconnect()" class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.1); width: 100%;">Disconnect Device</button>
+        </div>
+    </div>
+
+    <!-- Test & Utilities -->
+    <div id="utilities-section" style="display: none; flex-direction: column; gap: 2.5rem;">
+        <!-- Test Message -->
+        <div class="card animate-fade-in" style="animation-delay: 0.1s;">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Send Test Message</h2>
+            <form id="test-form" onsubmit="event.preventDefault(); sendTest();">
+                <div class="form-group">
+                    <label class="form-label">Phone Number (with DDI)</label>
+                    <input type="text" id="test-phone" class="form-input" placeholder="5511999999999" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <textarea id="test-message" class="form-input" required>Test from Sales Agent Pro! 🚀</textarea>
+                </div>
+                <button type="submit" id="btn-send-test" class="btn btn-primary" style="width: 100%;">Send Test</button>
+            </form>
+            <p id="test-result" style="margin-top: 1rem; font-size: 0.85rem; text-align: center;"></p>
+        </div>
+
+        <!-- Groups List -->
+        <div class="card animate-fade-in" style="animation-delay: 0.2s;">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Available Targets</h2>
+            <button onclick="fetchGroups()" class="btn btn-ghost" style="width: 100%; margin-bottom: 1rem;">Refresh Targets List</button>
+            <div id="groups-container" style="max-height: 250px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <!-- Groups will appear here -->
+                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Click refresh to list groups.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let isConnected = false;
+let statusInterval = null;
+
+async function updateMgmtStatus() {
+    try {
+        const res = await fetch('/whatsapp/status');
+        const data = await res.json();
+        
+        const statusText = document.getElementById('mgmt-status-text');
+        const qrSection = document.getElementById('qr-section');
+        const connectedSection = document.getElementById('connected-section');
+        const utilitiesSection = document.getElementById('utilities-section');
+        
+        isConnected = data.connected;
+        
+        if (isConnected) {
+            statusText.innerText = 'Online / Connected';
+            statusText.style.color = '#10b981';
+            qrSection.style.display = 'none';
+            connectedSection.style.display = 'block';
+            utilitiesSection.style.display = 'flex';
+        } else {
+            statusText.innerText = data.status === 'open' ? 'Connecting...' : 'Disconnected';
+            statusText.style.color = '#f59e0b';
+            qrSection.style.display = 'block';
+            connectedSection.style.display = 'none';
+            utilitiesSection.style.display = 'none';
+        }
+    } catch (e) {
+        console.error('Mgmt Status check failed', e);
+    }
+}
+
+async function generateQR() {
+    const loading = document.getElementById('qr-loading');
+    const image = document.getElementById('qr-image');
+    
+    loading.style.display = 'flex';
+    image.style.display = 'none';
+    
+    try {
+        const res = await fetch('/whatsapp/connect', { method: 'POST' });
+        const data = await res.json();
+        if (data.success && data.qrcode) {
+            image.src = data.qrcode;
+            image.style.display = 'block';
+            loading.style.display = 'none';
+        } else {
+            loading.innerHTML = '<p style="color: #ef4444;">Generation failed</p>';
+        }
+    } catch (e) {
+        loading.innerHTML = '<p style="color: #ef4444;">Error</p>';
+    }
+}
+
+async function disconnect() {
+    if (!confirm('Disconnect WhatsApp?')) return;
+    await fetch('/whatsapp/disconnect', { method: 'POST' });
+    updateMgmtStatus();
+}
+
+async function sendTest() {
+    const btn = document.getElementById('btn-send-test');
+    const result = document.getElementById('test-result');
+    const phone = document.getElementById('test-phone').value;
+    const message = document.getElementById('test-message').value;
+    
+    btn.disabled = true;
+    btn.innerText = 'Sending...';
+    result.innerText = '';
+    
+    const formData = new FormData();
+    formData.append('phone', phone);
+    formData.append('message', message);
+    
+    try {
+        const res = await fetch('/whatsapp/test', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            result.innerText = '✅ Message sent successfully!';
+            result.style.color = '#10b981';
+        } else {
+            result.innerText = '❌ Failed to send';
+            result.style.color = '#ef4444';
+        }
+    } catch (e) {
+        result.innerText = '❌ Request error';
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Send Test';
+    }
+}
+
+async function fetchGroups() {
+    const container = document.getElementById('groups-container');
+    const refreshBtn = event ? event.target : null;
+    const originalText = refreshBtn ? refreshBtn.innerText : '';
+    
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.innerText = '⌛ Fetching (this may take a minute)...';
+    }
+    
+    container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">Connecting to API and fetching 60+ groups... Please wait.</p>';
+    
+    try {
+        const res = await fetch('/whatsapp/groups');
+        const data = await res.json();
+        if (data.success && data.groups) {
+            container.innerHTML = '';
+            if (data.groups.length === 0) {
+                 container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No targets found.</p>';
+            }
+            data.groups.forEach(g => {
+                const item = document.createElement('div');
+                item.className = 'target-list-item';
+                item.style.padding = '0.75rem';
+                item.style.borderBottom = '1px solid var(--border)';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.innerHTML = `
+                    <div style="font-size: 0.85rem;">
+                        <div style="font-weight: 600; color: white;">${g.subject}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">${g.id}</div>
+                    </div>
+                    <button onclick="copyId('${g.id}')" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.7rem;">Copy ID</button>
+                `;
+                container.appendChild(item);
+            });
+        } else {
+            container.innerHTML = '<p style="color: #ef4444; padding: 1rem; text-align: center;">Failed to fetch groups. The API might be slow or disconnected.</p>';
+        }
+    } catch (e) {
+        container.innerHTML = '<p style="color: #ef4444; padding: 1rem; text-align: center;">Connection timeout. Please try again.</p>';
+    } finally {
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerText = originalText;
+        }
+    }
+}
+
+function copyId(id) {
+    navigator.clipboard.writeText(id).then(() => alert('Copied ID: ' + id));
+}
+
+// Polling
+updateMgmtStatus();
+setInterval(updateMgmtStatus, 5000);
+
+</script>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 1s linear infinite; }
+</style>
+{% endblock %}

@@ -79,16 +79,28 @@ class EvolutionWhatsAppService(NotificationService):
         )
         return self.send_group_text(group_jid, message)
 
+    def get_contacts(self) -> list:
+        """
+        Fetches the list of private chats/contacts.
+        """
+        url = f"{self.base_url}/chat/fetchAllChats/{self.instance}"
+        try:
+            response = requests.get(url, headers=self._headers(), timeout=60)
+            response.raise_for_status()
+            return response.json()
+        except Exception as exc:
+            logger.error("Failed to fetch WhatsApp contacts: %s", exc)
+            return []
+
     def get_groups(self) -> list:
         """
         Fetches the list of groups the instance is part of.
-        Useful for the user to find the Group JID.
+        We disable participants fetching for speed.
         """
-        url = f"{self.base_url}/group/fetchAllGroups/{self.instance}?getParticipants=true"
+        url = f"{self.base_url}/group/fetchAllGroups/{self.instance}?getParticipants=false"
         try:
-            response = requests.get(url, headers=self._headers(), timeout=30)
+            response = requests.get(url, headers=self._headers(), timeout=60)
             response.raise_for_status()
-            # Evolution API v2 usually returns a list of group objects
             return response.json()
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp groups: %s", exc)
@@ -116,31 +128,60 @@ class EvolutionWhatsAppService(NotificationService):
     def get_status(self) -> dict:
         """
         Checks the instance connection status.
-        Returns a dict with 'status' (string) and 'connected' (bool).
+        If it returns 404, it means the instance doesn't exist, so we treat as disconnected.
         """
         url = f"{self.base_url}/instance/connectionState/{self.instance}"
         try:
             response = requests.get(url, headers=self._headers(), timeout=10)
+            if response.status_code == 404:
+                return {"status": "not_found", "connected": False}
             response.raise_for_status()
             data = response.json()
-            # Evolution API v2: returns { "instance": { "state": "open", ... } }
             state = data.get("instance", {}).get("state", "unknown")
             return {"status": state, "connected": state == "open"}
         except Exception as exc:
             logger.error("Failed to get WhatsApp status: %s", exc)
             return {"status": "error", "connected": False}
 
+    def _ensure_instance_exists(self) -> bool:
+        """
+        Attempts to create the instance if it does not exist.
+        """
+        logger.info(f"Ensuring instance {self.instance} exists...")
+        url = f"{self.base_url}/instance/create"
+        payload = {
+            "instanceName": self.instance,
+            "qrcode": True,
+            "integration": "WHATSAPP-BAILEYS"
+        }
+        try:
+            # First check if it exists via fetchInstances or just try to create
+            # Creating an existing instance name in Evolution API returns 403 or similar
+            response = requests.post(url, json=payload, headers=self._headers(), timeout=15)
+            if response.status_code in [201, 200, 403]: # 403 usually means already exists
+                return True
+            return False
+        except Exception as exc:
+            logger.error("Failed to ensure WhatsApp instance exists: %s", exc)
+            return False
+
     def get_qrcode(self) -> str:
         """
         Requests a QR code for pairing the instance.
-        Returns the base64 string or an empty string on failure.
+        If it returns 404, attempts to create the instance first.
         """
         url = f"{self.base_url}/instance/connect/{self.instance}?base64=true"
         try:
             response = requests.get(url, headers=self._headers(), timeout=15)
+            if response.status_code == 404:
+                if self._ensure_instance_exists():
+                    # Retry once
+                    response = requests.get(url, headers=self._headers(), timeout=15)
+                else:
+                    return ""
+            
             response.raise_for_status()
             data = response.json()
-            # Returns { "base64": "data:image/png;base64,..." }
             return data.get("base64", "")
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp QR Code: %s", exc)

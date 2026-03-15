@@ -38,3 +38,10 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+clubedomilcomapi/
+*.db
+*.sqlite3
+.env
+__pycache__/
+*.pyc
+uploads/

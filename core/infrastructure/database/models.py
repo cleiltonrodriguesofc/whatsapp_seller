@@ -32,6 +32,15 @@ class ProductModel(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class WhatsAppTargetModel(Base):
+    __tablename__ = "whatsapp_targets"
+    id = Column(Integer, primary_key=True, index=True)
+    jid = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    type = Column(String) # 'group' or 'chat'
+    is_active = Column(Boolean, default=True)
+    last_synced_at = Column(DateTime, default=datetime.utcnow)
+
 class CampaignModel(Base):
     __tablename__ = "campaigns"
     id = Column(Integer, primary_key=True, index=True)
