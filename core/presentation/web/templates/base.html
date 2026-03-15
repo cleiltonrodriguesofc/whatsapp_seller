@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "WhatsApp Agent" }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .page-transition {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container page-transition">
+        <nav>
+            <div class="logo">WhatsApp Agent Pro</div>
+            <div class="nav-links">
+                <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">Dashboard</a>
+                <a href="/products" class="{{ 'active' if request.url.path == '/products' else '' }}">Products</a>
+                <a href="/campaigns/new" class="btn btn-primary">New Campaign</a>
+            </div>
+        </nav>
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        // Apply dynamic animation delays from data attributes
+        document.querySelectorAll('[data-delay]').forEach(el => {
+            el.style.animationDelay = el.getAttribute('data-delay') + 's';
+        });
+
+        // Subtle micro-animations for interactions
+        document.querySelectorAll('.btn, .card').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                // Potential sound effect or haptic feedback call
+            });
+        });
+    </script>
+</body>
+</html>

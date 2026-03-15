@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem;">
+    <!-- Add Product Form -->
+    <div class="glass-panel animate-in">
+        <h2>Add New Product</h2>
+        <form action="/products/new" method="post">
+            <div class="form-group">
+                <label for="name">Product Name</label>
+                <input type="text" id="name" name="name" placeholder="e.g., ASUS Vivobook Go 15" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" placeholder="Brief product details..." required></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="price">Price (R$)</label>
+                    <input type="number" step="0.01" id="price" name="price" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <input type="text" id="category" name="category" placeholder="Electronics">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="affiliate_link">Affiliate Link</label>
+                <input type="url" id="affiliate_link" name="affiliate_link" placeholder="https://..." required>
+            </div>
+
+            <div class="form-group">
+                <label for="image_url">Image URL</label>
+                <input type="url" id="image_url" name="image_url" placeholder="https://...">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Product</button>
+        </form>
+    </div>
+
+    <!-- Product List -->
+    <div class="glass-panel animate-in" style="animation-delay: 0.1s">
+        <h2>Your Products</h2>
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+            {% for product in products %}
+            <div class="card" style="display: flex; gap: 1.5rem; align-items: start;">
+                <div style="width: 80px; height: 80px; border-radius: 0.75rem; background: var(--glass); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                    {% if product.image_url %}
+                    <img src="{{ product.image_url }}" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                    🛒
+                    {% endif %}
+                </div>
+                <div style="flex-grow: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <h3 style="margin: 0; font-size: 1.1rem;">{{ product.name }}</h3>
+                        <div style="font-weight: 800; color: var(--secondary)">R$ {{ product.price }}</div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; line-height: 1.4;">
+                        {{ product.description[:100] }}{{ '...' if product.description|length > 100 else '' }}
+                    </p>
+                    <div style="font-size: 0.75rem; color: var(--primary); word-break: break-all;">
+                        {{ product.affiliate_link }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="text-align: center; color: var(--text-muted); padding: 2rem;">No products added yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

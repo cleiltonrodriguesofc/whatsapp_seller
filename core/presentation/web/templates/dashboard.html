@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-panel">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem;">
+        <div>
+            <h1>Campaign Dashboard</h1>
+            <p style="color: var(--text-muted)">Monitor and manage your scheduled WhatsApp marketing campaigns.</p>
+        </div>
+        <div class="glass-panel" style="padding: 1rem; text-align: center;">
+            <div style="font-size: 0.8rem; color: var(--text-muted)">Active Campaigns</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: var(--secondary)">{{ campaigns|length }}</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        {% for campaign in campaigns %}
+        <div class="card animate-in" data-delay="{{ loop.index0 * 0.1 }}">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">{{ campaign.title }}</h3>
+                <span class="badge badge-{{ campaign.status.value }}">{{ campaign.status.value }}</span>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                <div style="width: 40px; height: 40px; border-radius: 0.5rem; background: var(--glass); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                    {% if campaign.product.image_url %}
+                    <img src="{{ campaign.product.image_url }}" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                    🛒
+                    {% endif %}
+                </div>
+                <div>
+                    <div style="font-size: 0.9rem; font-weight: 600;">{{ campaign.product.name }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted)">R$ {{ campaign.product.price }}</div>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--glass-border); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span style="color: var(--text-muted)">Scheduled for:</span>
+                    <span>{{ campaign.scheduled_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span style="color: var(--text-muted)">Target:</span>
+                    <span>{{ campaign.target_groups|length }} groups</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+            <h3>No campaigns found</h3>
+            <p>Ready to boost your sales? Create your first campaign now.</p>
+            <br>
+            <a href="/campaigns/new" class="btn btn-primary">Start Now</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

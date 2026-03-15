@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="glass-panel animate-in">
+    <h1>Create New Campaign</h1>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">Schedule a generic or AI-powered message to reach your audience.</p>
+
+    <form action="/campaigns/new" method="post">
+        <div class="form-group">
+            <label for="title">Campaign Title</label>
+            <input type="text" id="title" name="title" placeholder="e.g., Weekly Notebook Sale" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div class="form-group">
+                <label for="product_id">Select Product</label>
+                <select id="product_id" name="product_id" required>
+                    {% for product in products %}
+                    <option value="{{ product.id }}">{{ product.name }} (R$ {{ product.price }})</option>
+                    {% endfor %}
+                </select>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    Don't see your product? <a href="/products" style="color: var(--primary)">Add it here</a>.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="scheduled_at">Schedule Date & Time</label>
+                <input type="datetime-local" id="scheduled_at" name="scheduled_at" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Target Groups</label>
+            <div style="max-height: 200px; overflow-y: auto; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 0.5rem; padding: 1rem;">
+                {% for group in groups %}
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <input type="checkbox" name="groups" value="{{ group.id }}" style="width: auto;">
+                    <span style="font-size: 0.9rem;">{{ group.subject or group.name or group.id }}</span>
+                </div>
+                {% else %}
+                <p style="color: var(--text-muted); font-size: 0.8rem;">No groups found. Make sure your instance is connected.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group" style="background: rgba(99, 102, 241, 0.1); padding: 1rem; border-radius: 0.75rem; border: 1px solid rgba(99, 102, 241, 0.3);">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <input type="checkbox" id="use_ai" name="use_ai" style="width: auto;" checked>
+                <label for="use_ai" style="margin: 0; color: var(--text); font-weight: 600;">Magic AI Copywriter ✨</label>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; margin-left: 1.75rem;">
+                Automatically generate a high-converting sales message using your product details and OpenAI.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary">Schedule Campaign</button>
+            <a href="/" class="btn" style="background: var(--glass); color: var(--text);">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
