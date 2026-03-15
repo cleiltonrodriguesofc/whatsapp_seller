@@ -2,7 +2,9 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from core.application.repositories import ProductRepository, CampaignRepository
 from core.domain.entities import Product, Campaign, CampaignStatus as DomainCampaignStatus
-from core.infrastructure.database.models import ProductModel, CampaignModel, CampaignStatus as ModelCampaignStatus
+from core.infrastructure.database.models import ProductModel, CampaignModel, WhatsAppTargetModel, CampaignStatus as ModelCampaignStatus
+from sqlalchemy import select
+from datetime import datetime
 
 class SQLProductRepository(ProductRepository):
     def __init__(self, db: Session):
@@ -104,3 +106,31 @@ class SQLCampaignRepository(CampaignRepository):
             created_at=model.created_at,
             sent_at=model.sent_at
         )
+class SQLTargetRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def upsert_sync(self, targets: List[dict]):
+        """
+        Syncs a list of targets from the API, preventing duplicates.
+        """
+        now = datetime.utcnow()
+        for t in targets:
+            existing = self.db.query(WhatsAppTargetModel).filter(WhatsAppTargetModel.jid == t['id']).first()
+            if existing:
+                existing.name = t['subject']
+                existing.type = 'group' if '@g.us' in t['id'] else 'chat'
+                existing.last_synced_at = now
+                existing.is_active = True
+            else:
+                new_target = WhatsAppTargetModel(
+                    jid=t['id'],
+                    name=t['subject'],
+                    type='group' if '@g.us' in t['id'] else 'chat',
+                    last_synced_at=now
+                )
+                self.db.add(new_target)
+        self.db.commit()
+
+    def list_all(self):
+        return self.db.query(WhatsAppTargetModel).filter(WhatsAppTargetModel.is_active == True).all()

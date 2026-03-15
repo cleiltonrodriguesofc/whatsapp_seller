@@ -1,58 +1,77 @@
 {% extends "base.html" %}
 
+{% block page_title %}Overview Dashboard{% endblock %}
+{% block page_subtitle %}Monitor your marketing performance and scheduled events.{% endblock %}
+
 {% block content %}
-<div class="glass-panel">
-    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2rem;">
-        <div>
-            <h1>Campaign Dashboard</h1>
-            <p style="color: var(--text-muted)">Monitor and manage your scheduled WhatsApp marketing campaigns.</p>
-        </div>
-        <div class="glass-panel" style="padding: 1rem; text-align: center;">
-            <div style="font-size: 0.8rem; color: var(--text-muted)">Active Campaigns</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: var(--secondary)">{{ campaigns|length }}</div>
+<div class="stat-grid">
+    <div class="card stat-card">
+        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">📊</div>
+        <div class="stat-data">
+            <h4>Total Campaigns</h4>
+            <p>{{ campaigns|length }}</p>
         </div>
     </div>
+    <div class="card stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">✅</div>
+        <div class="stat-data">
+            <h4>Sent Messages</h4>
+            <p>1,284</p> <!-- Mock data for now -->
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-icon" style="background: rgba(236, 72, 153, 0.1); color: var(--secondary);">✨</div>
+        <div class="stat-data">
+            <h4>AI Generated</h4>
+            <p>42</p> <!-- Mock data for now -->
+        </div>
+    </div>
+</div>
 
-    <div class="grid">
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.25rem;">Recent Campaigns</h2>
+        <a href="/campaigns/new" class="btn btn-primary btn-sm">+ New Campaign</a>
+    </div>
+
+    <div class="campaign-list">
         {% for campaign in campaigns %}
-        <div class="card animate-in" data-delay="{{ loop.index0 * 0.1 }}">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                <h3 style="margin: 0;">{{ campaign.title }}</h3>
-                <span class="badge badge-{{ campaign.status.value }}">{{ campaign.status.value }}</span>
+        <div class="card campaign-row" style="background: rgba(255,255,255,0.02); margin-bottom: 0.75rem;">
+            <div style="width: 48px; height: 48px; border-radius: 8px; background: var(--bg-main); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                {% if campaign.product.image_url %}
+                <img src="{{ campaign.product.image_url }}" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                🛒
+                {% endif %}
             </div>
             
-            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                <div style="width: 40px; height: 40px; border-radius: 0.5rem; background: var(--glass); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                    {% if campaign.product.image_url %}
-                    <img src="{{ campaign.product.image_url }}" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
-                    {% else %}
-                    🛒
-                    {% endif %}
-                </div>
-                <div>
-                    <div style="font-size: 0.9rem; font-weight: 600;">{{ campaign.product.name }}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted)">R$ {{ campaign.product.price }}</div>
-                </div>
+            <div>
+                <div style="font-weight: 600; font-size: 1rem;">{{ campaign.title }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">Product: {{ campaign.product.name }}</div>
             </div>
 
-            <div style="border-top: 1px solid var(--glass-border); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                    <span style="color: var(--text-muted)">Scheduled for:</span>
-                    <span>{{ campaign.scheduled_at.strftime('%d/%m/%Y %H:%M') }}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
-                    <span style="color: var(--text-muted)">Target:</span>
-                    <span>{{ campaign.target_groups|length }} groups</span>
-                </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Targets</div>
+                <div style="font-weight: 600;">{{ campaign.target_groups|length }}</div>
+            </div>
+
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Scheduled At</div>
+                <div style="font-weight: 600;">{{ campaign.scheduled_at.strftime('%d %b, %H:%M') }}</div>
+            </div>
+
+            <div style="text-align: right; min-width: 100px;">
+                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border);">
+                    {{ campaign.status.value.upper() }}
+                </span>
             </div>
         </div>
         {% else %}
-        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted);">
+        <div style="text-align: center; padding: 4rem;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
-            <h3>No campaigns found</h3>
-            <p>Ready to boost your sales? Create your first campaign now.</p>
-            <br>
-            <a href="/campaigns/new" class="btn btn-primary">Start Now</a>
+            <h3 style="color: var(--text-secondary);">No campaigns scheduled</h3>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Create your first campaign to start automated marketing.</p>
+            <a href="/campaigns/new" class="btn btn-primary">Create Campaign</a>
         </div>
         {% endfor %}
     </div>

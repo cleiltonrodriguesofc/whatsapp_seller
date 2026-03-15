@@ -1,63 +1,157 @@
 {% extends "base.html" %}
 
-{% block content %}
-<div class="glass-panel animate-in">
-    <h1>Create New Campaign</h1>
-    <p style="color: var(--text-muted); margin-bottom: 2rem;">Schedule a generic or AI-powered message to reach your audience.</p>
+{% block page_title %}New Marketing Campaign{% endblock %}
+{% block page_subtitle %}Schedule a new automated broadcast to your WhatsApp network.{% endblock %}
 
+{% block content %}
+<div class="card animate-fade-in" style="max-width: 800px; margin: 0 auto;">
+    <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Campaign Details</h2>
     <form action="/campaigns/new" method="post">
         <div class="form-group">
-            <label for="title">Campaign Title</label>
-            <input type="text" id="title" name="title" placeholder="e.g., Weekly Notebook Sale" required>
+            <label class="form-label">Campaign Title</label>
+            <input type="text" name="title" class="form-input" placeholder="e.g., Weekly Electronics Sale" required>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div class="form-group">
-                <label for="product_id">Select Product</label>
-                <select id="product_id" name="product_id" required>
+                <label class="form-label">Select Product Asset</label>
+                <select name="product_id" class="form-select" required>
                     {% for product in products %}
                     <option value="{{ product.id }}">{{ product.name }} (R$ {{ product.price }})</option>
                     {% endfor %}
                 </select>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
-                    Don't see your product? <a href="/products" style="color: var(--primary)">Add it here</a>.
-                </p>
             </div>
-
+            
             <div class="form-group">
-                <label for="scheduled_at">Schedule Date & Time</label>
-                <input type="datetime-local" id="scheduled_at" name="scheduled_at" required>
+                <label class="form-label">Scheduled Time</label>
+                <input type="datetime-local" name="scheduled_at" class="form-input" required>
             </div>
         </div>
 
         <div class="form-group">
-            <label>Target Groups</label>
-            <div style="max-height: 200px; overflow-y: auto; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 0.5rem; padding: 1rem;">
-                {% for group in groups %}
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                    <input type="checkbox" name="groups" value="{{ group.id }}" style="width: auto;">
-                    <span style="font-size: 0.9rem;">{{ group.subject or group.name or group.id }}</span>
-                </div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                <label class="form-label" style="margin-bottom: 0;">Target Channels (Groups & Chats)</label>
+                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">🔄 Refresh List</button>
+            </div>
+            
+            <input type="text" id="target-search" class="form-input" placeholder="Search groups or contacts..." style="margin-bottom: 1rem; font-size: 0.9rem; padding: 0.5rem 1rem;">
+            
+            <div id="targets-list" style="max-height: 300px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; display: grid; gap: 0.5rem;">
+                <!-- Initial targets from server -->
+                {% for target in targets %}
+                <label class="target-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border-radius: 8px; cursor: pointer; transition: var(--transition); border: 1px solid transparent; background: rgba(255,255,255,0.02);">
+                    <input type="checkbox" name="groups" value="{{ target.id }}" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                    <div style="flex-grow: 1;">
+                        <div class="target-name" style="font-weight: 600; font-size: 0.95rem;">{{ target.name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">{{ '👥 Community Group' if target.type == 'group' else '👤 Individual Contact' }}</div>
+                    </div>
+                </label>
                 {% else %}
-                <p style="color: var(--text-muted); font-size: 0.8rem;">No groups found. Make sure your instance is connected.</p>
+                <div id="no-targets" style="text-align: center; padding: 2rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">No connection found or no targets available. <a href="/whatsapp/connect" style="color: var(--primary); font-weight: 700;">Connect WhatsApp</a></p>
+                </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="form-group" style="background: rgba(99, 102, 241, 0.1); padding: 1rem; border-radius: 0.75rem; border: 1px solid rgba(99, 102, 241, 0.3);">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <input type="checkbox" id="use_ai" name="use_ai" style="width: auto;" checked>
-                <label for="use_ai" style="margin: 0; color: var(--text); font-weight: 600;">Magic AI Copywriter ✨</label>
+        <div class="card" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed var(--primary); margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="font-size: 1rem; color: white;">✨ Magic AI Copywriter</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Generate persuasive sales copy using GPT-4.</p>
+                </div>
+                <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                    <input type="checkbox" name="use_ai" style="opacity: 0; width: 0; height: 0;">
+                    <span class="slider"></span>
+                </label>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; margin-left: 1.75rem;">
-                Automatically generate a high-converting sales message using your product details and OpenAI.
-            </p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">If enabled, our AI will study your product details and create a professional message including your affiliate link, emojis, and call-to-actions.</p>
         </div>
 
-        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <button type="submit" class="btn btn-primary">Schedule Campaign</button>
-            <a href="/" class="btn" style="background: var(--glass); color: var(--text);">Cancel</a>
+        <div style="display: flex; gap: 1rem;">
+            <a href="/" class="btn btn-ghost" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center;">Cancel</a>
+            <button type="submit" class="btn btn-primary" style="flex: 2;">Launch Automated Campaign</button>
         </div>
     </form>
 </div>
+
+<script>
+// Search Filtering
+document.getElementById('target-search').addEventListener('input', function(e) {
+    const term = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.target-item');
+    items.forEach(item => {
+        const name = item.querySelector('.target-name').innerText.toLowerCase();
+        item.style.display = name.includes(term) ? 'flex' : 'none';
+    });
+});
+
+async function refreshTargets() {
+    const list = document.getElementById('targets-list');
+    const btn = document.getElementById('btn-refresh-targets');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerText = '⌛ Fetching (this may take a minute)...';
+    
+    list.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; display: inline-block; margin-bottom: 0.5rem;"></div><p style="color: var(--text-muted); font-size: 0.85rem;">Connecting to API and fetching 60+ groups... Please wait.</p></div>';
+    
+    try {
+        const res = await fetch('/whatsapp/groups');
+        const data = await res.json();
+        
+        if (data.success && data.groups) {
+            if (data.groups.length === 0) {
+                list.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: var(--text-muted);">No groups or chats found.</p></div>';
+            } else {
+                list.innerHTML = '';
+                data.groups.forEach(g => {
+                    const label = document.createElement('label');
+                    label.className = 'target-item';
+                    label.style = 'display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border-radius: 8px; cursor: pointer; transition: var(--transition); border: 1px solid transparent; background: rgba(255,255,255,0.02);';
+                    
+                    const typeLabel = g.id.includes('@g.us') ? '👥 Community Group' : '👤 Individual Contact';
+                    
+                    label.innerHTML = `
+                        <input type="checkbox" name="groups" value="${g.id}" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <div style="flex-grow: 1;">
+                            <div class="target-name" style="font-weight: 600; font-size: 0.95rem;">${g.subject}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">${typeLabel}</div>
+                        </div>
+                    `;
+                    list.appendChild(label);
+                });
+            }
+        } else {
+             list.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #ef4444;">Failed to fetch targets. Is WhatsApp connected?</p></div>';
+        }
+    } catch (e) {
+        console.error('Failed to refresh targets', e);
+        list.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #ef4444;">Connection timeout. Please click refresh to try again.</p></div>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// Auto-fetch on load
+document.addEventListener('DOMContentLoaded', refreshTargets);
+</script>
+
+<style>
+/* Modern CSS switch for AI */
+.switch .slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2a2d3e; transition: .4s; border-radius: 34px; border: 1px solid var(--border);
+}
+.switch input:checked + .slider { background-color: var(--primary) !important; border-color: var(--primary); }
+.switch .slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
+}
+.switch input:checked + .slider:before { transform: translateX(24px); }
+
+.target-item:hover {
+    border-color: var(--primary) !important;
+    background: rgba(99, 102, 241, 0.05) !important;
+}
+</style>
 {% endblock %}
