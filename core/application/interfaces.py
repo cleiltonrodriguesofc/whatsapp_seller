@@ -7,39 +7,39 @@ class NotificationService(ABC):
     """
 
     @abstractmethod
-    def send_text(self, phone: str, message: str) -> bool:
+    async def send_text(self, phone: str, message: str) -> bool:
         pass
 
     @abstractmethod
-    def send_group_text(self, group_jid: str, message: str) -> bool:
+    async def send_group_text(self, group_jid: str, message: str) -> bool:
         pass
 
     @abstractmethod
-    def send_group_closing_announcement(self, group_jid: str, month: int, winner_name: str, amount: float) -> bool:
+    async def send_group_closing_announcement(self, group_jid: str, month: int, winner_name: str, amount: float) -> bool:
         pass
 
     @abstractmethod
-    def get_groups(self) -> list:
+    async def get_groups(self) -> list:
         pass
 
     @abstractmethod
-    def send_payment_reminder(self, name: str, phone: str, month: int, amount: float) -> bool:
+    async def send_payment_reminder(self, name: str, phone: str, month: int, amount: float) -> bool:
         pass
 
     @abstractmethod
-    def send_prize_notification(self, name: str, phone: str, month: int, amount: float) -> bool:
+    async def send_prize_notification(self, name: str, phone: str, month: int, amount: float) -> bool:
         pass
 
     @abstractmethod
-    def get_status(self) -> dict:
+    async def get_status(self) -> dict:
         pass
 
     @abstractmethod
-    def get_qrcode(self) -> str:
+    async def get_qrcode(self) -> str:
         pass
 
     @abstractmethod
-    def disconnect_instance(self) -> bool:
+    async def disconnect_instance(self) -> bool:
         pass
 
 class AIService(ABC):
@@ -48,5 +48,5 @@ class AIService(ABC):
     """
 
     @abstractmethod
-    def chat(self, message: str, context: Optional[str] = None) -> str:
+    async def chat(self, message: str, context: Optional[str] = None) -> str:
         pass

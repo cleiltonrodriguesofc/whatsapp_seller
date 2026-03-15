@@ -20,12 +20,13 @@ class ScheduleCampaign:
         self.notification_service = notification_service
         self.ai_service = ai_service
 
-    def execute(
+    async def execute(
         self, 
         title: str, 
         product_id: int, 
         target_groups: List[str], 
         scheduled_at: Optional[datetime],
+        custom_message: Optional[str] = None,
         is_recurring: bool = False,
         recurrence_days: Optional[str] = None,
         send_time: Optional[str] = None,
@@ -37,15 +38,15 @@ class ScheduleCampaign:
             raise ValueError(f"Product with ID {product_id} not found")
 
         # 2. Generate Message Copy (Optional)
-        message_copy = None
-        if use_ai and self.ai_service:
+        message_copy = custom_message
+        if not message_copy and use_ai and self.ai_service:
             prompt = (
                 f"Crie uma mensagem persuasiva de vendas para o WhatsApp para o produto: {product.name}. "
                 f"Descrição: {product.description}. Preço: R$ {product.price:.2f}. "
                 f"Link: {product.affiliate_link}. "
                 "Use emojis, bullet points e uma chamada para ação clara. Mantenha um tom amigável e profissional."
             )
-            message_copy = self.ai_service.chat(prompt)
+            message_copy = await self.ai_service.chat(prompt)
 
         # 3. Create Campaign Entity
         campaign = Campaign(
