@@ -1,0 +1,106 @@
+from typing import List, Optional
+from sqlalchemy.orm import Session
+from core.application.repositories import ProductRepository, CampaignRepository
+from core.domain.entities import Product, Campaign, CampaignStatus as DomainCampaignStatus
+from core.infrastructure.database.models import ProductModel, CampaignModel, CampaignStatus as ModelCampaignStatus
+
+class SQLProductRepository(ProductRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, product: Product) -> Product:
+        model = ProductModel(
+            name=product.name,
+            description=product.description,
+            price=product.price,
+            affiliate_link=product.affiliate_link,
+            image_url=product.image_url,
+            category=product.category,
+            is_active=product.is_active
+        )
+        if product.id:
+            model.id = product.id
+            self.db.merge(model)
+        else:
+            self.db.add(model)
+        self.db.commit()
+        self.db.refresh(model)
+        product.id = model.id
+        return product
+
+    def get_by_id(self, product_id: int) -> Optional[Product]:
+        model = self.db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        if not model:
+            return None
+        return self._to_entity(model)
+
+    def list_all(self) -> List[Product]:
+        models = self.db.query(ProductModel).all()
+        return [self._to_entity(m) for m in models]
+
+    def _to_entity(self, model: ProductModel) -> Product:
+        return Product(
+            id=model.id,
+            name=model.name,
+            description=model.description,
+            price=model.price,
+            affiliate_link=model.affiliate_link,
+            image_url=model.image_url,
+            category=model.category,
+            is_active=model.is_active,
+            created_at=model.created_at
+        )
+
+class SQLCampaignRepository(CampaignRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, campaign: Campaign) -> Campaign:
+        model = CampaignModel(
+            title=campaign.title,
+            product_id=campaign.product.id,
+            scheduled_at=campaign.scheduled_at,
+            status=ModelCampaignStatus[campaign.status.name],
+            custom_message=campaign.custom_message
+        )
+        if campaign.id:
+            model.id = campaign.id
+            self.db.merge(model)
+        else:
+            self.db.add(model)
+        self.db.commit()
+        self.db.refresh(model)
+        campaign.id = model.id
+        return campaign
+
+    def get_by_id(self, campaign_id: int) -> Optional[Campaign]:
+        model = self.db.query(CampaignModel).filter(CampaignModel.id == campaign_id).first()
+        if not model:
+            return None
+        return self._to_entity(model)
+
+    def list_all(self) -> List[Campaign]:
+        models = self.db.query(CampaignModel).all()
+        return [self._to_entity(m) for m in models]
+
+    def list_pending(self) -> List[Campaign]:
+        models = self.db.query(CampaignModel).filter(CampaignModel.status == ModelCampaignStatus.SCHEDULED).all()
+        return [self._to_entity(m) for m in models]
+
+    def _to_entity(self, model: CampaignModel) -> Campaign:
+        # Assuming product relationship is loaded
+        from core.infrastructure.database.repositories import SQLProductRepository
+        product_repo = SQLProductRepository(self.db)
+        product = product_repo.get_by_id(model.product_id)
+        
+        return Campaign(
+            id=model.id,
+            title=model.title,
+            product=product,
+            target_groups=[], # This would need a separate fetch or relationship
+            scheduled_at=model.scheduled_at,
+            status=DomainCampaignStatus[model.status.name],
+            custom_message=model.custom_message,
+            created_at=model.created_at,
+            sent_at=model.sent_at
+        )
