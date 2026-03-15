@@ -81,3 +81,9 @@ class Campaign:
     id: Optional[int] = None
     created_at: datetime = field(default_factory=datetime.now)
     sent_at: Optional[datetime] = None
+    
+    # Recurring Scheduling
+    is_recurring: bool = False
+    recurrence_days: Optional[str] = None  # Comma separated "mon,tue"
+    send_time: Optional[str] = None  # "HH:MM"
+    last_run_at: Optional[datetime] = None

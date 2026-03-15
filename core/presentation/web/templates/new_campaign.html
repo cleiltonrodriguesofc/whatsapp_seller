@@ -21,10 +21,42 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Scheduling -->
+        <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <label class="form-label" style="margin-bottom: 0;">Scheduling Type</label>
+                <div style="display: flex; gap: 0.5rem; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Once</button>
+                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Recurring (Alarm)</button>
+                </div>
+            </div>
             
-            <div class="form-group">
-                <label class="form-label">Scheduled Time</label>
-                <input type="datetime-local" name="scheduled_at" class="form-input" required>
+            <input type="hidden" name="is_recurring" id="is_recurring" value="false">
+
+            <!-- One-off Schedule -->
+            <div id="section-once">
+                <label class="form-label">Send At</label>
+                <input type="datetime-local" name="scheduled_at" class="form-input">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Pick a specific date and time for a single broadcast.</p>
+            </div>
+
+            <!-- Recurring Schedule -->
+            <div id="section-recurring" style="display: none;">
+                <label class="form-label">Send Time</label>
+                <input type="time" name="send_time" class="form-input" style="margin-bottom: 1.5rem;">
+                
+                <label class="form-label">Repeat on Days</label>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;">
+                    {% for day in ['sun','mon','tue','wed','thu','fri','sat'] %}
+                    <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); transition: var(--transition);">
+                        <input type="checkbox" name="recurrence_days" value="{{ day }}" style="width: 16px; height: 16px; accent-color: var(--primary);">
+                        <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">{{ day }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">Select the days and time for this message to repeat automatically.</p>
+            </div>
+        </div>
             </div>
         </div>
 
