@@ -25,7 +25,10 @@ class ScheduleCampaign:
         title: str, 
         product_id: int, 
         target_groups: List[str], 
-        scheduled_at: datetime,
+        scheduled_at: Optional[datetime],
+        is_recurring: bool = False,
+        recurrence_days: Optional[str] = None,
+        send_time: Optional[str] = None,
         use_ai: bool = True
     ) -> Campaign:
         # 1. Fetch Product
@@ -49,9 +52,12 @@ class ScheduleCampaign:
             title=title,
             product=product,
             target_groups=target_groups,
-            scheduled_at=scheduled_at,
+            scheduled_at=scheduled_at or datetime.now(),
             status=CampaignStatus.SCHEDULED,
-            custom_message=message_copy
+            custom_message=message_copy,
+            is_recurring=is_recurring,
+            recurrence_days=recurrence_days,
+            send_time=send_time
         )
 
         # 4. Save to Repository

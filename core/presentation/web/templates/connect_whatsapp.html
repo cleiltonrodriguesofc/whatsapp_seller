@@ -59,11 +59,15 @@
 
         <!-- Groups List -->
         <div class="card animate-fade-in" style="animation-delay: 0.2s;">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Available Targets</h2>
-            <button onclick="fetchGroups()" class="btn btn-ghost" style="width: 100%; margin-bottom: 1rem;">Refresh Targets List</button>
-            <div id="groups-container" style="max-height: 250px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                <!-- Groups will appear here -->
-                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Click refresh to list groups.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.25rem; margin-bottom: 0;">Available Targets</h2>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="fetchGroups(false)" class="btn btn-ghost" style="padding: 6px 12px; font-size: 0.8rem;">🔄 Refresh</button>
+                    <button onclick="fetchGroups(true)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">🚀 Force Sync from API</button>
+                </div>
+            </div>
+            <div id="groups-container" style="max-height: 400px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border);">
+                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Click refresh to load targets.</p>
             </div>
         </div>
     </div>
@@ -166,21 +170,33 @@ async function sendTest() {
     }
 }
 
-async function fetchGroups() {
+async function fetchGroups(force = false) {
     const container = document.getElementById('groups-container');
     const refreshBtn = event ? event.target : null;
     const originalText = refreshBtn ? refreshBtn.innerText : '';
     
     if (refreshBtn) {
         refreshBtn.disabled = true;
-        refreshBtn.innerText = '⌛ Fetching (this may take a minute)...';
+        refreshBtn.innerText = '⌛ Fetching...';
     }
     
-    container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">Connecting to API and fetching 60+ groups... Please wait.</p>';
+    const endpoint = force ? '/whatsapp/sync' : '/whatsapp/groups';
+    
+    if (force) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">Force syncing with Evolution API... this will take a few moments...</p>';
+    } else {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading from database...</p>';
+    }
     
     try {
-        const res = await fetch('/whatsapp/groups');
+        const res = await fetch(endpoint);
         const data = await res.json();
+        
+        // If we are syncing, it returns 'count' instead of 'groups', so we re-fetch normally or map
+        if (force && data.success) {
+            return fetchGroups(false); // Reload from DB after sync
+        }
+
         if (data.success && data.groups) {
             container.innerHTML = '';
             if (data.groups.length === 0) {

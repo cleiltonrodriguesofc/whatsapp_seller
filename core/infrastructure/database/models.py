@@ -51,5 +51,11 @@ class CampaignModel(Base):
     custom_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     sent_at = Column(DateTime, nullable=True)
+    
+    # Recurring Scheduling (Alarm style)
+    is_recurring = Column(Boolean, default=False)
+    recurrence_days = Column(String, nullable=True) # "mon,tue,wed,thu,fri,sat,sun"
+    send_time = Column(String, nullable=True) # "HH:MM"
+    last_run_at = Column(DateTime, nullable=True) # To prevent double-send in the same day
 
     product = relationship("ProductModel")

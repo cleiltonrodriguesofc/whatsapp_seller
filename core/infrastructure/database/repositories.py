@@ -63,7 +63,10 @@ class SQLCampaignRepository(CampaignRepository):
             product_id=campaign.product.id,
             scheduled_at=campaign.scheduled_at,
             status=ModelCampaignStatus[campaign.status.name],
-            custom_message=campaign.custom_message
+            custom_message=campaign.custom_message,
+            is_recurring=getattr(campaign, 'is_recurring', False),
+            recurrence_days=getattr(campaign, 'recurrence_days', None),
+            send_time=getattr(campaign, 'send_time', None)
         )
         if campaign.id:
             model.id = campaign.id
@@ -95,7 +98,7 @@ class SQLCampaignRepository(CampaignRepository):
         product_repo = SQLProductRepository(self.db)
         product = product_repo.get_by_id(model.product_id)
         
-        return Campaign(
+        campaign_entity = Campaign(
             id=model.id,
             title=model.title,
             product=product,
@@ -106,6 +109,14 @@ class SQLCampaignRepository(CampaignRepository):
             created_at=model.created_at,
             sent_at=model.sent_at
         )
+        
+        # Add recurring fields to entity if they exist
+        campaign_entity.is_recurring = model.is_recurring
+        campaign_entity.recurrence_days = model.recurrence_days
+        campaign_entity.send_time = model.send_time
+        campaign_entity.last_run_at = model.last_run_at
+        
+        return campaign_entity
 class SQLTargetRepository:
     def __init__(self, db: Session):
         self.db = db
