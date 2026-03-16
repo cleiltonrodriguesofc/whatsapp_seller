@@ -34,16 +34,17 @@ class EvolutionWhatsAppService(NotificationService):
 
     async def send_text(self, phone: str, message: str) -> bool:
         """
-        Sends a text message asynchronously.
+        Sends a text message asynchronously. Detects if it's a Status update.
         """
+        if phone == "status@broadcast":
+            return await self.send_status(message)
+
         url = f"{self.base_url}/message/sendText/{self.instance}"
         payload = {
             "number": self._clean_phone(phone) if "@" not in phone else phone,
             "text": message,
-            "linkPreview": false, # Fixed: Evolution API expects boolean in JSON, but python uses False. Wait, payload will be json.encoded. linkPreview: False is correct.
+            "linkPreview": False,
         }
-        # Correcting the previous mistake: JSON False is False in Python
-        payload["linkPreview"] = False
         
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -54,6 +55,32 @@ class EvolutionWhatsAppService(NotificationService):
                 return True
         except Exception as exc:
             logger.error("evolution-api send failed: %s", exc)
+            return False
+
+    async def send_status(self, message: str, jid_list: list = None) -> bool:
+        """
+        Sends a text status update to WhatsApp Status.
+        """
+        url = f"{self.base_url}/message/sendStatus/{self.instance}"
+        payload = {
+            "type": "text",
+            "content": message,
+            "backgroundColor": "#128C7E", # WhatsApp Green
+            "font": 1,
+            "allContacts": True if not jid_list else False
+        }
+        if jid_list:
+            payload["statusJidList"] = jid_list
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(url, json=payload, headers=self._headers())
+                if response.status_code >= 400:
+                    logger.error("Evolution API Status Error: %s", response.text)
+                response.raise_for_status()
+                return True
+        except Exception as exc:
+            logger.error("evolution-api sendStatus failed: %s", exc)
             return False
 
     async def send_group_text(self, group_jid: str, message: str) -> bool:
