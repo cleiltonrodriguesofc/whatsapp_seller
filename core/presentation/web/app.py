@@ -70,11 +70,14 @@ async def campaign_scheduler_loop():
             for campaign_model in recurring_campaigns:
                 # Check if today is one of the recurrence days
                 if campaign_model.recurrence_days and current_day_str in campaign_model.recurrence_days.lower():
-                    # Check if it's time to send
-                    if campaign_model.send_time == current_time_str:
-                        # Ensure we haven't sent it today already
-                        if not campaign_model.last_run_at or campaign_model.last_run_at.date() < now.date():
-                            print(f"Executing Recurring Campaign: {campaign_model.title}")
+                    # Support multiple comma-separated times (e.g., "08:00,12:00,18:00")
+                    send_times = [t.strip() for t in (campaign_model.send_time or "").split(",") if t.strip()]
+                    
+                    if current_time_str in send_times:
+                        # Ensure we haven't sent it at THIS SPECIFIC TIME today already
+                        # We store the last run time to prevent double-send in the same minute
+                        if not campaign_model.last_run_at or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M") != now.strftime("%Y-%m-%d %H:%M"):
+                            print(f"Executing Recurring Campaign: {campaign_model.title} at {current_time_str}")
                             
                             # Update last run AT THE START to prevent multiple triggers in same minute
                             campaign_model.last_run_at = now
