@@ -4,16 +4,18 @@ from core.application.interfaces import NotificationService, AIService
 from core.application.repositories import CampaignRepository, ProductRepository
 from core.domain.entities import Campaign, Product, CampaignStatus
 
+
 class ScheduleCampaign:
     """
     Use case to schedule a marketing campaign.
     """
+
     def __init__(
-        self, 
-        campaign_repo: CampaignRepository, 
+        self,
+        campaign_repo: CampaignRepository,
         product_repo: ProductRepository,
         notification_service: NotificationService,
-        ai_service: Optional[AIService] = None
+        ai_service: Optional[AIService] = None,
     ):
         self.campaign_repo = campaign_repo
         self.product_repo = product_repo
@@ -21,16 +23,16 @@ class ScheduleCampaign:
         self.ai_service = ai_service
 
     async def execute(
-        self, 
-        title: str, 
-        product_id: int, 
-        target_groups: List[str], 
+        self,
+        title: str,
+        product_id: int,
+        target_groups: List[str],
         scheduled_at: Optional[datetime],
         custom_message: Optional[str] = None,
         is_recurring: bool = False,
         recurrence_days: Optional[str] = None,
         send_time: Optional[str] = None,
-        use_ai: bool = True
+        use_ai: bool = True,
     ) -> Campaign:
         # 1. Fetch Product
         product = self.product_repo.get_by_id(product_id)
@@ -58,7 +60,7 @@ class ScheduleCampaign:
             custom_message=message_copy,
             is_recurring=is_recurring,
             recurrence_days=recurrence_days,
-            send_time=send_time
+            send_time=send_time,
         )
 
         # 4. Save to Repository

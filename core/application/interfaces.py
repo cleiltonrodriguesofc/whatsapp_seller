@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
+
 class NotificationService(ABC):
     """
     Interface for sending notifications via different channels (e.g., WhatsApp).
@@ -15,7 +16,9 @@ class NotificationService(ABC):
         pass
 
     @abstractmethod
-    async def send_group_closing_announcement(self, group_jid: str, month: int, winner_name: str, amount: float) -> bool:
+    async def send_group_closing_announcement(
+        self, group_jid: str, month: int, winner_name: str, amount: float
+    ) -> bool:
         pass
 
     @abstractmethod
@@ -23,11 +26,15 @@ class NotificationService(ABC):
         pass
 
     @abstractmethod
-    async def send_payment_reminder(self, name: str, phone: str, month: int, amount: float) -> bool:
+    async def send_payment_reminder(
+        self, name: str, phone: str, month: int, amount: float
+    ) -> bool:
         pass
 
     @abstractmethod
-    async def send_prize_notification(self, name: str, phone: str, month: int, amount: float) -> bool:
+    async def send_prize_notification(
+        self, name: str, phone: str, month: int, amount: float
+    ) -> bool:
         pass
 
     @abstractmethod
@@ -41,6 +48,7 @@ class NotificationService(ABC):
     @abstractmethod
     async def disconnect_instance(self) -> bool:
         pass
+
 
 class AIService(ABC):
     """
