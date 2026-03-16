@@ -1,0 +1,34 @@
+name: WhatsApp Application Pulse
+
+on:
+  schedule:
+    # Every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to trigger'
+        required: true
+        default: 'pulse'
+      jid:
+        description: 'Target JID (optional)'
+        required: false
+      message:
+        description: 'Message (optional)'
+        required: false
+
+jobs:
+  ping-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Pulse Trigger
+        run: |
+          ACTION="${{ github.event.inputs.action || 'pulse' }}"
+          JID="${{ github.event.inputs.jid || '' }}"
+          MSG="${{ github.event.inputs.message || '' }}"
+          
+          curl -s -i -G "https://${{ secrets.APP_DOMAIN }}/api/v1/whatsapp/trigger" \
+            --data-urlencode "action=$ACTION" \
+            --data-urlencode "jid=$JID" \
+            --data-urlencode "message=$MSG" \
+            -H "X-Trigger-Token: ${{ secrets.TRIGGER_TOKEN }}"

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, File, UploadFile
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, File, UploadFile, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -18,6 +18,8 @@ from core.infrastructure.database.models import Base, CampaignStatus as ModelCam
 from core.infrastructure.database.repositories import SQLProductRepository, SQLCampaignRepository, SQLTargetRepository
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.infrastructure.ai.openai_service import OpenAIService
+from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
+from core.application.use_cases.send_daily_greeting import SendDailyGreeting
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.domain.entities import Campaign, Product, CampaignStatus as DomainCampaignStatus
 
@@ -217,6 +219,39 @@ async def send_test_message(phone: str = Form(...), message: str = Form(...)):
     whatsapp_service = EvolutionWhatsAppService()
     success = await whatsapp_service.send_text(phone, message)
     return {"success": success}
+
+@app.get("/api/v1/whatsapp/trigger")
+@app.post("/api/v1/whatsapp/trigger")
+async def whatsapp_webhook_trigger(
+    request: Request,
+    action: str = Query(...),
+    jid: Optional[str] = Query(None),
+    message: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Secure endpoint to trigger WhatsApp messages from GitHub Actions.
+    Protection: X-Trigger-Token header.
+    """
+    token = os.environ.get("TRIGGER_TOKEN")
+    header_token = request.headers.get("X-Trigger-Token")
+
+    if not token or header_token != token:
+        raise HTTPException(status_code=403, detail="Invalid trigger token")
+
+    whatsapp_service = EvolutionWhatsAppService()
+
+    if action == "campaign":
+        use_case = SalesAgentCampaignUseCase(whatsapp_service)
+        success = await use_case.execute(jid, message or "Olá! Esta é uma mensagem automática.")
+        return {"status": "success" if success else "failed", "action": action}
+    
+    elif action == "pulse":
+        # The 'pulse' action is used to keep the app awake or trigger internal checks
+        # if needed. For now, we just return success.
+        return {"status": "alive", "action": action}
+
+    return {"status": "received", "action": action}
 
 @app.get("/products", response_class=HTMLResponse)
 async def list_products(request: Request, db: Session = Depends(get_db)):
