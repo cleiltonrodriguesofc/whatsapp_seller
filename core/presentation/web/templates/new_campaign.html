@@ -26,7 +26,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <label class="form-label" style="margin-bottom: 0;">Scheduling Type</label>
                 <div style="display: flex; gap: 0.5rem; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
-                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Once</button>
+                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Once</button>
                     <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Recurring (Alarm)</button>
                 </div>
             </div>
@@ -42,8 +42,10 @@
 
             <!-- Recurring Schedule -->
             <div id="section-recurring" style="display: none;">
-                <label class="form-label">Send Time</label>
-                <input type="time" name="send_time" class="form-input" style="margin-bottom: 1.5rem;">
+                <label class="form-label">Send Times (Multiple comma-separated, e.g., 08:00, 14:00)</label>
+                <div id="times-container">
+                    <input type="text" name="send_time" class="form-input" placeholder="08:00, 14:00, 20:00" style="margin-bottom: 1.5rem;">
+                </div>
                 
                 <label class="form-label">Repeat on Days</label>
                 <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;">
@@ -108,6 +110,32 @@
 </div>
 
 <script>
+function setScheduleType(type) {
+    const sectionOnce = document.getElementById('section-once');
+    const sectionRecurring = document.getElementById('section-recurring');
+    const btnOnce = document.getElementById('btn-once');
+    const btnRecurring = document.getElementById('btn-recurring');
+    const isRecurring = document.getElementById('is_recurring');
+
+    if (type === 'once') {
+        sectionOnce.style.display = 'block';
+        sectionRecurring.style.display = 'none';
+        btnOnce.classList.add('btn-primary');
+        btnOnce.classList.remove('btn-ghost');
+        btnRecurring.classList.remove('btn-primary');
+        btnRecurring.classList.add('btn-ghost');
+        isRecurring.value = 'false';
+    } else {
+        sectionOnce.style.display = 'none';
+        sectionRecurring.style.display = 'block';
+        btnOnce.classList.remove('btn-primary');
+        btnOnce.classList.add('btn-ghost');
+        btnRecurring.classList.add('btn-primary');
+        btnRecurring.classList.remove('btn-ghost');
+        isRecurring.value = 'true';
+    }
+}
+
 // Search Filtering
 document.getElementById('target-search').addEventListener('input', function(e) {
     const term = e.target.value.toLowerCase();
