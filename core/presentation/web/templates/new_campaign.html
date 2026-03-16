@@ -98,19 +98,17 @@
             </div>
         </div>
 
-        <div class="card" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed var(--primary); margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div>
-                    <h3 style="font-size: 1rem; color: white;">✨ Magic AI Copywriter</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Generate persuasive sales copy using GPT-4.</p>
-                </div>
-                <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                    <input type="checkbox" name="use_ai" style="opacity: 0; width: 0; height: 0;">
-                    <span class="slider"></span>
-                </label>
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                <label class="form-label" style="margin-bottom: 0;">Campaign Pitch (Message)</label>
+                <button type="button" id="btn-improve-ai" onclick="improveMessageWithAI()" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; color: var(--primary); border: 1px solid var(--primary); border-radius: 6px;">✨ Improve with AI</button>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">If enabled, our AI will study your product details and create a professional message including your affiliate link, emojis, and call-to-actions.</p>
+            <textarea name="custom_message" id="custom_message" class="form-input" rows="6" placeholder="Write your own pitch or click the button above to let AI help you..."></textarea>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Use *asterisks* for bold. You can use markdown-like syntax for better formatting.</p>
         </div>
+
+        <!-- Hidden Legacy AI Toggle -->
+        <input type="hidden" name="use_ai" value="false">
 
         <div style="display: flex; gap: 1rem;">
             <a href="/" class="btn btn-ghost" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center;">Cancel</a>
@@ -200,6 +198,45 @@ async function refreshTargets() {
     } catch (e) {
         console.error('Failed to refresh targets', e);
         list.innerHTML = '<div style="text-align: center; padding: 2rem;"><p style="color: #ef4444;">Connection timeout. Please click refresh to try again.</p></div>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function improveMessageWithAI() {
+    const textMsg = document.getElementById('custom_message').value;
+    const productId = document.querySelector('select[name="product_id"]').value;
+    const btn = document.getElementById('btn-improve-ai');
+    
+    if (!textMsg && !confirm("No text provided. Should AI generate a fresh pitch for the selected product?")) {
+        return;
+    }
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '🪄 <span style="font-size: 0.75rem;">AI Working...</span>';
+
+    try {
+        const formData = new FormData();
+        formData.append('text', textMsg);
+        formData.append('product_id', productId);
+
+        const res = await fetch('/campaign/rewrite', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!res.ok) throw new Error("AI Request Failed");
+        
+        const data = await res.json();
+        
+        if (data.improved_text) {
+            document.getElementById('custom_message').value = data.improved_text;
+        }
+    } catch (e) {
+        console.error('AI Error:', e);
+        alert("Magic failed this time. Please try again or check your API key.");
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;

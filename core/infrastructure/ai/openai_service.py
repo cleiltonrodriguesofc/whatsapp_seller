@@ -3,10 +3,12 @@ from typing import Optional
 from openai import AsyncOpenAI
 from core.application.interfaces import AIService
 
+
 class OpenAIService(AIService):
     """
     Implementation of AIService using OpenAI's API (Asynchronous).
     """
+
     def __init__(self):
         self.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
