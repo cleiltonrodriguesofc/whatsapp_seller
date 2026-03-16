@@ -331,3 +331,49 @@ async def create_product(
     )
     product_repo.save(product)
     return RedirectResponse(url="/products", status_code=303)
+
+@app.get("/products/edit/{product_id}", response_class=HTMLResponse)
+async def edit_product_form(request: Request, product_id: int, db: Session = Depends(get_db)):
+    product_repo = SQLProductRepository(db)
+    product = product_repo.get_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return templates.TemplateResponse("edit_product.html", {"request": request, "product": product})
+
+@app.post("/products/edit/{product_id}")
+async def update_product(
+    product_id: int,
+    name: str = Form(...),
+    description: str = Form(...),
+    price: float = Form(...),
+    affiliate_link: str = Form(...),
+    image_url: str = Form(None),
+    category: str = Form(None),
+    image_file: UploadFile = File(None),
+    db: Session = Depends(get_db)
+):
+    product_repo = SQLProductRepository(db)
+    product = product_repo.get_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Handle image file upload
+    final_image_url = image_url or product.image_url
+    if image_file and image_file.filename:
+        file_ext = os.path.splitext(image_file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        upload_path = os.path.join("core/presentation/web/static/uploads", unique_filename)
+        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
+        with open(upload_path, "wb") as buffer:
+            shutil.copyfileobj(image_file.file, buffer)
+        final_image_url = f"/static/uploads/{unique_filename}"
+
+    product.name = name
+    product.description = description
+    product.price = price
+    product.affiliate_link = affiliate_link
+    product.image_url = final_image_url
+    product.category = category
+    
+    product_repo.save(product)
+    return RedirectResponse(url="/products", status_code=303)
