@@ -39,6 +39,7 @@ class HumanizedSender:
             except Exception as e:
                 logger.error("Failed to optimize media for humanized send: %s", e)
 
+        all_success = True
         for i, target in enumerate(targets):
             # 1. Simulate Typing/Presence (only if not sending to status)
             if target != "status@broadcast":
@@ -78,4 +79,4 @@ class HumanizedSender:
                 )
                 await asyncio.sleep(jitter)
 
-        return True
+        return all_success

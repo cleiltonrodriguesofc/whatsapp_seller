@@ -37,15 +37,19 @@
                 <p style="color: var(--text-secondary); font-size: 0.95rem;">{% block page_subtitle %}Manage your automated marketing assets.{% endblock %}</p>
             </div>
             
+            {% if user %}
             <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
                 <div style="text-align: right;">
-                    <div style="font-size: 0.9rem; font-weight: 600;">Cleilton Tec</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Administrator</div>
+                    <div style="font-size: 0.9rem; font-weight: 600;">{{ user.email.split('@')[0] }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        <a href="/logout" style="color: #ef4444; text-decoration: none;">Sign Out</a>
+                    </div>
                 </div>
                 <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; font-weight: 700;">
-                    CT
+                    {{ user.email[0].upper() }}
                 </div>
             </div>
+            {% endif %}
         </header>
 
         <section class="animate-fade-in" style="animation-delay: 0.1s;">

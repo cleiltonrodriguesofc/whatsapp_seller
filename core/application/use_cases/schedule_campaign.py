@@ -33,6 +33,7 @@ class ScheduleCampaign:
         recurrence_days: Optional[str] = None,
         send_time: Optional[str] = None,
         use_ai: bool = True,
+        user_id: Optional[int] = None,
     ) -> Campaign:
         # 1. Fetch Product
         product = self.product_repo.get_by_id(product_id)
@@ -58,6 +59,7 @@ class ScheduleCampaign:
             scheduled_at=scheduled_at or datetime.now(),
             status=CampaignStatus.SCHEDULED,
             custom_message=message_copy,
+            user_id=user_id,
             is_recurring=is_recurring,
             recurrence_days=recurrence_days,
             send_time=send_time,
