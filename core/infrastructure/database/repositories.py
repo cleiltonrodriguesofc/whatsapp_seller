@@ -10,6 +10,8 @@ from core.infrastructure.database.models import (
     ProductModel,
     CampaignModel,
     WhatsAppTargetModel,
+    UserModel,
+    InstanceModel,
     CampaignStatus as ModelCampaignStatus,
 )
 from sqlalchemy import select

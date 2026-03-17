@@ -18,6 +18,8 @@ import os
 import asyncio
 import shutil
 import uuid
+import json
+from typing import List, Optional
 
 # Load environment variables
 load_dotenv()
@@ -26,36 +28,70 @@ from core.infrastructure.database.session import get_db, engine, SessionLocal
 from core.infrastructure.database.models import (
     Base,
     CampaignStatus as ModelCampaignStatus,
-    Campaign as CampaignModel,
-)  # Added CampaignModel import
+    CampaignModel,
+    UserModel,
+    InstanceModel,
+)
 from core.infrastructure.database.repositories import (
     SQLProductRepository,
     SQLCampaignRepository,
     SQLTargetRepository,
 )
+from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.infrastructure.notifications.evolution_whatsapp import (
     EvolutionWhatsAppService,
 )
-from core.infrastructure.ai.openai_service import OpenAIService
-from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
-from core.application.use_cases.send_daily_greeting import SendDailyGreeting
-from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.domain.entities import (
     Campaign,
     Product,
     CampaignStatus as DomainCampaignStatus,
 )
+from core.infrastructure.ai.openai_service import OpenAIService
+from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
+from core.application.use_cases.send_daily_greeting import SendDailyGreeting
+from core.application.services.auth_service import AuthService
+from fastapi.security import OAuth2PasswordBearer
+from starlette.status import HTTP_303_SEE_OTHER
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="WhatsApp Sales Agent Dashboard")
 
+# Security
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+auth_service = AuthService()
+
 # Mount static files and templates
 app.mount(
     "/static", StaticFiles(directory="core/presentation/web/static"), name="static"
 )
 templates = Jinja2Templates(directory="core/presentation/web/templates")
+
+
+async def get_current_user(request: Request, db: Session = Depends(get_db)):
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+
+    payload = auth_service.decode_access_token(token)
+    if not payload:
+        return None
+
+    email = payload.get("sub")
+    if not email:
+        return None
+
+    user = db.query(UserModel).filter(UserModel.email == email).first()
+    return user
+
+
+def login_required(user: UserModel = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(
+            status_code=303, detail="Not authenticated", headers={"Location": "/login"}
+        )
+    return user
 
 
 @app.on_event("startup")
@@ -228,11 +264,24 @@ async def send_campaign(campaign: Campaign, db: Session):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, db: Session = Depends(get_db)):
-    campaign_repo = SQLCampaignRepository(db)
-    campaigns = campaign_repo.list_all()
+async def dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    if not current_user:
+        return RedirectResponse(url="/login")
 
-    whatsapp_service = EvolutionWhatsAppService()
+    campaign_repo = SQLCampaignRepository(db)
+    campaigns = campaign_repo.list_all(user_id=current_user.id)
+
+    # Get user's instance
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    instance_name = instance_model.name if instance_model else None
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_name)
     wa_status = await whatsapp_service.get_status()
 
     return templates.TemplateResponse(
@@ -240,20 +289,124 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "campaigns": campaigns,
+            "user": current_user,
             "wa_connected": wa_status.get("connected", False),
             "wa_status": wa_status.get("status", "unknown"),
         },
     )
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.post("/login")
+async def login_action(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user = db.query(UserModel).filter(UserModel.email == username).first()
+    if not user or not auth_service.verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "Invalid email or password"}
+        )
+
+    access_token = auth_service.create_access_token(data={"sub": user.email})
+    response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    return response
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+
+@app.post("/register")
+async def register_action(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    business_name: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    # 1. Check if user exists
+    existing_user = db.query(UserModel).filter(UserModel.email == email).first()
+    if existing_user:
+        return templates.TemplateResponse(
+            "register.html", {"request": request, "error": "Email already registered"}
+        )
+
+    # 2. Create User
+    new_user = UserModel(
+        email=email, hashed_password=auth_service.hash_password(password)
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    # 3. Provision WhatsApp Instance
+    try:
+        instance_name = business_name.lower().replace(" ", "_") + "_" + str(new_user.id)
+        whatsapp_service = EvolutionWhatsAppService()
+        instance_data = await whatsapp_service.create_instance(instance_name)
+
+        if instance_data:
+            # The structure might vary depending on Evolution API version
+            # v1 often has instance.hash.apikey, v2 might be different
+            apikey = (instance_data.get("hash", {}) or {}).get(
+                "apikey"
+            ) or instance_data.get("apikey")
+
+            new_instance = InstanceModel(
+                user_id=new_user.id,
+                name=instance_name,
+                apikey=apikey,
+            )
+            db.add(new_instance)
+            db.commit()
+    except Exception as e:
+        print(f"Post-registration instance provisioning failed: {e}")
+        # We don't fail the whole registration if WhatsApp provisioning fails
+        # The user can retry connecting later in the dashboard
+
+    # 4. Login and Redirect
+    access_token = auth_service.create_access_token(data={"sub": new_user.email})
+    response = RedirectResponse(url="/whatsapp/connect", status_code=HTTP_303_SEE_OTHER)
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    return response
+
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login")
+    response.delete_cookie("access_token")
+    return response
+
+
 @app.get("/whatsapp/connect", response_class=HTMLResponse)
-async def connect_whatsapp_page(request: Request):
-    return templates.TemplateResponse("connect_whatsapp.html", {"request": request})
+async def connect_whatsapp_page(
+    request: Request, current_user: UserModel = Depends(login_required)
+):
+    return templates.TemplateResponse(
+        "connect_whatsapp.html", {"request": request, "user": current_user}
+    )
 
 
 @app.post("/whatsapp/connect")
-async def get_whatsapp_qr():
-    whatsapp_service = EvolutionWhatsAppService()
+async def get_whatsapp_qr(
+    current_user: UserModel = Depends(login_required), db: Session = Depends(get_db)
+):
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    if not instance_model:
+        return {"success": False, "error": "No instance provisioned"}
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_model.name)
     qrcode_base64 = await whatsapp_service.get_qrcode()
     if qrcode_base64:
         return {"success": True, "qrcode": qrcode_base64}
@@ -261,26 +414,50 @@ async def get_whatsapp_qr():
 
 
 @app.get("/whatsapp/status")
-async def get_whatsapp_status():
-    whatsapp_service = EvolutionWhatsAppService()
+async def get_whatsapp_status(
+    current_user: UserModel = Depends(login_required), db: Session = Depends(get_db)
+):
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    if not instance_model:
+        return {"status": "not_found", "connected": False}
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_model.name)
     status = await whatsapp_service.get_status()
     return status
 
 
 @app.post("/whatsapp/disconnect")
-async def disconnect_whatsapp():
-    whatsapp_service = EvolutionWhatsAppService()
+async def disconnect_whatsapp(
+    current_user: UserModel = Depends(login_required), db: Session = Depends(get_db)
+):
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    if not instance_model:
+        return {"success": False}
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_model.name)
     success = await whatsapp_service.disconnect_instance()
     return {"success": success}
 
 
 @app.get("/whatsapp/groups")
-async def get_whatsapp_groups(db: Session = Depends(get_db)):
-    whatsapp_service = EvolutionWhatsAppService()
+async def get_whatsapp_groups(
+    db: Session = Depends(get_db), current_user: UserModel = Depends(login_required)
+):
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    if not instance_model:
+        return {"success": False, "error": "No instance provisioned"}
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_model.name)
     target_repo = SQLTargetRepository(db)
 
     # 1. Check database first
-    db_targets = target_repo.list_all()
+    db_targets = target_repo.list_all(user_id=current_user.id)
     if db_targets:
         targets = [{"id": t.jid, "subject": t.name} for t in db_targets]
         return {"success": True, "groups": targets, "source": "database"}
@@ -299,15 +476,23 @@ async def get_whatsapp_groups(db: Session = Depends(get_db)):
 
     # Sync to Database for next time
     if targets:
-        target_repo.upsert_sync(targets)
+        target_repo.upsert_sync(targets, user_id=current_user.id)
 
     return {"success": True, "groups": targets, "source": "api"}
 
 
 @app.get("/whatsapp/sync")
-async def sync_whatsapp_targets(db: Session = Depends(get_db)):
+async def sync_whatsapp_targets(
+    db: Session = Depends(get_db), current_user: UserModel = Depends(login_required)
+):
     """Force a sync from API to Database"""
-    whatsapp_service = EvolutionWhatsAppService()
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    if not instance_model:
+        return {"success": False, "error": "No instance provisioned"}
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_model.name)
     target_repo = SQLTargetRepository(db)
 
     groups = await whatsapp_service.get_groups()
@@ -322,14 +507,24 @@ async def sync_whatsapp_targets(db: Session = Depends(get_db)):
         targets.append({"id": c.get("id"), "subject": c.get("name") or c.get("id")})
 
     if targets:
-        target_repo.upsert_sync(targets)
+        target_repo.upsert_sync(targets, user_id=current_user.id)
 
     return {"success": True, "count": len(targets)}
 
 
 @app.post("/whatsapp/test")
-async def send_test_message(phone: str = Form(...), message: str = Form(...)):
-    whatsapp_service = EvolutionWhatsAppService()
+async def send_test_message(
+    phone: str = Form(...),
+    message: str = Form(...),
+    current_user: UserModel = Depends(login_required),
+    db: Session = Depends(get_db),
+):
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
+    instance_name = instance_model.name if instance_model else None
+
+    whatsapp_service = EvolutionWhatsAppService(instance=instance_name)
     success = await whatsapp_service.send_text(phone, message)
     return {"success": success}
 
@@ -371,21 +566,30 @@ async def whatsapp_webhook_trigger(
 
 
 @app.get("/products", response_class=HTMLResponse)
-async def list_products(request: Request, db: Session = Depends(get_db)):
+async def list_products(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
     product_repo = SQLProductRepository(db)
-    products = product_repo.list_all()
+    products = product_repo.list_all(user_id=current_user.id)
     return templates.TemplateResponse(
-        "products.html", {"request": request, "products": products}
+        "products.html",
+        {"request": request, "products": products, "user": current_user},
     )
 
 
 @app.get("/campaigns/new", response_class=HTMLResponse)
-async def new_campaign_form(request: Request, db: Session = Depends(get_db)):
+async def new_campaign_form(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
     product_repo = SQLProductRepository(db)
     target_repo = SQLTargetRepository(db)
 
-    products = product_repo.list_all()
-    db_targets = target_repo.list_all()
+    products = product_repo.list_all(user_id=current_user.id)
+    db_targets = target_repo.list_all(user_id=current_user.id)
 
     # Map DB targets to the UI format
     targets = []
@@ -395,7 +599,12 @@ async def new_campaign_form(request: Request, db: Session = Depends(get_db)):
     # We still allow dynamic refresh via JS, but now provide cached targets for speed
     return templates.TemplateResponse(
         "new_campaign.html",
-        {"request": request, "products": products, "targets": targets},
+        {
+            "request": request,
+            "products": products,
+            "targets": targets,
+            "user": current_user,
+        },
     )
 
 
@@ -410,6 +619,7 @@ async def create_campaign(
     recurrence_days: List[str] = Form([]),
     send_time: Optional[str] = Form(None),
     db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
 ):
     campaign_repo = SQLCampaignRepository(db)
     product_repo = SQLProductRepository(db)
@@ -431,16 +641,20 @@ async def create_campaign(
     # Combine recurrence days into a string
     days_str = ",".join(recurrence_days) if recurrence_days else None
 
+    # Use a copy of custom_message to avoid modifying the original Form value
+    message_copy = custom_message
+
     await scheduler.execute(
         title=title,
         product_id=product_id,
         target_groups=groups,
         scheduled_at=dt_scheduled,
-        custom_message=custom_message,
+        custom_message=message_copy,
         is_recurring=is_recurring,
         recurrence_days=days_str,
         send_time=send_time,
         use_ai=not bool(custom_message),
+        user_id=current_user.id,
     )
 
     return RedirectResponse(url="/campaigns", status_code=303)
@@ -456,6 +670,7 @@ async def create_product(
     category: str = Form(None),
     image_file: UploadFile = File(None),
     db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
 ):
     product_repo = SQLProductRepository(db)
 
@@ -486,6 +701,7 @@ async def create_product(
         affiliate_link=affiliate_link,
         image_url=final_image_url,
         category=category,
+        user_id=current_user.id,
     )
     product_repo.save(product)
     return RedirectResponse(url="/products", status_code=303)
@@ -493,14 +709,18 @@ async def create_product(
 
 @app.get("/products/edit/{product_id}", response_class=HTMLResponse)
 async def edit_product_form(
-    request: Request, product_id: int, db: Session = Depends(get_db)
+    request: Request,
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
 ):
     product_repo = SQLProductRepository(db)
-    product = product_repo.get_by_id(product_id)
+    product = product_repo.get_by_id(product_id, user_id=current_user.id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return templates.TemplateResponse(
-        "edit_product.html", {"request": request, "product": product}
+        "edit_product.html",
+        {"request": request, "product": product, "user": current_user},
     )
 
 
@@ -515,9 +735,10 @@ async def update_product(
     category: str = Form(None),
     image_file: UploadFile = File(None),
     db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
 ):
     product_repo = SQLProductRepository(db)
-    product = product_repo.get_by_id(product_id)
+    product = product_repo.get_by_id(product_id, user_id=current_user.id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -543,6 +764,7 @@ async def rewrite_campaign_message(
     text: str = Form(...),
     product_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
 ):
     """
     Leverages AI to improve a campaign message.
@@ -550,7 +772,7 @@ async def rewrite_campaign_message(
     product_repo = SQLProductRepository(db)
     product = None
     if product_id:
-        product = product_repo.get_by_id(product_id)
+        product = product_repo.get_by_id(product_id, user_id=current_user.id)
 
     ai_service = OpenAIService()
     prompt = f"Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "
