@@ -88,6 +88,7 @@ class Campaign:
     target_groups: List[str]  # List of Group JIDs
     scheduled_at: datetime
     user_id: Optional[int] = None
+    instance_id: Optional[int] = None  # Specific WhatsApp instance
     status: CampaignStatus = CampaignStatus.PENDING
     custom_message: Optional[str] = None
     id: Optional[int] = None
@@ -99,6 +100,7 @@ class Campaign:
     recurrence_days: Optional[str] = None  # Comma separated "mon,tue"
     send_time: Optional[str] = None  # "HH:MM"
     last_run_at: Optional[datetime] = None
+    is_ai_generated: bool = False
 
     # Granular Scheduling Config (v3)
     # Format: {"status": "07:00", "groups": ["09:00", "15:00"], "contacts": "once_per_day"}

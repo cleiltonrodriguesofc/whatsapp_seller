@@ -1,249 +1,219 @@
 {% extends "base.html" %}
 
-{% block page_title %}WhatsApp Management{% endblock %}
-{% block page_subtitle %}Manage your instance connection and test configurations.{% endblock %}
+{% block page_title %}WhatsApp Multi-Instance Management{% endblock %}
+{% block page_subtitle %}Manage multiple WhatsApp accounts and automate your outreach across all of them.{% endblock %}
 
 {% block content %}
-<div class="stat-grid" style="margin-bottom: 2.5rem;">
-    <div class="card stat-card">
-        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">📱</div>
-        <div class="stat-data">
-            <h4>Connection Status</h4>
-            <p id="mgmt-status-text">Checking...</p>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+    <h2 style="font-size: 1.5rem; color: white;">My WhatsApp Accounts</h2>
+    <button onclick="showNewInstanceModal()" class="btn btn-primary">+ Add New Instance</button>
+</div>
+
+<div id="instances-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+    {% for inst in instances %}
+    <div class="card instance-card" id="instance-{{ inst.id }}" style="border: 1px solid var(--border); transition: var(--transition);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div class="inst-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">📱</div>
+                <div>
+                    <h3 style="font-size: 1.1rem; color: white; margin-bottom: 0.25rem;">{{ inst.name }}</h3>
+                    <div id="status-badge-{{ inst.id }}" class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Checking...</div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <button onclick="toggleDetails({{ inst.id }})" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Details</button>
+            </div>
         </div>
+
+        <div id="qr-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--primary); border-radius: 12px; background: rgba(99, 102, 241, 0.03); margin-bottom: 1rem;">
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Scan with your WhatsApp mobile app.</p>
+            <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-block;">
+                <img id="qr-img-{{ inst.id }}" src="" style="width: 200px; height: 200px;">
+            </div>
+        </div>
+
+        <div id="active-actions-{{ inst.id }}" style="display: none; gap: 0.5rem; flex-direction: column;">
+            <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border); font-size: 0.9rem;">View Groups/Chats</button>
+            <button onclick="disconnectInstance({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.9rem;">Disconnect Account</button>
+        </div>
+
+        <div id="inactive-actions-{{ inst.id }}" style="display: block;">
+            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%;">Connect with QR Code</button>
+        </div>
+    </div>
+    {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: rgba(255,255,255,0.02); border-radius: 20px; border: 2px dashed var(--border);">
+        <div style="font-size: 4rem; margin-bottom: 1.5rem;">🔌</div>
+        <h3 style="color: white; margin-bottom: 0.5rem;">No WhatsApp accounts linked yet</h3>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Create your first instance to start automating your outreach.</p>
+        <button onclick="showNewInstanceModal()" class="btn btn-primary">Create New Instance</button>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- New Instance Modal -->
+<div id="new-instance-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div class="card animate-scale-up" style="width: 400px; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);">
+        <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">New WhatsApp Instance</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Give a friendly name for this connection (e.g., 'Commercial 01').</p>
+        
+        <form id="new-inst-form" onsubmit="event.preventDefault(); createInstance();">
+            <div class="form-group">
+                <label class="form-label">Instance Name</label>
+                <input type="text" id="new-inst-name" class="form-input" placeholder="Sales Department" required>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="button" onclick="hideNewInstanceModal()" class="btn btn-ghost" style="flex: 1;">Cancel</button>
+                <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 2;">Provision Account</button>
+            </div>
+        </form>
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start;">
-    <!-- Connection Card -->
-    <div class="card animate-fade-in">
-        <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Device Connection</h2>
-        
-        <div id="qr-section" style="text-align: center; display: none;">
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Scan the secure QR code to link your account.</p>
-            <div id="qr-container" style="background: white; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                <div id="qr-loading" style="width: 240px; height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #1e293b;">
-                    <div class="spinner" style="width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                </div>
-                <img id="qr-image" src="" alt="QR Code" style="width: 240px; height: 240px; display: none;">
-            </div>
-            <button id="btn-generate" onclick="generateQR()" class="btn btn-primary" style="width: 100%;">Generate New QR</button>
+<!-- Targets Modal -->
+<div id="targets-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1001; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div class="card" style="width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 id="targets-title">Scanning Targets...</h2>
+            <button onclick="hideTargetsModal()" class="btn btn-ghost btn-sm">Close</button>
         </div>
-
-        <div id="connected-section" style="text-align: center; display: none; padding: 2rem 0;">
-            <div style="font-size: 4rem; margin-bottom: 1.5rem;">✅</div>
-            <h3 style="color: white; margin-bottom: 1rem;">Instance is Active</h3>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Your device is currently linked and ready for automated campaigns.</p>
-            <button onclick="disconnect()" class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.1); width: 100%;">Disconnect Device</button>
-        </div>
-    </div>
-
-    <!-- Test & Utilities -->
-    <div id="utilities-section" style="display: none; flex-direction: column; gap: 2.5rem;">
-        <!-- Test Message -->
-        <div class="card animate-fade-in" style="animation-delay: 0.1s;">
-            <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Send Test Message</h2>
-            <form id="test-form" onsubmit="event.preventDefault(); sendTest();">
-                <div class="form-group">
-                    <label class="form-label">Phone Number (with DDI)</label>
-                    <input type="text" id="test-phone" class="form-input" placeholder="5511999999999" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Message</label>
-                    <textarea id="test-message" class="form-input" required>Test from Sales Agent Pro! 🚀</textarea>
-                </div>
-                <button type="submit" id="btn-send-test" class="btn btn-primary" style="width: 100%;">Send Test</button>
-            </form>
-            <p id="test-result" style="margin-top: 1rem; font-size: 0.85rem; text-align: center;"></p>
-        </div>
-
-        <!-- Groups List -->
-        <div class="card animate-fade-in" style="animation-delay: 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.25rem; margin-bottom: 0;">Available Targets</h2>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button onclick="fetchGroups(false)" class="btn btn-ghost" style="padding: 6px 12px; font-size: 0.8rem;">🔄 Refresh</button>
-                    <button onclick="fetchGroups(true)" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">🚀 Force Sync from API</button>
-                </div>
-            </div>
-            <div id="groups-container" style="max-height: 400px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border);">
-                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Click refresh to load targets.</p>
-            </div>
+        <div id="targets-container" style="flex-grow: 1; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+            <!-- Content via JS -->
         </div>
     </div>
 </div>
 
 <script>
-let isConnected = false;
-let statusInterval = null;
-
-async function updateMgmtStatus() {
+async function checkInstanceStatus(id) {
     try {
-        const res = await fetch('/whatsapp/status');
+        const res = await fetch(`/whatsapp/status/${id}`);
         const data = await res.json();
-        
-        const statusText = document.getElementById('mgmt-status-text');
-        const qrSection = document.getElementById('qr-section');
-        const connectedSection = document.getElementById('connected-section');
-        const utilitiesSection = document.getElementById('utilities-section');
-        
-        isConnected = data.connected;
-        
-        if (isConnected) {
-            statusText.innerText = 'Online / Connected';
-            statusText.style.color = '#10b981';
-            qrSection.style.display = 'none';
-            connectedSection.style.display = 'block';
-            utilitiesSection.style.display = 'flex';
-        } else {
-            statusText.innerText = data.status === 'open' ? 'Connecting...' : 'Disconnected';
-            statusText.style.color = '#f59e0b';
-            qrSection.style.display = 'block';
-            connectedSection.style.display = 'none';
-            utilitiesSection.style.display = 'none';
-        }
-    } catch (e) {
-        console.error('Mgmt Status check failed', e);
+        updateInstanceUI(id, data);
+    } catch (e) { console.error('Status check fail', e); }
+}
+
+function updateInstanceUI(id, data) {
+    const badge = document.getElementById(`status-badge-${id}`);
+    const activeActions = document.getElementById(`active-actions-${id}`);
+    const inactiveActions = document.getElementById(`inactive-actions-${id}`);
+    const card = document.getElementById(`instance-${id}`);
+
+    if (data.connected) {
+        badge.innerText = 'Online';
+        badge.style.background = 'rgba(16, 185, 129, 0.1)';
+        badge.style.color = '#10b981';
+        activeActions.style.display = 'flex';
+        inactiveActions.style.display = 'none';
+        card.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        document.getElementById(`qr-section-${id}`).style.display = 'none';
+    } else {
+        badge.innerText = data.status === 'open' ? 'Awaiting Scan' : 'Disconnected';
+        badge.style.background = 'rgba(245, 158, 11, 0.1)';
+        badge.style.color = '#f59e0b';
+        activeActions.style.display = 'none';
+        inactiveActions.style.display = 'block';
+        card.style.borderColor = 'var(--border)';
     }
 }
 
-async function generateQR() {
-    const loading = document.getElementById('qr-loading');
-    const image = document.getElementById('qr-image');
+async function connectInstance(id) {
+    const qrSection = document.getElementById(`qr-section-${id}`);
+    const qrImg = document.getElementById(`qr-img-${id}`);
     
-    loading.style.display = 'flex';
-    image.style.display = 'none';
-    
+    qrSection.style.display = 'block';
+    qrImg.src = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndzNndzNndzNndzNndzNndzNndzNndzNndzNndzNndzNndzJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7bu3XilJ5BOiSGic/giphy.gif'; // Spinner placeholder
+
     try {
-        const res = await fetch('/whatsapp/connect', { method: 'POST' });
+        const res = await fetch(`/whatsapp/connect/${id}`, { method: 'POST' });
         const data = await res.json();
         if (data.success && data.qrcode) {
-            image.src = data.qrcode;
-            image.style.display = 'block';
-            loading.style.display = 'none';
-        } else {
-            loading.innerHTML = '<p style="color: #ef4444;">Generation failed</p>';
+            qrImg.src = data.qrcode;
+            // Poll for connection
+            const poll = setInterval(async () => {
+                const res = await fetch(`/whatsapp/status/${id}`);
+                const status = await res.json();
+                if (status.connected) {
+                    clearInterval(poll);
+                    updateInstanceUI(id, status);
+                }
+            }, 3000);
         }
-    } catch (e) {
-        loading.innerHTML = '<p style="color: #ef4444;">Error</p>';
-    }
+    } catch (e) { alert("Failed to generate QR."); }
 }
 
-async function disconnect() {
-    if (!confirm('Disconnect WhatsApp?')) return;
-    await fetch('/whatsapp/disconnect', { method: 'POST' });
-    updateMgmtStatus();
+async function disconnectInstance(id) {
+    if (!confirm("Disconnect this WhatsApp account?")) return;
+    await fetch(`/whatsapp/disconnect/${id}`, { method: 'POST' });
+    checkInstanceStatus(id);
 }
 
-async function sendTest() {
-    const btn = document.getElementById('btn-send-test');
-    const result = document.getElementById('test-result');
-    const phone = document.getElementById('test-phone').value;
-    const message = document.getElementById('test-message').value;
-    
+function showNewInstanceModal() { document.getElementById('new-instance-modal').style.display = 'flex'; }
+function hideNewInstanceModal() { document.getElementById('new-instance-modal').style.display = 'none'; }
+
+async function createInstance() {
+    const name = document.getElementById('new-inst-name').value;
+    const btn = document.getElementById('btn-create-inst');
     btn.disabled = true;
-    btn.innerText = 'Sending...';
-    result.innerText = '';
-    
+    btn.innerText = 'Creating...';
+
     const formData = new FormData();
-    formData.append('phone', phone);
-    formData.append('message', message);
-    
+    formData.append('name', name);
+
     try {
-        const res = await fetch('/whatsapp/test', {
-            method: 'POST',
-            body: formData
-        });
+        const res = await fetch('/whatsapp/instance/new', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
-            result.innerText = '✅ Message sent successfully!';
-            result.style.color = '#10b981';
+            window.location.reload();
         } else {
-            result.innerText = '❌ Failed to send';
-            result.style.color = '#ef4444';
+            alert("Error: " + data.error);
         }
-    } catch (e) {
-        result.innerText = '❌ Request error';
-    } finally {
-        btn.disabled = false;
-        btn.innerText = 'Send Test';
-    }
+    } catch (e) { alert("Network error"); }
+    finally { btn.disabled = false; btn.innerText = 'Provision Account'; }
 }
 
-async function fetchGroups(force = false) {
-    const container = document.getElementById('groups-container');
-    const refreshBtn = event ? event.target : null;
-    const originalText = refreshBtn ? refreshBtn.innerText : '';
+async function fetchGroups(id) {
+    const modal = document.getElementById('targets-modal');
+    const container = document.getElementById('targets-container');
+    const title = document.getElementById('targets-title');
     
-    if (refreshBtn) {
-        refreshBtn.disabled = true;
-        refreshBtn.innerText = '⌛ Fetching...';
-    }
-    
-    const endpoint = force ? '/whatsapp/sync' : '/whatsapp/groups';
-    
-    if (force) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">Force syncing with Evolution API... this will take a few moments...</p>';
-    } else {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading from database...</p>';
-    }
-    
-    try {
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        
-        // If we are syncing, it returns 'count' instead of 'groups', so we re-fetch normally or map
-        if (force && data.success) {
-            return fetchGroups(false); // Reload from DB after sync
-        }
+    modal.style.display = 'flex';
+    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner"></div></div>';
+    title.innerText = "Fetching Targets...";
 
+    try {
+        const res = await fetch(`/whatsapp/groups/${id}`);
+        const data = await res.json();
         if (data.success && data.groups) {
+            title.innerText = "Available Targets";
             container.innerHTML = '';
-            if (data.groups.length === 0) {
-                 container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 1rem;">No targets found.</p>';
-            }
             data.groups.forEach(g => {
                 const item = document.createElement('div');
-                item.className = 'target-list-item';
-                item.style.padding = '0.75rem';
-                item.style.borderBottom = '1px solid var(--border)';
-                item.style.display = 'flex';
-                item.style.justifyContent = 'space-between';
-                item.style.alignItems = 'center';
+                item.style = 'padding: 0.75rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;';
                 item.innerHTML = `
-                    <div style="font-size: 0.85rem;">
-                        <div style="font-weight: 600; color: white;">${g.subject}</div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.9rem; color: white;">${g.subject}</div>
                         <div style="font-size: 0.7rem; color: var(--text-muted);">${g.id}</div>
                     </div>
-                    <button onclick="copyId('${g.id}')" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.7rem;">Copy ID</button>
                 `;
                 container.appendChild(item);
             });
-        } else {
-            container.innerHTML = '<p style="color: #ef4444; padding: 1rem; text-align: center;">Failed to fetch groups. The API might be slow or disconnected.</p>';
         }
-    } catch (e) {
-        container.innerHTML = '<p style="color: #ef4444; padding: 1rem; text-align: center;">Connection timeout. Please try again.</p>';
-    } finally {
-        if (refreshBtn) {
-            refreshBtn.disabled = false;
-            refreshBtn.innerText = originalText;
-        }
-    }
+    } catch (e) { container.innerHTML = '<p style="color: #ef4444;">Error fetching groups.</p>'; }
 }
 
-function copyId(id) {
-    navigator.clipboard.writeText(id).then(() => alert('Copied ID: ' + id));
-}
+function hideTargetsModal() { document.getElementById('targets-modal').style.display = 'none'; }
 
-// Polling
-updateMgmtStatus();
-setInterval(updateMgmtStatus, 5000);
-
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    {% for inst in instances %}
+    checkInstanceStatus({{ inst.id }});
+    {% endfor %}
+});
 </script>
 
 <style>
+.instance-card:hover { transform: translateY(-4px); border-color: var(--primary) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 @keyframes spin { to { transform: rotate(360deg); } }
-.spinner { animation: spin 1s linear infinite; }
+.spinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
 </style>
 {% endblock %}

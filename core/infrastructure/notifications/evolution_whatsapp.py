@@ -17,9 +17,9 @@ class EvolutionWhatsAppService(NotificationService):
     Now optimized with asynchronous I/O using httpx.
     """
 
-    def __init__(self, instance: Optional[str] = None):
+    def __init__(self, instance: Optional[str] = None, apikey: Optional[str] = None):
         self.base_url = os.environ.get("EVOLUTION_API_URL", "http://evolution-api:8080")
-        self.api_key = os.environ.get("EVOLUTION_API_KEY", "changeme")
+        self.api_key = apikey or os.environ.get("EVOLUTION_API_KEY", "changeme")
         self.instance = instance or os.environ.get("EVOLUTION_INSTANCE", "grupo_1000")
         self.timeout = httpx.Timeout(300.0, connect=30.0)
 
@@ -168,8 +168,9 @@ class EvolutionWhatsAppService(NotificationService):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
                 if response.status_code >= 400:
-                    logger.error("Evolution API Status Error: %s", response.text)
+                    logger.error("Evolution API Status Error (%s): %s | Payload: %s", response.status_code, response.text, payload)
                 response.raise_for_status()
+                logger.info("WhatsApp Status update sent successfully to %s", "all contacts" if not jid_list else jid_list)
                 return True
         except Exception as exc:
             logger.error("evolution-api sendStatus failed: %s", exc)
@@ -209,8 +210,19 @@ class EvolutionWhatsAppService(NotificationService):
                     return {"status": "not_found", "connected": False}
                 response.raise_for_status()
                 data = response.json()
-                state = data.get("instance", {}).get("state", "unknown")
-                return {"status": state, "connected": state == "open"}
+                if not isinstance(data, dict):
+                    return {"status": "error", "connected": False, "error": "Invalid response type"}
+                
+                # Robustly get state
+                instance_data = data.get("instance")
+                if isinstance(instance_data, dict):
+                    state = instance_data.get("state", "unknown")
+                elif isinstance(instance_data, str):
+                    state = instance_data
+                else:
+                    state = data.get("state", "unknown") # Fallback for different API versions
+                
+                return {"status": state, "connected": state in ["open", "CONNECTED"]}
         except Exception as exc:
             logger.error("Failed to get WhatsApp status: %s", exc)
             return {"status": "error", "connected": False}
@@ -229,8 +241,13 @@ class EvolutionWhatsAppService(NotificationService):
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
+                if response.status_code >= 400:
+                    logger.error("Evolution Create Instance Error (%s): %s", response.status_code, response.text)
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if isinstance(data, dict):
+                    return data
+                return {"success": True, "message": str(data)} # Wrap if it's a string
         except Exception as exc:
             logger.error("Failed to create WhatsApp instance %s: %s", name, exc)
             return None
@@ -240,14 +257,20 @@ class EvolutionWhatsAppService(NotificationService):
         url = f"{self.base_url}/instance/create"
         payload = {
             "instanceName": self.instance,
+            "token": self.api_key, # Use api_key as token
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
         }
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
-                if response.status_code in [201, 200, 403]:
+                if response.status_code in [201, 200]:
+                    logger.info("Instance %s created/ensured.", self.instance)
                     return True
+                elif response.status_code == 403:
+                    logger.info("Instance %s already exists.", self.instance)
+                    return True
+                logger.warning("Unexpected status during instance ensure: %s - %s", response.status_code, response.text)
                 return False
         except Exception as exc:
             logger.error("Failed to ensure WhatsApp instance exists: %s", exc)
@@ -266,7 +289,11 @@ class EvolutionWhatsAppService(NotificationService):
 
                 response.raise_for_status()
                 data = response.json()
-                return data.get("base64", "")
+                if isinstance(data, dict):
+                    return data.get("base64", "") or data.get("code", "")
+                elif isinstance(data, str):
+                    return data # If API returns string directly
+                return ""
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp QR Code: %s", exc)
             return ""

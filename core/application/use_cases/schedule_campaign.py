@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from core.application.interfaces import NotificationService, AIService
 from core.application.repositories import CampaignRepository, ProductRepository
-from core.domain.entities import Campaign, Product, CampaignStatus
+from core.domain.entities import Campaign, CampaignStatus
 
 
 class ScheduleCampaign:
@@ -34,6 +34,7 @@ class ScheduleCampaign:
         send_time: Optional[str] = None,
         use_ai: bool = True,
         user_id: Optional[int] = None,
+        instance_id: Optional[int] = None,
     ) -> Campaign:
         # 1. Fetch Product
         product = self.product_repo.get_by_id(product_id)
@@ -60,9 +61,11 @@ class ScheduleCampaign:
             status=CampaignStatus.SCHEDULED,
             custom_message=message_copy,
             user_id=user_id,
+            instance_id=instance_id,
             is_recurring=is_recurring,
             recurrence_days=recurrence_days,
             send_time=send_time,
+            is_ai_generated=bool(not custom_message and use_ai),
         )
 
         # 4. Save to Repository
