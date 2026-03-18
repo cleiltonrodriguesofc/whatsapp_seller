@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block page_title %}Edit Marketing Campaign{% endblock %}
+{% block page_subtitle %}Modify your scheduled broadcast or change the target settings.{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="max-width: 800px; margin: 0 auto;">
+    <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Campaign Details</h2>
+    <form action="/campaigns/edit/{{ campaign.id }}" method="post">
+        <div class="form-group">
+            <label class="form-label">Campaign Title</label>
+            <input type="text" name="title" class="form-input" value="{{ campaign.title }}" placeholder="e.g., Weekly Electronics Sale" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="form-group">
+                <label class="form-label">WhatsApp Sending Account</label>
+                <select name="instance_id" class="form-select" required>
+                    {% for inst in instances %}
+                    <option value="{{ inst.id }}" {{ 'selected' if inst.id == campaign.instance_id else '' }}>{{ inst.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Product Asset</label>
+                <select name="product_id" class="form-select" required>
+                    {% for product in products %}
+                    <option value="{{ product.id }}" {{ 'selected' if product.id == campaign.product.id else '' }}>{{ product.name }} (R$ {{ product.price }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <label class="form-label" style="margin-bottom: 0;">Scheduling Type</label>
+                <div style="display: flex; gap: 0.5rem; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn {{ 'btn-primary' if not campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Once</button>
+                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn {{ 'btn-primary' if campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Recurring (Alarm)</button>
+                </div>
+            </div>
+            
+            <input type="hidden" name="is_recurring" id="is_recurring" value="{{ 'true' if campaign.is_recurring else 'false' }}">
+
+            <!-- One-off Schedule -->
+            <div id="section-once" style="{{ 'display: block;' if not campaign.is_recurring else 'display: none;' }}">
+                <label class="form-label">Send At</label>
+                <input type="datetime-local" name="scheduled_at" class="form-input" value="{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign.scheduled_at else '' }}">
+            </div>
+
+            <!-- Recurring Schedule -->
+            <div id="section-recurring" style="{{ 'display: block;' if campaign.is_recurring else 'display: none;' }}">
+                <label class="form-label">Send Times (Multiple comma-separated, e.g., 08:00, 14:00)</label>
+                <input type="text" name="send_time" class="form-input" value="{{ campaign.send_time or '' }}" placeholder="08:00, 14:00, 20:00">
+                
+                <label class="form-label" style="margin-top: 1rem;">Repeat on Days</label>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;">
+                    {% set days = campaign.recurrence_days.split(',') if campaign.recurrence_days else [] %}
+                    {% for day in ['sun','mon','tue','wed','thu','fri','sat'] %}
+                    <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);">
+                        <input type="checkbox" name="recurrence_days" value="{{ day }}" style="width: 16px; height: 16px;" {{ 'checked' if day in days else '' }}>
+                        <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">{{ day }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                <label class="form-label" style="margin-bottom: 0;">Target Channels</label>
+                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">🔄 Refresh List</button>
+            </div>
+            <div id="targets-list" style="max-height: 250px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; display: grid; gap: 0.5rem;">
+                <!-- We'll populate this with JS based on the selected instance -->
+                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading targets for sending account...</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                <label class="form-label" style="margin-bottom: 0;">Campaign Message</label>
+                <button type="button" onclick="improveMessageWithAI()" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; color: var(--primary);">✨ Improve with AI</button>
+            </div>
+            <textarea name="custom_message" id="custom_message" class="form-input" rows="6">{{ campaign.custom_message }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <a href="/" class="btn btn-ghost" style="flex: 1; text-align: center;">Cancel</a>
+            <button type="submit" class="btn btn-primary" style="flex: 2;">Update Campaign</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function setScheduleType(type) {
+    const sectionOnce = document.getElementById('section-once');
+    const sectionRecurring = document.getElementById('section-recurring');
+    const btnOnce = document.getElementById('btn-once');
+    const btnRecurring = document.getElementById('btn-recurring');
+    const isRecurring = document.getElementById('is_recurring');
+
+    if (type === 'once') {
+        sectionOnce.style.display = 'block';
+        sectionRecurring.style.display = 'none';
+        btnOnce.classList.add('btn-primary');
+        btnOnce.classList.remove('btn-ghost');
+        btnRecurring.classList.remove('btn-primary');
+        btnRecurring.classList.add('btn-ghost');
+        isRecurring.value = 'false';
+    } else {
+        sectionOnce.style.display = 'none';
+        sectionRecurring.style.display = 'block';
+        btnOnce.classList.remove('btn-primary');
+        btnOnce.classList.add('btn-ghost');
+        btnRecurring.classList.add('btn-primary');
+        btnRecurring.classList.remove('btn-ghost');
+        isRecurring.value = 'true';
+    }
+}
+
+async function refreshTargets() {
+    const list = document.getElementById('targets-list');
+    const instanceId = document.querySelector('select[name="instance_id"]').value;
+    if (!instanceId) return;
+    
+    list.innerHTML = '<div style="text-align: center; padding: 1rem;"><div class="spinner"></div></div>';
+    
+    try {
+        const res = await fetch(`/whatsapp/groups/${instanceId}`);
+        const data = await res.json();
+        
+        if (data.success && data.groups) {
+            list.innerHTML = '';
+            // WhatsApp Status always available
+            const savedTgt = {{ campaign.target_groups | tojson if campaign.target_groups else '[]' }};
+            
+            const statusLabel = createTargetItem("status@broadcast", "📱 My WhatsApp Status", "Direct broadcast", savedTgt.includes("status@broadcast"));
+            list.appendChild(statusLabel);
+
+            data.groups.forEach(g => {
+                const label = createTargetItem(g.id, g.subject, g.id.includes('@g.us') ? 'Group' : 'Contact', savedTgt.includes(g.id));
+                list.appendChild(label);
+            });
+        }
+    } catch (e) {
+        list.innerHTML = '<p style="color: #ef4444; text-align: center;">Error loading targets.</p>';
+    }
+}
+
+function createTargetItem(id, name, type, checked) {
+    const label = document.createElement('label');
+    label.style = 'display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.02); border: 1px solid transparent;';
+    label.innerHTML = `
+        <input type="checkbox" name="groups" value="${id}" ${checked ? 'checked' : ''} style="width: 18px; height: 18px;">
+        <div style="flex-grow: 1;">
+            <div style="font-weight: 600; font-size: 0.95rem;">${name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${type}</div>
+        </div>
+    `;
+    return label;
+}
+
+async function improveMessageWithAI() {
+    const textMsg = document.getElementById('custom_message').value;
+    const productId = document.querySelector('select[name="product_id"]').value;
+    const formData = new FormData();
+    formData.append('text', textMsg);
+    formData.append('product_id', productId);
+    
+    try {
+        const res = await fetch('/campaign/rewrite', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.improved_text) document.getElementById('custom_message').value = data.improved_text;
+    } catch (e) { alert("AI failed."); }
+}
+
+document.querySelector('select[name="instance_id"]').addEventListener('change', refreshTargets);
+document.addEventListener('DOMContentLoaded', refreshTargets);
+</script>
+{% endblock %}

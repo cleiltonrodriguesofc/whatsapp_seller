@@ -23,25 +23,61 @@ class SQLProductRepository(ProductRepository):
         self.db = db
 
     def save(self, product: Product) -> Product:
-        model = ProductModel(
-            name=product.name,
-            description=product.description,
-            price=product.price,
-            affiliate_link=product.affiliate_link,
-            image_url=product.image_url,
-            category=product.category,
-            is_active=product.is_active,
-            user_id=product.user_id,  # Add user_id
-        )
         if product.id:
-            model.id = product.id
-            self.db.merge(model)
+            model = (
+                self.db.query(ProductModel)
+                .filter(ProductModel.id == product.id)
+                .first()
+            )
+            if model:
+                model.name = product.name
+                model.description = product.description
+                model.price = product.price
+                model.affiliate_link = product.affiliate_link
+                model.image_url = product.image_url
+                model.category = product.category
+                model.is_active = product.is_active
+            else:
+                model = ProductModel(
+                    name=product.name,
+                    description=product.description,
+                    price=product.price,
+                    affiliate_link=product.affiliate_link,
+                    image_url=product.image_url,
+                    category=product.category,
+                    is_active=product.is_active,
+                    user_id=product.user_id,
+                )
+                self.db.add(model)
         else:
+            model = ProductModel(
+                name=product.name,
+                description=product.description,
+                price=product.price,
+                affiliate_link=product.affiliate_link,
+                image_url=product.image_url,
+                category=product.category,
+                is_active=product.is_active,
+                user_id=product.user_id,
+            )
             self.db.add(model)
+
         self.db.commit()
         self.db.refresh(model)
         product.id = model.id
         return product
+
+    def delete(self, product_id: int, user_id: int) -> bool:
+        model = (
+            self.db.query(ProductModel)
+            .filter(ProductModel.id == product_id, ProductModel.user_id == user_id)
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.commit()
+            return True
+        return False
 
     def get_by_id(
         self, product_id: int, user_id: Optional[int] = None
@@ -84,29 +120,120 @@ class SQLCampaignRepository(CampaignRepository):
         self.db = db
 
     def save(self, campaign: Campaign) -> Campaign:
-        model = CampaignModel(
-            title=campaign.title,
-            user_id=campaign.user_id,
-            product_id=campaign.product.id,
-            scheduled_at=campaign.scheduled_at,
-            status=ModelCampaignStatus[campaign.status.name],
-            custom_message=campaign.custom_message,
-            is_recurring=getattr(campaign, "is_recurring", False),
-            recurrence_days=getattr(campaign, "recurrence_days", None),
-            send_time=getattr(campaign, "send_time", None),
-            target_config=(
-                json.dumps(campaign.target_config) if campaign.target_config else None
-            ),
-        )
         if campaign.id:
-            model.id = campaign.id
-            self.db.merge(model)
+            model = (
+                self.db.query(CampaignModel)
+                .filter(CampaignModel.id == campaign.id)
+                .first()
+            )
+            if model:
+                model.title = campaign.title
+                model.product_id = campaign.product.id
+                model.instance_id = campaign.instance_id
+                model.scheduled_at = campaign.scheduled_at
+                model.status = ModelCampaignStatus[campaign.status.name]
+                model.custom_message = campaign.custom_message
+                model.is_recurring = campaign.is_recurring
+                model.recurrence_days = campaign.recurrence_days
+                model.send_time = campaign.send_time
+                model.is_ai_generated = campaign.is_ai_generated
+                model.target_config = (
+                    json.dumps(campaign.target_config)
+                    if campaign.target_config
+                    else None
+                )
+                
+                # Sync target groups (association table)
+                if campaign.target_groups is not None:
+                    # Clear existing and add new
+                    self.db.execute(
+                        campaign_groups.delete().where(
+                            campaign_groups.c.campaign_id == model.id
+                        )
+                    )
+                    for jid in campaign.target_groups:
+                        self.db.execute(
+                            campaign_groups.insert().values(
+                                campaign_id=model.id, group_jid=jid
+                            )
+                        )
+            else:
+                model = CampaignModel(
+                    title=campaign.title,
+                    user_id=campaign.user_id,
+                    product_id=campaign.product.id,
+                    instance_id=campaign.instance_id,
+                    scheduled_at=campaign.scheduled_at,
+                    status=ModelCampaignStatus[campaign.status.name],
+                    custom_message=campaign.custom_message,
+                    is_recurring=campaign.is_recurring,
+                    recurrence_days=campaign.recurrence_days,
+                    send_time=campaign.send_time,
+                    is_ai_generated=campaign.is_ai_generated,
+                    target_config=(
+                        json.dumps(campaign.target_config)
+                        if campaign.target_config
+                        else None
+                    ),
+                )
+                self.db.add(model)
+                self.db.flush()  # Get ID
+
+                # Sync target groups
+                if campaign.target_groups:
+                    for jid in campaign.target_groups:
+                        self.db.execute(
+                            campaign_groups.insert().values(
+                                campaign_id=model.id, group_jid=jid
+                            )
+                        )
         else:
+            model = CampaignModel(
+                title=campaign.title,
+                user_id=campaign.user_id,
+                product_id=campaign.product.id,
+                instance_id=campaign.instance_id,
+                scheduled_at=campaign.scheduled_at,
+                status=ModelCampaignStatus[campaign.status.name],
+                custom_message=campaign.custom_message,
+                is_recurring=campaign.is_recurring,
+                recurrence_days=campaign.recurrence_days,
+                send_time=campaign.send_time,
+                is_ai_generated=campaign.is_ai_generated,
+                target_config=(
+                    json.dumps(campaign.target_config)
+                    if campaign.target_config
+                    else None
+                ),
+            )
             self.db.add(model)
+            self.db.flush()
+
+            # Sync target groups
+            if campaign.target_groups:
+                for jid in campaign.target_groups:
+                    self.db.execute(
+                        campaign_groups.insert().values(
+                            campaign_id=model.id, group_jid=jid
+                        )
+                    )
+
         self.db.commit()
         self.db.refresh(model)
         campaign.id = model.id
         return campaign
+
+    def delete(self, campaign_id: int, user_id: int) -> bool:
+        model = (
+            self.db.query(CampaignModel)
+            .filter(CampaignModel.id == campaign_id, CampaignModel.user_id == user_id)
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.commit()
+            return True
+        return False
 
     def get_by_id(
         self, campaign_id: int, user_id: Optional[int] = None
@@ -142,12 +269,21 @@ class SQLCampaignRepository(CampaignRepository):
         product_repo = SQLProductRepository(self.db)
         product = product_repo.get_by_id(model.product_id)
 
+        # Load target groups from association table
+        target_jids = [
+            r[0]
+            for r in self.db.query(campaign_groups.c.group_jid)
+            .filter(campaign_groups.c.campaign_id == model.id)
+            .all()
+        ]
+
         campaign_entity = Campaign(
             id=model.id,
             user_id=model.user_id,
+            instance_id=model.instance_id,
             title=model.title,
             product=product,
-            target_groups=[],  # This would need a separate fetch or relationship
+            target_groups=target_jids,
             scheduled_at=model.scheduled_at,
             status=DomainCampaignStatus[model.status.name],
             custom_message=model.custom_message,
@@ -160,6 +296,7 @@ class SQLCampaignRepository(CampaignRepository):
         campaign_entity.recurrence_days = model.recurrence_days
         campaign_entity.send_time = model.send_time
         campaign_entity.last_run_at = model.last_run_at
+        campaign_entity.is_ai_generated = model.is_ai_generated
 
         if model.target_config:
             try:

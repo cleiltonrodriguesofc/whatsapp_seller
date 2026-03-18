@@ -91,6 +91,9 @@ class CampaignModel(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     title = Column(String, nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"))
+    instance_id = Column(
+        Integer, ForeignKey("instances.id"), nullable=True
+    )  # Link to specific instance
     scheduled_at = Column(DateTime)
     status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
     custom_message = Column(Text, nullable=True)
@@ -107,5 +110,14 @@ class CampaignModel(Base):
     target_config = Column(
         Text, nullable=True
     )  # JSON stored as string: {"status": "07:00", "groups": ["08:00", "12:00"]}
+    is_ai_generated = Column(Boolean, default=False)
 
     product = relationship("ProductModel")
+    instance = relationship("InstanceModel")
+    target_groups = relationship(
+        "WhatsAppTargetModel",
+        secondary=campaign_groups,
+        primaryjoin="CampaignModel.id == campaign_groups.c.campaign_id",
+        secondaryjoin="WhatsAppTargetModel.jid == campaign_groups.c.group_jid",
+        viewonly=True,
+    )

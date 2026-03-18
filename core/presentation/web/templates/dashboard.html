@@ -16,14 +16,14 @@
         <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">✅</div>
         <div class="stat-data">
             <h4>Sent Messages</h4>
-            <p>1,284</p> <!-- Mock data for now -->
+            <p>{{ sent_count }}</p>
         </div>
     </div>
     <div class="card stat-card">
         <div class="stat-icon" style="background: rgba(236, 72, 153, 0.1); color: var(--secondary);">✨</div>
         <div class="stat-data">
             <h4>AI Generated</h4>
-            <p>42</p> <!-- Mock data for now -->
+            <p>{{ ai_count }}</p>
         </div>
     </div>
 </div>
@@ -60,10 +60,14 @@
                 <div style="font-weight: 600;">{{ campaign.scheduled_at.strftime('%d %b, %H:%M') }}</div>
             </div>
 
-            <div style="text-align: right; min-width: 100px;">
-                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border);">
+            <div style="text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; min-width: 250px;">
+                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); margin-right: 1rem;">
                     {{ campaign.status.value.upper() }}
                 </span>
+                <a href="/campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">Edit</a>
+                <form action="/campaign/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Really delete this campaign?');" style="margin: 0;">
+                    <button type="submit" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem; color: #ef4444;">Delete</button>
+                </form>
             </div>
         </div>
         {% else %}

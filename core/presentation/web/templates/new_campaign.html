@@ -14,6 +14,14 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div class="form-group">
+                <label class="form-label">WhatsApp Sending Account</label>
+                <select name="instance_id" class="form-select" required>
+                    {% for inst in instances %}
+                    <option value="{{ inst.id }}">{{ inst.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
                 <label class="form-label">Select Product Asset</label>
                 <select name="product_id" class="form-select" required>
                     {% for product in products %}
@@ -21,7 +29,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <!-- Scheduling -->
+        </div>
         <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <label class="form-label" style="margin-bottom: 0;">Scheduling Type</label>
@@ -157,15 +165,18 @@ document.getElementById('target-search').addEventListener('input', function(e) {
 async function refreshTargets() {
     const list = document.getElementById('targets-list');
     const btn = document.getElementById('btn-refresh-targets');
+    const instanceId = document.querySelector('select[name="instance_id"]').value;
+    
+    if (!instanceId) return;
+
     const originalText = btn.innerHTML;
-    
     btn.disabled = true;
-    btn.innerText = '⌛ Fetching (this may take a minute)...';
+    btn.innerText = '⌛ Fetching...';
     
-    list.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner" style="width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; display: inline-block; margin-bottom: 0.5rem;"></div><p style="color: var(--text-muted); font-size: 0.85rem;">Connecting to API and fetching 60+ groups... Please wait.</p></div>';
+    list.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner"></div><p style="color: var(--text-muted); font-size: 0.85rem;">Connecting to selected account...</p></div>';
     
     try {
-        const res = await fetch('/whatsapp/groups');
+        const res = await fetch(`/whatsapp/groups/${instanceId}`);
         const data = await res.json();
         
         if (data.success && data.groups) {
@@ -244,6 +255,7 @@ async function improveMessageWithAI() {
 }
 
 // Auto-fetch on load
+document.querySelector('select[name="instance_id"]').addEventListener('change', refreshTargets);
 document.addEventListener('DOMContentLoaded', refreshTargets);
 </script>
 
