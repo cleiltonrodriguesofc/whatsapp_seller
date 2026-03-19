@@ -633,6 +633,18 @@ async def logout_whatsapp(
     )
     await whatsapp_service.logout_instance()
     
+    # Evolution API takes a few seconds to drop the websocket and update its internal state
+    # We will poll it until it reflects the logout, or timeout after 10 seconds
+    import asyncio
+    for _ in range(10):
+        status_data = await whatsapp_service.get_connection_status()
+        if status_data and isinstance(status_data, dict):
+            # Typical v2 response: {'instance': {'state': 'close'}}
+            inst_data = status_data.get("instance", {})
+            if inst_data.get("state") != "open":
+                break
+        await asyncio.sleep(1)
+        
     # Update local status
     instance_model.status = "disconnected"
     db.commit()
