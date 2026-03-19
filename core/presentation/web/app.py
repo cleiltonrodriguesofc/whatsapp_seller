@@ -59,6 +59,10 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="WhatsApp Sales Agent Dashboard")
 
+@app.get("/test-route")
+def test_route():
+    return {"hello": "world"}
+
 # Security
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 auth_service = AuthService()
@@ -602,6 +606,35 @@ async def rename_whatsapp(
         return {"success": False, "error": "Instance not found"}
 
     instance_model.display_name = new_name
+    db.commit()
+    
+    return {"success": True}
+
+
+@app.post("/whatsapp/logout/{instance_id}")
+async def logout_whatsapp(
+    instance_id: int,
+    current_user: UserModel = Depends(login_required),
+    db: Session = Depends(get_db),
+):
+    instance_model = (
+        db.query(InstanceModel)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
+        .first()
+    )
+    if not instance_model:
+        return {"success": False}
+
+    whatsapp_service = EvolutionWhatsAppService(
+        instance=instance_model.name,
+        apikey=instance_model.apikey
+    )
+    await whatsapp_service.logout_instance()
+    
+    # Update local status
+    instance_model.status = "disconnected"
     db.commit()
     
     return {"success": True}

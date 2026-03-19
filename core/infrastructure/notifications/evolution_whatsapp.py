@@ -239,7 +239,8 @@ class EvolutionWhatsAppService(NotificationService):
             "integration": "WHATSAPP-BAILEYS",
         }
         if display_name:
-            payload["browser"] = display_name
+            # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
+            payload["browser"] = [display_name, "Chrome", "1.0"]
             payload["clientName"] = display_name
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -265,7 +266,8 @@ class EvolutionWhatsAppService(NotificationService):
             "integration": "WHATSAPP-BAILEYS",
         }
         if display_name:
-            payload["browser"] = display_name
+            # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
+            payload["browser"] = [display_name, "Chrome", "1.0"]
             payload["clientName"] = display_name
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -339,6 +341,18 @@ class EvolutionWhatsAppService(NotificationService):
                 return response.status_code in [200, 201]
         except Exception as exc:
             logger.error("Failed to delete WhatsApp instance: %s", exc)
+            return False
+
+    async def logout_instance(self) -> bool:
+        url = f"{self.base_url}/instance/logout/{self.instance}"
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.delete(url, headers=self._headers())
+                if response.status_code >= 400:
+                    logger.error("Evolution Logout Error (%s): %s", response.status_code, response.text)
+                return response.status_code in [200, 201]
+        except Exception as exc:
+            logger.error("Failed to logout WhatsApp instance: %s", exc)
             return False
 
     async def send_group_closing_announcement(
