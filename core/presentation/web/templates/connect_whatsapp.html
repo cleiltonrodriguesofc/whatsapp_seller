@@ -27,14 +27,15 @@
 
         <div id="qr-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--primary); border-radius: 12px; background: rgba(99, 102, 241, 0.03); margin-bottom: 1rem;">
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Scan with your WhatsApp mobile app.</p>
-            <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-block;">
-                <img id="qr-img-{{ inst.id }}" src="" style="width: 200px; height: 200px;">
+            <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; position: relative; width: 200px; height: 200px;">
+                <div id="qr-spinner-{{ inst.id }}" class="spinner" style="border-top-color: var(--primary);"></div>
+                <img id="qr-img-{{ inst.id }}" src="" style="width: 200px; height: 200px; display: none; position: absolute; border-radius: 8px;">
             </div>
         </div>
 
         <div id="active-actions-{{ inst.id }}" style="display: none; gap: 0.5rem; flex-direction: column;">
             <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border); font-size: 0.9rem;">View Groups/Chats</button>
-            <button onclick="disconnectInstance({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.9rem;">Disconnect Account</button>
+            <button onclick="deleteInstance({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.9rem;">Delete Instance</button>
         </div>
 
         <div id="inactive-actions-{{ inst.id }}" style="display: block;">
@@ -119,15 +120,19 @@ function updateInstanceUI(id, data) {
 async function connectInstance(id) {
     const qrSection = document.getElementById(`qr-section-${id}`);
     const qrImg = document.getElementById(`qr-img-${id}`);
+    const qrSpinner = document.getElementById(`qr-spinner-${id}`);
     
     qrSection.style.display = 'block';
-    qrImg.src = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndzNndzNndzNndzNndzNndzNndzNndzNndzNndzNndzNndzJmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7bu3XilJ5BOiSGic/giphy.gif'; // Spinner placeholder
+    qrImg.style.display = 'none';
+    qrSpinner.style.display = 'inline-block';
 
     try {
         const res = await fetch(`/whatsapp/connect/${id}`, { method: 'POST' });
         const data = await res.json();
         if (data.success && data.qrcode) {
             qrImg.src = data.qrcode;
+            qrImg.style.display = 'block';
+            qrSpinner.style.display = 'none';
             // Poll for connection
             const poll = setInterval(async () => {
                 const res = await fetch(`/whatsapp/status/${id}`);
@@ -137,14 +142,25 @@ async function connectInstance(id) {
                     updateInstanceUI(id, status);
                 }
             }, 3000);
+        } else {
+            alert("Failed to generate QR. Please check if the instance exists or try deleting it and creating a new one.");
+            qrSection.style.display = 'none';
         }
-    } catch (e) { alert("Failed to generate QR."); }
+    } catch (e) { 
+        alert("Failed to generate QR."); 
+        qrSection.style.display = 'none';
+    }
 }
 
-async function disconnectInstance(id) {
-    if (!confirm("Disconnect this WhatsApp account?")) return;
-    await fetch(`/whatsapp/disconnect/${id}`, { method: 'POST' });
-    checkInstanceStatus(id);
+async function deleteInstance(id) {
+    if (!confirm("Are you sure you want to completely delete this WhatsApp instance? This action cannot be undone.")) return;
+    const res = await fetch(`/whatsapp/delete/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if(data.success) {
+        window.location.reload();
+    } else {
+        alert("Failed to delete the instance.");
+    }
 }
 
 function showNewInstanceModal() { document.getElementById('new-instance-modal').style.display = 'flex'; }

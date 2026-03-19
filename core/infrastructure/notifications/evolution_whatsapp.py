@@ -323,15 +323,16 @@ class EvolutionWhatsAppService(NotificationService):
             logger.error("Failed to set presence: %s", exc)
             return False
 
-    async def disconnect_instance(self) -> bool:
-        url = f"{self.base_url}/instance/logout/{self.instance}"
+    async def delete_instance(self) -> bool:
+        url = f"{self.base_url}/instance/delete/{self.instance}"
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.delete(url, headers=self._headers())
-                response.raise_for_status()
-                return True
+                if response.status_code >= 400:
+                    logger.error("Evolution Delete Instance Error (%s): %s", response.status_code, response.text)
+                return response.status_code in [200, 201]
         except Exception as exc:
-            logger.error("Failed to disconnect WhatsApp: %s", exc)
+            logger.error("Failed to delete WhatsApp instance: %s", exc)
             return False
 
     async def send_group_closing_announcement(

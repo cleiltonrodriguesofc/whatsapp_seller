@@ -549,8 +549,8 @@ async def get_whatsapp_status(
     return status
 
 
-@app.post("/whatsapp/disconnect/{instance_id}")
-async def disconnect_whatsapp(
+@app.post("/whatsapp/delete/{instance_id}")
+async def delete_whatsapp(
     instance_id: int,
     current_user: UserModel = Depends(login_required),
     db: Session = Depends(get_db),
@@ -569,10 +569,15 @@ async def disconnect_whatsapp(
         instance=instance_model.name,
         apikey=instance_model.apikey
     )
-    success = await whatsapp_service.disconnect_instance()
-    # Also delete from DB if logged out? Or just keep it.
-    # For now, just disconnect.
-    return {"success": success}
+    # We attempt to delete from Evolution API, but ignore the result
+    # to guarantee we delete ghost local records if it 404s.
+    await whatsapp_service.delete_instance()
+    
+    # Delete from DB unconditionally
+    db.delete(instance_model)
+    db.commit()
+    
+    return {"success": True}
 
 
 @app.get("/whatsapp/groups/{instance_id}")
