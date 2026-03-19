@@ -46,7 +46,7 @@ class NotificationService(ABC):
         pass
 
     @abstractmethod
-    async def disconnect_instance(self) -> bool:
+    async def delete_instance(self) -> bool:
         pass
 
 
