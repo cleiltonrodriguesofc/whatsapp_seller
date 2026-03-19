@@ -400,11 +400,12 @@ async def register_action(
     db.commit()
     db.refresh(new_user)
 
-    # 3. Provision WhatsApp Instance
+        # 3. Provision WhatsApp Instance
     try:
         instance_name = business_name.lower().replace(" ", "_") + "_" + str(new_user.id)
         whatsapp_service = EvolutionWhatsAppService()
-        instance_data = await whatsapp_service.create_instance(instance_name)
+        # Pass business_name as display_name for custom linked device name
+        instance_data = await whatsapp_service.create_instance(instance_name, display_name=business_name)
 
         # Robust type check for instance_data response
         if instance_data and isinstance(instance_data, dict):
@@ -420,6 +421,7 @@ async def register_action(
             new_instance = InstanceModel(
                 user_id=new_user.id,
                 name=instance_name,
+                display_name=business_name,
                 apikey=apikey,
             )
             db.add(new_instance)
@@ -471,7 +473,8 @@ async def create_new_instance(
     full_name = f"{safe_name}_{current_user.id}_{uuid.uuid4().hex[:4]}"
 
     whatsapp_service = EvolutionWhatsAppService()
-    instance_data = await whatsapp_service.create_instance(full_name)
+    # Pass original name as display_name
+    instance_data = await whatsapp_service.create_instance(full_name, display_name=name)
 
     if instance_data and isinstance(instance_data, dict):
         # Attempt to get API key from various possible response structures
@@ -486,6 +489,7 @@ async def create_new_instance(
         new_instance = InstanceModel(
             user_id=current_user.id,
             name=full_name,
+            display_name=name,
             apikey=apikey,
         )
         db.add(new_instance)
@@ -575,6 +579,29 @@ async def delete_whatsapp(
     
     # Delete from DB unconditionally
     db.delete(instance_model)
+    db.commit()
+    
+    return {"success": True}
+
+
+@app.post("/whatsapp/rename/{instance_id}")
+async def rename_whatsapp(
+    instance_id: int,
+    new_name: str = Form(...),
+    current_user: UserModel = Depends(login_required),
+    db: Session = Depends(get_db),
+):
+    instance_model = (
+        db.query(InstanceModel)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
+        .first()
+    )
+    if not instance_model:
+        return {"success": False, "error": "Instance not found"}
+
+    instance_model.display_name = new_name
     db.commit()
     
     return {"success": True}
