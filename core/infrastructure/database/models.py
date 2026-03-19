@@ -51,6 +51,7 @@ class InstanceModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     name = Column(String, unique=True, nullable=False)  # Evolution instance name
+    display_name = Column(String, nullable=True)  # User custom friendly name
     apikey = Column(String, nullable=True)  # Specific instance apikey if different
     status = Column(String, default="disconnected")
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -16,12 +16,12 @@
             <div style="display: flex; gap: 1rem; align-items: center;">
                 <div class="inst-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">📱</div>
                 <div>
-                    <h3 style="font-size: 1.1rem; color: white; margin-bottom: 0.25rem;">{{ inst.name }}</h3>
+                    <h3 id="instance-name-title-{{ inst.id }}" style="font-size: 1.1rem; color: white; margin-bottom: 0.25rem;">{{ inst.display_name or inst.name }}</h3>
                     <div id="status-badge-{{ inst.id }}" class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Checking...</div>
                 </div>
             </div>
             <div style="text-align: right;">
-                <button onclick="toggleDetails({{ inst.id }})" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Details</button>
+                <button onclick="showInstanceDetails({{ inst.id }}, '{{ inst.display_name or inst.name }}')" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Details</button>
             </div>
         </div>
 
@@ -35,7 +35,6 @@
 
         <div id="active-actions-{{ inst.id }}" style="display: none; gap: 0.5rem; flex-direction: column;">
             <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border); font-size: 0.9rem;">View Groups/Chats</button>
-            <button onclick="deleteInstance({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.9rem;">Delete Instance</button>
         </div>
 
         <div id="inactive-actions-{{ inst.id }}" style="display: block;">
@@ -68,6 +67,31 @@
                 <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 2;">Provision Account</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Instance Details Modal -->
+<div id="details-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1002; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+    <div class="card animate-scale-up" style="width: 450px; border: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.25rem; color: white;">Instance Settings</h2>
+            <button onclick="hideDetailsModal()" class="btn btn-ghost btn-sm">Close</button>
+        </div>
+
+        <form onsubmit="event.preventDefault(); renameInstance();">
+            <input type="hidden" id="details-inst-id">
+            <div class="form-group">
+                <label class="form-label">Display Name</label>
+                <input type="text" id="details-inst-name" class="form-input" placeholder="e.g. Sales Department">
+            </div>
+            <button type="submit" id="btn-save-name" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Update Name</button>
+        </form>
+
+        <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(239, 68, 68, 0.2);">
+            <h3 style="color: #ef4444; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Danger Zone</h3>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">Permanently remove this WhatsApp instance and all its local data.</p>
+            <button onclick="deleteInstanceFromModal()" id="btn-delete-inst" class="btn btn-ghost" style="width: 100%; border: 1px solid #ef4444; color: #ef4444;">Delete Instance</button>
+        </div>
     </div>
 </div>
 
@@ -161,6 +185,55 @@ async function deleteInstance(id) {
     } else {
         alert("Failed to delete the instance.");
     }
+}
+
+function showInstanceDetails(id, currentName) {
+    document.getElementById('details-inst-id').value = id;
+    document.getElementById('details-inst-name').value = currentName;
+    document.getElementById('details-modal').style.display = 'flex';
+}
+
+function hideDetailsModal() {
+    document.getElementById('details-modal').style.display = 'none';
+}
+
+async function renameInstance() {
+    const id = document.getElementById('details-inst-id').value;
+    const newName = document.getElementById('details-inst-name').value;
+    const btn = document.getElementById('btn-save-name');
+    
+    btn.disabled = true;
+    btn.innerText = 'Saving...';
+
+    const formData = new FormData();
+    formData.append('new_name', newName);
+
+    try {
+        const res = await fetch(`/whatsapp/rename/${id}`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            // Update UI title without reload for better UX
+            const titleEl = document.getElementById(`instance-name-title-${id}`);
+            if (titleEl) titleEl.innerText = newName;
+            
+            // Update the onclick of the details button too
+            const card = document.getElementById(`instance-${id}`);
+            const detailsBtn = card.querySelector('button[onclick^="showInstanceDetails"]');
+            if (detailsBtn) {
+                detailsBtn.setAttribute('onclick', `showInstanceDetails(${id}, '${newName}')`);
+            }
+
+            hideDetailsModal();
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (e) { alert("Network error"); }
+    finally { btn.disabled = false; btn.innerText = 'Update Name'; }
+}
+
+async function deleteInstanceFromModal() {
+    const id = document.getElementById('details-inst-id').value;
+    await deleteInstance(id);
 }
 
 function showNewInstanceModal() { document.getElementById('new-instance-modal').style.display = 'flex'; }

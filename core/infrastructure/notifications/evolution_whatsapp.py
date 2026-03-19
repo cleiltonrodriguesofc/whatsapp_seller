@@ -227,7 +227,7 @@ class EvolutionWhatsAppService(NotificationService):
             logger.error("Failed to get WhatsApp status: %s", exc)
             return {"status": "error", "connected": False}
 
-    async def create_instance(self, name: str) -> Optional[dict]:
+    async def create_instance(self, name: str, display_name: str = None) -> Optional[dict]:
         """
         Creates a new WhatsApp instance.
         """
@@ -238,6 +238,9 @@ class EvolutionWhatsAppService(NotificationService):
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
         }
+        if display_name:
+            payload["browser"] = display_name
+            payload["clientName"] = display_name
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
@@ -252,7 +255,7 @@ class EvolutionWhatsAppService(NotificationService):
             logger.error("Failed to create WhatsApp instance %s: %s", name, exc)
             return None
 
-    async def _ensure_instance_exists(self) -> bool:
+    async def _ensure_instance_exists(self, display_name: str = None) -> bool:
         logger.info(f"Ensuring instance {self.instance} exists...")
         url = f"{self.base_url}/instance/create"
         payload = {
@@ -261,6 +264,9 @@ class EvolutionWhatsAppService(NotificationService):
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
         }
+        if display_name:
+            payload["browser"] = display_name
+            payload["clientName"] = display_name
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
