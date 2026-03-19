@@ -178,12 +178,36 @@ async function connectInstance(id) {
 
 async function deleteInstance(id) {
     if (!confirm("Are you sure you want to completely delete this WhatsApp instance? This action cannot be undone.")) return;
-    const res = await fetch(`/whatsapp/delete/${id}`, { method: 'POST' });
-    const data = await res.json();
-    if(data.success) {
-        window.location.reload();
-    } else {
-        alert("Failed to delete the instance.");
+    
+    const btn = document.getElementById('btn-delete-inst');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Deleting...';
+    }
+
+    try {
+        const res = await fetch(`/whatsapp/delete/${id}`, { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            const card = document.getElementById(`instance-${id}`);
+            if (card) card.remove();
+            hideDetailsModal();
+            
+            // Reload if it was the last instance, to show empty state
+            if (document.querySelectorAll('.instance-card').length === 0) {
+                window.location.reload();
+            }
+        } else {
+            alert("Failed to delete the instance.");
+        }
+    } catch (e) {
+        alert("Network error.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Delete Instance';
+        }
     }
 }
 
