@@ -113,14 +113,14 @@
 </div>
 
 <!-- Custom Confirm Modal -->
-<div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 10000; align-items: center; justify-content: center;">
-    <div style="background: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); width: 100%; max-width: 400px; text-align: center;">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-        <h3 style="color: white; margin-bottom: 1rem; font-size: 1.2rem;">Confirm Action</h3>
-        <p id="confirm-message" style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5;"></p>
+<div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center;">
+    <div style="background: #1e1e2f; padding: 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+        <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
+        <h3 style="color: #ffffff; margin-bottom: 1rem; font-size: 1.4rem; font-weight: 600;">Confirm Action</h3>
+        <p id="confirm-message" style="color: #e5e7eb; margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.6; font-weight: 400;"></p>
         <div style="display: flex; gap: 1rem; justify-content: center;">
-            <button id="btn-confirm-cancel" class="btn btn-ghost" style="flex: 1;">Cancel</button>
-            <button id="btn-confirm-ok" class="btn btn-primary" style="flex: 1; background: #ef4444; color: white;">Confirm</button>
+            <button id="btn-confirm-cancel" class="btn btn-ghost" style="flex: 1; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);">Cancel</button>
+            <button id="btn-confirm-ok" class="btn btn-primary" style="flex: 1; background: #ef4444; color: white; border: none; font-weight: bold;">Confirm</button>
         </div>
     </div>
 </div>
