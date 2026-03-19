@@ -112,7 +112,39 @@
     </div>
 </div>
 
+<!-- Custom Confirm Modal -->
+<div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 10000; align-items: center; justify-content: center;">
+    <div style="background: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); width: 100%; max-width: 400px; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+        <h3 style="color: white; margin-bottom: 1rem; font-size: 1.2rem;">Confirm Action</h3>
+        <p id="confirm-message" style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5;"></p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button id="btn-confirm-cancel" class="btn btn-ghost" style="flex: 1;">Cancel</button>
+            <button id="btn-confirm-ok" class="btn btn-primary" style="flex: 1; background: #ef4444; color: white;">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
+let confirmCallback = null;
+
+function showConfirm(message, callback) {
+    document.getElementById('confirm-message').innerText = message;
+    document.getElementById('confirm-modal').style.display = 'flex';
+    confirmCallback = callback;
+}
+
+document.getElementById('btn-confirm-cancel').onclick = () => {
+    document.getElementById('confirm-modal').style.display = 'none';
+    confirmCallback = null;
+};
+
+document.getElementById('btn-confirm-ok').onclick = () => {
+    document.getElementById('confirm-modal').style.display = 'none';
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+};
+
 function showToast(message, type = 'error') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -212,39 +244,38 @@ async function connectInstance(id) {
 }
 
 async function deleteInstance(id) {
-    if (!confirm("Are you sure you want to completely delete this WhatsApp instance? This action cannot be undone.")) return;
-    
-    const btn = document.getElementById('btn-delete-inst');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerText = 'Deleting...';
-    }
-
-    try {
-        const res = await fetch(`/whatsapp/delete/${id}`, { method: 'POST' });
-        const data = await res.json();
-        
-        if (data.success) {
-            const card = document.getElementById(`instance-${id}`);
-            if (card) card.remove();
-            hideDetailsModal();
-            showToast("Instance deleted successfully.", "success");
-            
-            // Reload if it was the last instance, to show empty state
-            if (document.querySelectorAll('.instance-card').length === 0) {
-                setTimeout(() => window.location.reload(), 1500);
-            }
-        } else {
-            showToast("Failed to delete the instance.", "error");
-        }
-    } catch (e) {
-        showToast("Network error while deleting instance.", "error");
-    } finally {
+    showConfirm("Are you sure you want to completely delete this WhatsApp instance? This action cannot be undone.", async () => {
+        const btn = document.getElementById('btn-delete-inst');
         if (btn) {
-            btn.disabled = false;
-            btn.innerText = 'Delete Instance';
+            btn.disabled = true;
+            btn.innerText = 'Deleting...';
         }
-    }
+
+        try {
+            const res = await fetch(`/whatsapp/delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.success) {
+                const card = document.getElementById(`instance-${id}`);
+                if (card) card.remove();
+                hideDetailsModal();
+                showToast("Instance deleted successfully.", "success");
+                
+                if (document.querySelectorAll('.instance-card').length === 0) {
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            } else {
+                showToast("Failed to delete the instance.", "error");
+            }
+        } catch (e) {
+            showToast("Network error while deleting instance.", "error");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = 'Delete Instance';
+            }
+        }
+    });
 }
 
 function showInstanceDetails(id, currentName) {
@@ -298,32 +329,34 @@ async function deleteInstanceFromModal() {
 }
 
 async function disconnectInstance(id) {
-    if (!confirm("Are you sure you want to disconnect this WhatsApp session? It will remain in the database but require a new QR code to connect.")) return;
-    
-    const btn = document.getElementById(`btn-disconnect-${id}`);
-    if (btn) {
-        btn.disabled = true;
-        btn.innerText = 'Disconnecting...';
-    }
-
-    try {
-        const res = await fetch(`/whatsapp/logout/${id}`, { method: 'POST' });
-        const data = await res.json();
-        
-        if (data.success) {
-            checkInstanceStatus(id);
-            showToast("Session disconnected successfully.", "success");
-        } else {
-            showToast("Failed to disconnect session.", "error");
-        }
-    } catch (e) {
-        showToast("Network error while disconnecting.", "error");
-    } finally {
+    showConfirm("Are you sure you want to disconnect this WhatsApp session? It will remain in the database but require a new QR code to connect.", async () => {
+        const btn = document.getElementById(`btn-disconnect-${id}`);
         if (btn) {
-            btn.disabled = false;
-            btn.innerText = 'Disconnect Session';
+            btn.disabled = true;
+            btn.innerText = 'Disconnecting...';
         }
-    }
+
+        try {
+            const res = await fetch(`/whatsapp/logout/${id}`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.success) {
+                // Evolution API takes a few seconds to update state internally. 
+                // Force UI to Disconnected immediately for better user experience.
+                updateInstanceUI(id, { connected: false, status: 'disconnected' });
+                showToast("Session disconnected successfully.", "success");
+            } else {
+                showToast("Failed to disconnect session.", "error");
+            }
+        } catch (e) {
+            showToast("Network error while disconnecting.", "error");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = 'Disconnect Session';
+            }
+        }
+    });
 }
 
 function showNewInstanceModal() { document.getElementById('new-instance-modal').style.display = 'flex'; }
