@@ -9,6 +9,9 @@
     <button onclick="showNewInstanceModal()" class="btn btn-primary">+ Add New Instance</button>
 </div>
 
+<!-- Toast Container -->
+<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
+
 <div id="instances-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
     {% for inst in instances %}
     <div class="card instance-card" id="instance-{{ inst.id }}" style="border: 1px solid var(--border); transition: var(--transition);">
@@ -110,6 +113,36 @@
 </div>
 
 <script>
+function showToast(message, type = 'error') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? '#10b981' : '#ef4444';
+    const icon = type === 'success' ? '✓' : '⚠️';
+    
+    toast.style = `
+        background: ${bgColor}; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateX(100%);
+        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        display: flex; align-items: center; gap: 10px; font-size: 0.95rem;
+    `;
+    toast.innerHTML = `<span style="font-weight: 800;">${icon}</span> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(0)';
+    });
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
 async function checkInstanceStatus(id) {
     try {
         const res = await fetch(`/whatsapp/status/${id}`);
@@ -165,14 +198,15 @@ async function connectInstance(id) {
                 if (status.connected) {
                     clearInterval(poll);
                     updateInstanceUI(id, status);
+                    showToast("Account successfully connected!", "success");
                 }
             }, 3000);
         } else {
-            alert("Failed to generate QR. Please check if the instance exists or try deleting it and creating a new one.");
+            showToast("Failed to generate QR. Try deleting and recreating the instance.", "error");
             qrSection.style.display = 'none';
         }
     } catch (e) { 
-        alert("Failed to generate QR."); 
+        showToast("Failed to generate QR due to a network error.", "error"); 
         qrSection.style.display = 'none';
     }
 }
@@ -194,16 +228,17 @@ async function deleteInstance(id) {
             const card = document.getElementById(`instance-${id}`);
             if (card) card.remove();
             hideDetailsModal();
+            showToast("Instance deleted successfully.", "success");
             
             // Reload if it was the last instance, to show empty state
             if (document.querySelectorAll('.instance-card').length === 0) {
-                window.location.reload();
+                setTimeout(() => window.location.reload(), 1500);
             }
         } else {
-            alert("Failed to delete the instance.");
+            showToast("Failed to delete the instance.", "error");
         }
     } catch (e) {
-        alert("Network error.");
+        showToast("Network error while deleting instance.", "error");
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -249,10 +284,11 @@ async function renameInstance() {
             }
 
             hideDetailsModal();
+            showToast("Instance renamed successfully.", "success");
         } else {
-            alert("Error: " + data.error);
+            showToast(data.error || "Failed to rename instance.", "error");
         }
-    } catch (e) { alert("Network error"); }
+    } catch (e) { showToast("Network error while saving name.", "error"); }
     finally { btn.disabled = false; btn.innerText = 'Update Name'; }
 }
 
@@ -276,11 +312,12 @@ async function disconnectInstance(id) {
         
         if (data.success) {
             checkInstanceStatus(id);
+            showToast("Session disconnected successfully.", "success");
         } else {
-            alert("Failed to disconnect.");
+            showToast("Failed to disconnect session.", "error");
         }
     } catch (e) {
-        alert("Network error.");
+        showToast("Network error while disconnecting.", "error");
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -305,11 +342,12 @@ async function createInstance() {
         const res = await fetch('/whatsapp/instance/new', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
-            window.location.reload();
+            showToast("Instance created!", "success");
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert("Error: " + data.error);
+            showToast(data.error || "Failed to create instance.", "error");
         }
-    } catch (e) { alert("Network error"); }
+    } catch (e) { showToast("Network error while creating.", "error"); }
     finally { btn.disabled = false; btn.innerText = 'Provision Account'; }
 }
 
