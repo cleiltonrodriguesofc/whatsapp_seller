@@ -57,7 +57,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="WhatsApp Sales Agent Dashboard")
+app = FastAPI(title="WhatsApp Seller Pro")
 
 # Security Middlewares
 @app.middleware("http")
@@ -356,6 +356,7 @@ async def dashboard(
             "wa_connected": wa_connected,
             "wa_status": wa_status,
             "instances": instances,
+            "title": "Dashboard",
         },
     )
 
@@ -375,7 +376,7 @@ async def delete_campaign(
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request, "title": "Login"})
 
 
 @app.post("/login")
@@ -388,7 +389,7 @@ async def login_action(
     user = db.query(UserModel).filter(UserModel.email == username).first()
     if not user or not auth_service.verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Invalid email or password"}
+            "login.html", {"request": request, "error": "Invalid email or password", "title": "Login"}
         )
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
@@ -408,7 +409,7 @@ async def login_action(
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse("register.html", {"request": request, "title": "Register"})
 
 
 @app.post("/register")
@@ -423,7 +424,7 @@ async def register_action(
     existing_user = db.query(UserModel).filter(UserModel.email == email).first()
     if existing_user:
         return templates.TemplateResponse(
-            "register.html", {"request": request, "error": "Email already registered"}
+            "register.html", {"request": request, "error": "Email already registered", "title": "Register"}
         )
 
     # 2. Create User
@@ -461,9 +462,11 @@ async def register_action(
             db.add(new_instance)
             db.commit()
         else:
-            logger.warning(f"Evolution API returned non-dict response for {instance_name}: {instance_data}")
+            # Assuming 'logger' is defined elsewhere or needs to be imported/defined
+            # For now, using print as a placeholder
+            print(f"WARNING: Evolution API returned non-dict response for {instance_name}: {instance_data}")
     except Exception as e:
-        logger.error(f"Post-registration instance provisioning failed: {e}")
+        print(f"ERROR: Post-registration instance provisioning failed: {e}")
         # We don't fail the whole registration if WhatsApp provisioning fails
         # The user can retry connecting later in the dashboard
 
@@ -500,7 +503,7 @@ async def connect_whatsapp_page(
     )
     return templates.TemplateResponse(
         "connect_whatsapp.html",
-        {"request": request, "user": current_user, "instances": instances},
+        {"request": request, "user": current_user, "instances": instances, "title": "Connect WhatsApp"},
     )
 
 
@@ -829,7 +832,7 @@ async def list_products(
     products = product_repo.list_all(user_id=current_user.id)
     return templates.TemplateResponse(
         "products.html",
-        {"request": request, "products": products, "user": current_user},
+        {"request": request, "products": products, "user": current_user, "title": "Products"},
     )
 
 
@@ -853,6 +856,7 @@ async def new_campaign_form(
             "products": products,
             "instances": instances,
             "user": current_user,
+            "title": "New Campaign",
         },
     )
 
@@ -937,6 +941,7 @@ async def edit_campaign_form(
             "products": products,
             "instances": instances,
             "user": current_user,
+            "title": "Edit Campaign",
         },
     )
 
