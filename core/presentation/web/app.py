@@ -293,13 +293,13 @@ async def send_campaign(campaign: Campaign, db: Session):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(
+async def home(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: Optional[UserModel] = Depends(get_current_user),
 ):
     if not current_user:
-        return RedirectResponse(url="/login")
+        return templates.TemplateResponse("landing.html", {"request": request, "title": "Welcome"})
 
     campaign_repo = SQLCampaignRepository(db)
     campaigns = campaign_repo.list_all(user_id=current_user.id)
