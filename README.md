@@ -1,33 +1,32 @@
-# 🚀 WhatsApp Sales Agent Pro
+# 🚀 WhatsApp Seller Pro
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-05998b.svg)](https://fastapi.tiangolo.com/)
+[![Render](https://img.shields.io/badge/Deploy-Render-43a047)](https://render.com)
 [![Built with Clean Architecture](https://img.shields.io/badge/Architecture-Clean-blue)](# architecture)
 
-A high-performance, professional WhatsApp automation dashboard designed for sales campaigns. Built with **Clean Architecture** and **Asynchronous I/O**, it leverages the [Evolution API](https://doc.evolution-api.com) for cost-free, direct WhatsApp communication.
+A high-performance, **Production-Ready** WhatsApp marketing SaaS. Built with **Clean Architecture** and **Asynchronous I/O**, it leverages the [Evolution API](https://doc.evolution-api.com) for professional-grade automation.
 
 ---
 
 ## ✨ Key Features
 
--   **💎 Premium UI/UX**: Modern SaaS dashboard with a sleek dark theme, responsive sidebar, and micro-animations.
--   **⚡ High-Performance Async Core**: Fully non-blocking architecture using `httpx` and `AsyncOpenAI` for maximum responsiveness.
--   **⏰ Advanced Recurring Scheduler**: "Alarm-style" scheduling. Set campaigns to repeat on specific days of the week at exact times.
--   **🔄 Hybrid Target Fetching**: Smart caching system that prioritizes local DB for instant group/chat loading with an API fallback.
--   **🤖 AI Message Generation**: Integrated OpenAI support to generate persuasive, high-conversion sales copy automatically.
--   **📊 Campaign Management**: Complete lifecycle tracking (Scheduled → Sending → Sent/Failed) with detailed status feedback.
--   **🔌 WhatsApp Management**: Secure QR code pairing, real-time connection status monitoring, and test message functionality.
+-   **💎 Premium UI/UX**: Modern SaaS dashboard with a sleek dark theme, responsive sidebar, and smooth transitions.
+-   **🛡️ Anti-Ban Engine**: Built-in **Spintax** support (`{hi|hello}`), randomized humanized delays, and "Typing..." presence simulation to protect your account.
+-   **🔒 SaaS Hardened Security**: Implementation of **Content-Security-Policy**, **HSTS**, **Secure Cookies** (Lax/HttpOnly), and CSRF hardening for safe web access.
+-   **🚀 Render-Ready Infrastructure**: Multi-stage Docker optimization and `render.yaml` blueprint for one-click deployment with PostgreSQL.
+-   **🤖 AI Message Copilot**: Integrated OpenAI support to generate and rewrite persuasive, high-conversion sales copy.
+-   **⏰ Granular Scheduler**: "Alarm-style" recurring campaigns. Set exact times and days (e.g., Mon, Wed, Fri at 08:00).
+-   **🔌 Multi-Instance Management**: Support for multiple WhatsApp accounts per user with real-time QR code pairing.
 
 ---
 
 ## 🏗️ Technical Stack
 
 -   **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python 3.10+)
--   **Database**: [SQLAlchemy 2.0](https://www.sqlalchemy.org/) with SQLite (local)
--   **Async I/O**: [httpx](https://www.python-httpx.org/)
--   **AI**: [OpenAI SDK](https://github.com/openai/openai-python) (Async)
--   **UI**: Vanilla HTML5/CSS3 with [Jinja2](https://palletsprojects.com/p/jinja/) templates
--   **WhatsApp Integration**: [Evolution API](https://doc.evolution-api.com) (Baileys-based)
+-   **Database**: [SQLAlchemy 2.0](https://www.sqlalchemy.org/) with PostgreSQL (Production) / SQLite (Dev)
+-   **Security**: [bcrypt](https://pypi.org/project/bcrypt/) & [PyJWT](https://pyjwt.readthedocs.io/)
+-   **Deployment**: [Render](https://render.com) + [Docker](https://www.docker.com/) (Multi-stage)
 
 ---
 
@@ -77,9 +76,9 @@ Following **Clean Architecture** principles:
 
 ## 🔒 Security & Standards
 
+-   **Hardened Security**: Headers (CSP, HSTS) and secure session cookies prevent common web attacks.
 -   **Non-Root Execution**: Docker containers run under restricted user permissions.
--   **Clean History**: sensitive database files and `.env` are strictly excluded from Git.
--   **Maintainability**: No "God Files"; every component follows the Single Responsibility Principle.
+-   **Environment Discipline**: Sensitive database files and `.env` are strictly excluded from Git; production secrets are generated on deployment.
 
 ---
 

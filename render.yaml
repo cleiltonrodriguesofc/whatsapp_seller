@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: whatsapp-sales-agent
+    name: whatsapp-seller-pro
     runtime: docker
     plan: free
     envVars:
