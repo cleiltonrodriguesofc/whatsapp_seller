@@ -27,9 +27,10 @@ class HumanizedSender:
         self, targets: List[str], content: str, media_url: Optional[str] = None
     ):
         """
-        Sends a message to a list of targets with human-like delays.
+        Sends a message to a list of targets with human-like delays and spintax variations.
         """
         from core.infrastructure.utils.image_utils import get_optimized_base64
+        from core.infrastructure.utils.text_utils import parse_spintax
 
         optimized_media = None
         if media_url:
@@ -53,12 +54,15 @@ class HumanizedSender:
                 except Exception as e:
                     logger.warning("Failed to set presence for %s: %s", target, e)
 
-            # 2. Send the message
+            # 2. Prepare content with Spintax variation
+            personalized_content = parse_spintax(content)
+
+            # 3. Send the message
             success = False
             if optimized_media:
-                success = await self.svc.send_image(target, optimized_media, content)
+                success = await self.svc.send_image(target, optimized_media, personalized_content)
             else:
-                success = await self.svc.send_text(target, content)
+                success = await self.svc.send_text(target, personalized_content)
 
             if success:
                 logger.info(
