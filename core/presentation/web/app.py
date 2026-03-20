@@ -59,6 +59,27 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="WhatsApp Sales Agent Dashboard")
 
+# Security Middlewares
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https:;"
+    )
+    # Strict-Transport-Security (HSTS) - only for production
+    if os.environ.get("RENDER"):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
 @app.get("/test-route")
 def test_route():
     return {"hello": "world"}
@@ -372,7 +393,16 @@ async def login_action(
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
     response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
-    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    
+    # Secure cookie flags for production
+    is_prod = os.environ.get("RENDER") == "true"
+    response.set_cookie(
+        key="access_token", 
+        value=access_token, 
+        httponly=True, 
+        secure=is_prod, 
+        samesite="lax"
+    )
     return response
 
 
@@ -440,7 +470,15 @@ async def register_action(
     # 4. Login and Redirect
     access_token = auth_service.create_access_token(data={"sub": new_user.email})
     response = RedirectResponse(url="/whatsapp/connect", status_code=HTTP_303_SEE_OTHER)
-    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    
+    is_prod = os.environ.get("RENDER") == "true"
+    response.set_cookie(
+        key="access_token", 
+        value=access_token, 
+        httponly=True, 
+        secure=is_prod, 
+        samesite="lax"
+    )
     return response
 
 
