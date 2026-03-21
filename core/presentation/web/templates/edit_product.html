@@ -1,58 +1,58 @@
 {% extends "base.html" %}
 
-{% block page_title %}Edit Product: {{ product.name }}{% endblock %}
-{% block page_subtitle %}Update product details, pricing, and media.{% endblock %}
+{% block page_title %}Editar Produto: {{ product.name }}{% endblock %}
+{% block page_subtitle %}Atualize os detalhes, o preço e a mídia do produto.{% endblock %}
 
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto;">
     <div class="card animate-fade-in">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h2 style="font-size: 1.25rem; margin: 0;">Product Details</h2>
-            <a href="/products" class="btn btn-ghost">Cancel</a>
+            <h2 style="font-size: 1.25rem; margin: 0;">Detalhes do Produto</h2>
+            <a href="/products" class="btn btn-ghost">Cancelar</a>
         </div>
         
         <form action="/products/edit/{{ product.id }}" method="post" enctype="multipart/form-data">
             <div class="form-group">
-                <label class="form-label">Product Name</label>
+                <label class="form-label">Nome do Produto</label>
                 <input type="text" name="name" class="form-input" value="{{ product.name }}" required>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Description</label>
+                <label class="form-label">Descrição</label>
                 <textarea name="description" class="form-textarea" rows="5" required>{{ product.description }}</textarea>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                 <div class="form-group">
-                    <label class="form-label">Price (R$)</label>
+                    <label class="form-label">Preço (R$)</label>
                     <input type="number" step="0.01" name="price" class="form-input" value="{{ product.price }}" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Category</label>
+                    <label class="form-label">Categoria</label>
                     <input type="text" name="category" class="form-input" value="{{ product.category or '' }}">
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Affiliate Link</label>
+                <label class="form-label">Link de Afiliado</label>
                 <input type="url" name="affiliate_link" class="form-input" value="{{ product.affiliate_link }}" required>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
                 <div class="form-group">
-                    <label class="form-label">Image URL</label>
+                    <label class="form-label">URL da Imagem</label>
                     <input type="url" name="image_url" class="form-input" value="{{ product.image_url or '' }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Update Image File</label>
+                    <label class="form-label">Trocar Imagem</label>
                     <input type="file" name="image_file" class="form-input" accept="image/*">
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">Leave empty to keep current image.</small>
+                    <small style="color: var(--text-muted); font-size: 0.75rem;">Deixe vazio para manter a imagem atual.</small>
                 </div>
             </div>
 
             <div style="display: flex; gap: 1rem;">
-                <button type="submit" class="btn btn-primary" style="flex: 2;">Save Changes</button>
-                <button type="button" class="btn btn-ghost" style="flex: 1;" onclick="window.location.href='/products'">Discard</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
+                <button type="button" class="btn btn-ghost" style="flex: 1;" onclick="window.location.href='/products'">Descartar</button>
             </div>
         </form>
     </div>

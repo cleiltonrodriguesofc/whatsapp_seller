@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,13 +14,13 @@
         
         <nav class="nav-menu">
             <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
-                <span class="nav-item-icon">📊</span> Dashboard
+                <span class="nav-item-icon">📊</span> Painel
             </a>
             <a href="/products" class="nav-item {{ 'active' if request.url.path == '/products' else '' }}">
-                <span class="nav-item-icon">🛒</span> Products
+                <span class="nav-item-icon">🛒</span> Produtos
             </a>
             <a href="/campaigns/new" class="nav-item {{ 'active' if request.url.path == '/campaigns/new' else '' }}">
-                <span class="nav-item-icon">📅</span> Campaigns
+                <span class="nav-item-icon">📅</span> Campanhas
             </a>
             <a href="/whatsapp/connect" class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
                 <span class="nav-icon">📱</span>
@@ -34,7 +34,7 @@
         <header class="top-bar">
             <div>
                 <h1 id="page-title" class="animate-fade-in" style="font-size: 1.75rem; font-weight: 700;">{% block page_title %}Dashboard{% endblock %}</h1>
-                <p style="color: var(--text-secondary); font-size: 0.95rem;">{% block page_subtitle %}Manage your automated marketing assets.{% endblock %}</p>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">{% block page_subtitle %}Gerencie seus ativos de marketing automatizado.{% endblock %}</p>
             </div>
             
             {% if user %}
@@ -42,7 +42,7 @@
                 <div style="text-align: right;">
                     <div style="font-size: 0.9rem; font-weight: 600;">{{ user.email.split('@')[0] }}</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">
-                        <a href="/logout" style="color: #ef4444; text-decoration: none;">Sign Out</a>
+                        <a href="/logout" style="color: #ef4444; text-decoration: none;">Sair</a>
                     </div>
                 </div>
                 <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; font-weight: 700;">
@@ -70,11 +70,11 @@
                 const data = await res.json();
                 const dot = document.getElementById('sidebar-status-dot');
                 if (data.connected) {
-                    dot.style.background = '#10b981'; // Green
-                    dot.title = 'WhatsApp Connected';
+                    dot.style.background = '#10b981';
+                    dot.title = 'WhatsApp Conectado';
                 } else {
-                    dot.style.background = '#ef4444'; // Red
-                    dot.title = 'WhatsApp Disconnected';
+                    dot.style.background = '#ef4444';
+                    dot.title = 'WhatsApp Desconectado';
                 }
             } catch (e) {
                 console.error('Sidebar status poll failed');

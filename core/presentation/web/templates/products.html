@@ -1,64 +1,64 @@
 {% extends "base.html" %}
 
-{% block page_title %}Product Catalog{% endblock %}
-{% block page_subtitle %}Manage your marketing assets and inventory.{% endblock %}
+{% block page_title %}Catálogo de Produtos{% endblock %}
+{% block page_subtitle %}Gerencie seus produtos afiliados e ativos de marketing.{% endblock %}
 
 {% block content %}
 <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2.5rem; align-items: start;">
-    <!-- Add Product Form -->
+    <!-- Formulário de Novo Produto -->
     <div class="card animate-fade-in">
-        <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Add New Product</h2>
+        <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Adicionar Produto</h2>
         <form action="/products/new" method="post" enctype="multipart/form-data">
             <div class="form-group">
-                <label class="form-label">Product Name</label>
-                <input type="text" name="name" class="form-input" placeholder="e.g., ASUS Vivobook Go 15" required>
+                <label class="form-label">Nome do Produto</label>
+                <input type="text" name="name" class="form-input" placeholder="Ex: ASUS Vivobook Go 15" required>
             </div>
             
             <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea name="description" class="form-textarea" rows="4" placeholder="Brief product details..." required></textarea>
+                <label class="form-label">Descrição</label>
+                <textarea name="description" class="form-textarea" rows="4" placeholder="Detalhes do produto..." required></textarea>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div class="form-group">
-                    <label class="form-label">Price (R$)</label>
+                    <label class="form-label">Preço (R$)</label>
                     <input type="number" step="0.01" name="price" class="form-input" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <input type="text" name="category" class="form-input" placeholder="Electronics">
+                    <label class="form-label">Categoria</label>
+                    <input type="text" name="category" class="form-input" placeholder="Eletrônicos">
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Affiliate Link</label>
+                <label class="form-label">Link de Afiliado</label>
                 <input type="url" name="affiliate_link" class="form-input" placeholder="https://..." required>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
                 <div class="form-group">
-                    <label class="form-label">Image URL</label>
+                    <label class="form-label">URL da Imagem</label>
                     <input type="url" name="image_url" class="form-input" placeholder="https://...">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Local File</label>
+                    <label class="form-label">Arquivo Local</label>
                     <input type="file" name="image_file" class="form-input" accept="image/*">
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Product Asset</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Produto</button>
         </form>
     </div>
 
-    <!-- Product List -->
+    <!-- Lista de Produtos -->
     <div>
-        <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Your Product Assets</h2>
+        <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Seus Produtos</h2>
         <div style="display: flex; flex-direction: column; gap: 1rem;">
             {% for product in products %}
             <div class="card" style="display: flex; gap: 1.5rem; align-items: center;">
                 <div style="width: 80px; height: 80px; border-radius: 12px; background: var(--bg-main); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border);">
                     {% if product.image_url %}
-                    <img src="{{ product.image_url }}" alt="Product" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img src="{{ product.image_url }}" alt="Produto" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
                     🛒
                     {% endif %}
@@ -67,21 +67,21 @@
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <div>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ product.name }}</h3>
-                            <span style="font-size: 0.75rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">{{ product.category or 'General' }}</span>
+                            <span style="font-size: 0.75rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">{{ product.category or 'Geral' }}</span>
                         </div>
                         <div style="font-weight: 800; color: var(--text-primary); font-size: 1.1rem;">R$ {{ "{:,.2f}".format(product.price) }}</div>
                     </div>
                 </div>
                 <div style="margin-top: auto; display: flex; gap: 0.5rem;">
-                    <a href="/products/edit/{{ product.id }}" class="btn btn-ghost" style="flex: 1; text-align: center; border: 1px solid var(--border);">Edit</a>
-                    <form action="/products/delete/{{ product.id }}" method="post" onsubmit="return confirm('Delete this product?');" style="flex: 1; margin: 0;">
-                        <button type="submit" class="btn btn-ghost" style="width: 100%; border: 1px solid #ef444444; color: #ef4444;">Delete</button>
+                    <a href="/products/edit/{{ product.id }}" class="btn btn-ghost" style="flex: 1; text-align: center; border: 1px solid var(--border);">Editar</a>
+                    <form action="/products/delete/{{ product.id }}" method="post" onsubmit="return confirm('Excluir este produto?');" style="flex: 1; margin: 0;">
+                        <button type="submit" class="btn btn-ghost" style="width: 100%; border: 1px solid #ef444444; color: #ef4444;">Excluir</button>
                     </form>
                 </div>
             </div>
             {% else %}
             <div class="card" style="text-align: center; padding: 4rem; border-style: dashed;">
-                <p style="color: var(--text-muted);">No products found in your catalog.</p>
+                <p style="color: var(--text-muted);">Nenhum produto no catálogo ainda.</p>
             </div>
             {% endfor %}
         </div>
