@@ -1,3 +1,4 @@
+import logging
 from fastapi import (
     FastAPI,
     Request,
@@ -14,6 +15,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime
 from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import asyncio
 import shutil
@@ -23,6 +27,13 @@ from typing import List, Optional
 
 # Load environment variables
 load_dotenv()
+
+# configure module-level logger
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 from core.infrastructure.database.session import get_db, engine, SessionLocal
 from core.infrastructure.database.models import (
@@ -57,7 +68,11 @@ from starlette.status import HTTP_303_SEE_OTHER
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# rate limiter setup
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="WhatsApp Seller Pro")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Security Middlewares
 @app.middleware("http")
@@ -80,9 +95,10 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-@app.get("/test-route")
-def test_route():
-    return {"hello": "world"}
+@app.get("/health")
+async def health_check():
+    """health check endpoint used by render and other platforms."""
+    return {"status": "ok"}
 
 # Security
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
@@ -122,7 +138,7 @@ def login_required(user: UserModel = Depends(get_current_user)):
 
 @app.on_event("startup")
 async def startup_event():
-    # Start the background scheduler
+    # start the background campaign scheduler
     asyncio.create_task(campaign_scheduler_loop())
 
 
@@ -151,7 +167,7 @@ async def campaign_scheduler_loop():
             )
 
             for campaign_model in pending_one_off:
-                print(f"Executing One-off Campaign: {campaign_model.title}")
+                logger.info("executing one-off campaign: %s", campaign_model.title)
                 # Convert Model to Domain entity
                 domain_campaign = campaign_repo._to_entity(campaign_model)
                 await send_campaign(domain_campaign, db)
@@ -177,8 +193,8 @@ async def campaign_scheduler_loop():
                 if campaign_model.target_config:
                     try:
                         target_config = json.loads(campaign_model.target_config)
-                    except:
-                        pass
+                    except Exception as exc:
+                        logger.warning("failed to parse target_config for campaign %s: %s", campaign_model.id, exc)
 
                 send_times = [
                     t.strip()
@@ -193,8 +209,10 @@ async def campaign_scheduler_loop():
                         or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M")
                         != now.strftime("%Y-%m-%d %H:%M")
                     ):
-                        print(
-                            f"Executing Multi-Time Campaign: {campaign_model.title} at {current_time_str}"
+                        logger.info(
+                            "executing multi-time campaign: %s at %s",
+                            campaign_model.title,
+                            current_time_str,
                         )
                         campaign_model.last_run_at = now
                         db.add(campaign_model)
@@ -218,8 +236,11 @@ async def campaign_scheduler_loop():
                             or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M")
                             != now.strftime("%Y-%m-%d %H:%M")
                         ):
-                            print(
-                                f"Executing Granular Campaign ({target_type}): {campaign_model.title} at {current_time_str}"
+                            logger.info(
+                                "executing granular campaign (%s): %s at %s",
+                                target_type,
+                                campaign_model.title,
+                                current_time_str,
                             )
                             campaign_model.last_run_at = now
                             db.add(campaign_model)
@@ -229,11 +250,11 @@ async def campaign_scheduler_loop():
                             await send_campaign(domain_campaign, db)
 
         except Exception as e:
-            print(f"Error in scheduler loop: {e}")
+            logger.error("error in scheduler loop: %s", e, exc_info=True)
         finally:
             db.close()
 
-        await asyncio.sleep(60)  # Check every minute
+        await asyncio.sleep(60)  # check every minute
 
 
 async def send_campaign(campaign: Campaign, db: Session):
@@ -243,7 +264,7 @@ async def send_campaign(campaign: Campaign, db: Session):
     from core.application.services.humanized_sender import HumanizedSender
     from core.infrastructure.database.models import InstanceModel
 
-    print(f"Sending campaign: {campaign.title}")
+    logger.info("sending campaign: %s", campaign.title)
     campaign_repo = SQLCampaignRepository(db)
 
     # 1. Resolve User Instance
@@ -284,12 +305,12 @@ async def send_campaign(campaign: Campaign, db: Session):
             DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED
         )
     except Exception as e:
-        print(f"Error during humanized campaign send: {e}")
+        logger.error("error during humanized campaign send: %s", e, exc_info=True)
         campaign.status = DomainCampaignStatus.FAILED
 
     campaign.sent_at = datetime.utcnow()
     campaign_repo.save(campaign)
-    print(f"Campaign {campaign.title} finished. Status: {campaign.status.name}")
+    logger.info("campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -380,6 +401,7 @@ async def login_page(request: Request):
 
 
 @app.post("/login")
+@limiter.limit("10/minute")
 async def login_action(
     request: Request,
     username: str = Form(...),
@@ -413,6 +435,7 @@ async def register_page(request: Request):
 
 
 @app.post("/register")
+@limiter.limit("5/minute")
 async def register_action(
     request: Request,
     email: str = Form(...),
@@ -462,13 +485,15 @@ async def register_action(
             db.add(new_instance)
             db.commit()
         else:
-            # Assuming 'logger' is defined elsewhere or needs to be imported/defined
-            # For now, using print as a placeholder
-            print(f"WARNING: Evolution API returned non-dict response for {instance_name}: {instance_data}")
+            logger.warning(
+                "evolution api returned non-dict response for %s: %s",
+                instance_name,
+                type(instance_data),
+            )
     except Exception as e:
-        print(f"ERROR: Post-registration instance provisioning failed: {e}")
-        # We don't fail the whole registration if WhatsApp provisioning fails
-        # The user can retry connecting later in the dashboard
+        logger.error("post-registration instance provisioning failed: %s", e, exc_info=True)
+        # registration succeeds even if whatsapp provisioning fails;
+        # user can connect their number later from the dashboard
 
     # 4. Login and Redirect
     access_token = auth_service.create_access_token(data={"sub": new_user.email})
@@ -541,7 +566,10 @@ async def create_new_instance(
         db.commit()
         return {"success": True, "instance_id": new_instance.id}
 
-    print(f"DEBUG: Failed to create instance. instance_data type: {type(instance_data)}, content: {instance_data}")
+    logger.error(
+        "failed to create instance. response type: %s",
+        type(instance_data),
+    )
     return {"success": False, "error": "Failed to create instance or invalid response from Evolution API"}
 
 
@@ -746,7 +774,11 @@ async def sync_whatsapp_targets(
     if not instance_model:
         return {"success": False, "error": "No instance provisioned"}
 
-    whatsapp_service = EvolutionWhatsAppService(instance=instance_model.name)
+    # pass apikey so the correct tenant key is used instead of the global env fallback
+    whatsapp_service = EvolutionWhatsAppService(
+        instance=instance_model.name,
+        apikey=instance_model.apikey,
+    )
     target_repo = SQLTargetRepository(db)
 
     groups = await whatsapp_service.get_groups()
@@ -890,12 +922,13 @@ async def create_campaign(
         campaign_repo, product_repo, whatsapp_service, ai_service
     )
 
-    # Parse scheduled_at if provided
+    # parse scheduled_at if provided
     dt_scheduled = None
     if scheduled_at:
         try:
             dt_scheduled = datetime.fromisoformat(scheduled_at)
-        except:
+        except ValueError as exc:
+            logger.warning("invalid scheduled_at value '%s': %s — defaulting to now", scheduled_at, exc)
             dt_scheduled = datetime.now()
 
     await scheduler.execute(
@@ -984,8 +1017,8 @@ async def update_campaign(
             campaign.scheduled_at = datetime.fromisoformat(
                 scheduled_at.replace("Z", "")
             )
-        except:
-            pass
+        except ValueError as exc:
+            logger.warning("invalid scheduled_at value '%s': %s — keeping existing value", scheduled_at, exc)
 
     campaign_repo.save(campaign)
     return RedirectResponse(url="/", status_code=303)
@@ -1006,6 +1039,66 @@ async def delete_campaign(
     return RedirectResponse(url="/", status_code=303)
 
 
+# ── upload helper ──────────────────────────────────────────────────────────────
+
+_ALLOWED_IMAGE_TYPES = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif"}
+_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+async def _save_uploaded_image(image_file: UploadFile) -> str:
+    """
+    Validates that the uploaded file is a real image (using Pillow, not the
+    filename extension), enforces a size limit, and saves it to static/uploads.
+    Returns the public URL path or raises HTTPException on failure.
+    """
+    from PIL import Image
+    import io
+
+    raw = await image_file.read()
+
+    # enforce size limit before touching disk
+    if len(raw) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Image too large. Maximum allowed size is {_MAX_UPLOAD_BYTES // (1024*1024)} MB.",
+        )
+
+    # validate real mime type via Pillow — this catches disguised files
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.verify()  # raises if not a valid image
+    except Exception:
+        raise HTTPException(
+            status_code=415,
+            detail="Invalid image file. Only JPEG, PNG, WEBP and GIF are accepted.",
+        )
+
+    # re-open (verify() closes the file pointer) to get the real format
+    img = Image.open(io.BytesIO(raw))
+    fmt = img.format  # e.g. "JPEG", "PNG"
+    if fmt not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported image format '{fmt}'. Allowed: {', '.join(_ALLOWED_IMAGE_TYPES)}.",
+        )
+
+    ext = _ALLOWED_IMAGE_TYPES[fmt]
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    upload_dir = os.path.join("core", "presentation", "web", "static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    upload_path = os.path.join(upload_dir, unique_filename)
+
+    # convert to RGB before saving (handles RGBA PNGs, palettes, etc.)
+    img = img.convert("RGB") if fmt == "JPEG" else img
+    img.save(upload_path)
+
+    logger.info("uploaded image saved: %s (%d bytes, format=%s)", unique_filename, len(raw), fmt)
+    return f"/static/uploads/{unique_filename}"
+
+
+# ── product endpoints ──────────────────────────────────────────────────────────
+
+
 @app.post("/products/new")
 async def create_product(
     name: str = Form(...),
@@ -1020,25 +1113,10 @@ async def create_product(
 ):
     product_repo = SQLProductRepository(db)
 
-    # Handle image file upload
+    # handle image file upload with MIME validation
     final_image_url = image_url
     if image_file and image_file.filename:
-        # Create unique filename
-        file_ext = os.path.splitext(image_file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        upload_path = os.path.join(
-            "core/presentation/web/static/uploads", unique_filename
-        )
-
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-
-        # Save file
-        with open(upload_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-
-        # URL for the saved file
-        final_image_url = f"/static/uploads/{unique_filename}"
+        final_image_url = await _save_uploaded_image(image_file)
 
     product = Product(
         name=name,
@@ -1088,18 +1166,10 @@ async def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Handle image file upload
+    # handle image file upload with MIME validation
     final_image_url = image_url or product.image_url
     if image_file and image_file.filename:
-        file_ext = os.path.splitext(image_file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        upload_path = os.path.join(
-            "core/presentation/web/static/uploads", unique_filename
-        )
-        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-        with open(upload_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-        final_image_url = f"/static/uploads/{unique_filename}"
+        final_image_url = await _save_uploaded_image(image_file)
 
     # Update product entity fields
     product.name = name

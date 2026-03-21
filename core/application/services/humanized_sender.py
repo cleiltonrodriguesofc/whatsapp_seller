@@ -66,13 +66,14 @@ class HumanizedSender:
 
             if success:
                 logger.info(
-                    "Humanized send successful to %s (%d/%d)",
+                    "humanized send ok to %s (%d/%d)",
                     target,
                     i + 1,
                     len(targets),
                 )
             else:
-                logger.error("Humanized send failed to %s", target)
+                logger.error("humanized send failed to %s", target)
+                all_success = False
 
             # 3. Random Jitter Delay (except for the last target)
             if i < len(targets) - 1:
