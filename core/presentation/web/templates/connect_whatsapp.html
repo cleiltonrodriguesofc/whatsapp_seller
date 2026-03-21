@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block page_title %}WhatsApp Multi-Instance Management{% endblock %}
-{% block page_subtitle %}Manage multiple WhatsApp accounts and automate your outreach across all of them.{% endblock %}
+{% block page_title %}Gerenciar Instâncias WhatsApp{% endblock %}
+{% block page_subtitle %}Gerencie múltiplas contas WhatsApp e automatize seus disparos em todas elas.{% endblock %}
 
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
-    <h2 style="font-size: 1.5rem; color: white;">My WhatsApp Accounts</h2>
-    <button onclick="showNewInstanceModal()" class="btn btn-primary">+ Add New Instance</button>
+    <h2 style="font-size: 1.5rem; color: white;">Minhas Contas WhatsApp</h2>
+    <button onclick="showNewInstanceModal()" class="btn btn-primary">+ Adicionar Conta</button>
 </div>
 
 <!-- Toast Container -->
@@ -20,16 +20,16 @@
                 <div class="inst-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">📱</div>
                 <div>
                     <h3 id="instance-name-title-{{ inst.id }}" style="font-size: 1.1rem; color: white; margin-bottom: 0.25rem;">{{ inst.display_name or inst.name }}</h3>
-                    <div id="status-badge-{{ inst.id }}" class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Checking...</div>
+                    <div id="status-badge-{{ inst.id }}" class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Verificando...</div>
                 </div>
             </div>
             <div style="text-align: right;">
-                <button onclick="showInstanceDetails({{ inst.id }}, '{{ inst.display_name or inst.name }}')" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Details</button>
+                <button onclick="showInstanceDetails({{ inst.id }}, '{{ inst.display_name or inst.name }}')" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Detalhes</button>
             </div>
         </div>
 
         <div id="qr-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--primary); border-radius: 12px; background: rgba(99, 102, 241, 0.03); margin-bottom: 1rem;">
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Scan with your WhatsApp mobile app.</p>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Escaneie com o seu WhatsApp pelo celular.</p>
             <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; position: relative; width: 200px; height: 200px;">
                 <div id="qr-spinner-{{ inst.id }}" class="spinner" style="border-top-color: var(--primary);"></div>
                 <img id="qr-img-{{ inst.id }}" src="" style="width: 200px; height: 200px; display: none; position: absolute; border-radius: 8px;">
@@ -37,20 +37,20 @@
         </div>
 
         <div id="active-actions-{{ inst.id }}" style="display: none; gap: 0.5rem; flex-direction: column;">
-            <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border); font-size: 0.9rem;">View Groups/Chats</button>
-            <button onclick="disconnectInstance({{ inst.id }})" id="btn-disconnect-{{ inst.id }}" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b; font-size: 0.9rem;">Disconnect Session</button>
+            <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border); font-size: 0.9rem;">Ver Grupos e Contatos</button>
+            <button onclick="disconnectInstance({{ inst.id }})" id="btn-disconnect-{{ inst.id }}" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b; font-size: 0.9rem;">Desconectar Sessão</button>
         </div>
 
         <div id="inactive-actions-{{ inst.id }}" style="display: block;">
-            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%;">Connect with QR Code</button>
+            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%;">Conectar via QR Code</button>
         </div>
     </div>
     {% else %}
     <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: rgba(255,255,255,0.02); border-radius: 20px; border: 2px dashed var(--border);">
         <div style="font-size: 4rem; margin-bottom: 1.5rem;">🔌</div>
-        <h3 style="color: white; margin-bottom: 0.5rem;">No WhatsApp accounts linked yet</h3>
-        <p style="color: var(--text-muted); margin-bottom: 2rem;">Create your first instance to start automating your outreach.</p>
-        <button onclick="showNewInstanceModal()" class="btn btn-primary">Create New Instance</button>
+        <h3 style="color: white; margin-bottom: 0.5rem;">Nenhuma conta WhatsApp vinculada</h3>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Crie sua primeira instância para começar a automatizar seus disparos.</p>
+        <button onclick="showNewInstanceModal()" class="btn btn-primary">Criar Nova Instância</button>
     </div>
     {% endfor %}
 </div>
@@ -58,17 +58,16 @@
 <!-- New Instance Modal -->
 <div id="new-instance-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
     <div class="card animate-scale-up" style="width: 400px; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);">
-        <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">New WhatsApp Instance</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Give a friendly name for this connection (e.g., 'Commercial 01').</p>
-        
+        <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Nova Instância WhatsApp</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Dê um nome amigável para esta conexão (ex: 'Comercial 01').</p>
         <form id="new-inst-form" onsubmit="event.preventDefault(); createInstance();">
             <div class="form-group">
-                <label class="form-label">Instance Name</label>
-                <input type="text" id="new-inst-name" class="form-input" placeholder="Sales Department" required>
+                <label class="form-label">Nome da Instância</label>
+                <input type="text" id="new-inst-name" class="form-input" placeholder="Departamento Comercial" required>
             </div>
             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                <button type="button" onclick="hideNewInstanceModal()" class="btn btn-ghost" style="flex: 1;">Cancel</button>
-                <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 2;">Provision Account</button>
+                <button type="button" onclick="hideNewInstanceModal()" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
+                <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 2;">Provisionar Conta</button>
             </div>
         </form>
     </div>
@@ -78,23 +77,23 @@
 <div id="details-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1002; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
     <div class="card animate-scale-up" style="width: 450px; border: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.25rem; color: white;">Instance Settings</h2>
-            <button onclick="hideDetailsModal()" class="btn btn-ghost btn-sm">Close</button>
+            <h2 style="font-size: 1.25rem; color: white;">Configurações da Instância</h2>
+            <button onclick="hideDetailsModal()" class="btn btn-ghost btn-sm">Fechar</button>
         </div>
 
         <form onsubmit="event.preventDefault(); renameInstance();">
             <input type="hidden" id="details-inst-id">
             <div class="form-group">
-                <label class="form-label">Display Name</label>
-                <input type="text" id="details-inst-name" class="form-input" placeholder="e.g. Sales Department">
+                <label class="form-label">Nome de Exibição</label>
+                <input type="text" id="details-inst-name" class="form-input" placeholder="Ex: Comercial">
             </div>
-            <button type="submit" id="btn-save-name" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Update Name</button>
+            <button type="submit" id="btn-save-name" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Salvar Nome</button>
         </form>
 
         <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(239, 68, 68, 0.2);">
-            <h3 style="color: #ef4444; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Danger Zone</h3>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">Permanently remove this WhatsApp instance and all its local data.</p>
-            <button onclick="deleteInstanceFromModal()" id="btn-delete-inst" class="btn btn-ghost" style="width: 100%; border: 1px solid #ef4444; color: #ef4444;">Delete Instance</button>
+            <h3 style="color: #ef4444; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Zona de Perigo</h3>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem;">Remove permanentemente esta instância WhatsApp e todos os seus dados locais.</p>
+            <button onclick="deleteInstanceFromModal()" id="btn-delete-inst" class="btn btn-ghost" style="width: 100%; border: 1px solid #ef4444; color: #ef4444;">Excluir Instância</button>
         </div>
     </div>
 </div>
@@ -103,8 +102,8 @@
 <div id="targets-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1001; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
     <div class="card" style="width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 id="targets-title">Scanning Targets...</h2>
-            <button onclick="hideTargetsModal()" class="btn btn-ghost btn-sm">Close</button>
+            <h2 id="targets-title">Buscando Destinos...</h2>
+            <button onclick="hideTargetsModal()" class="btn btn-ghost btn-sm">Fechar</button>
         </div>
         <div id="targets-container" style="flex-grow: 1; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
             <!-- Content via JS -->
@@ -116,11 +115,11 @@
 <div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center;">
     <div style="background: #1e1e2f; padding: 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
         <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
-        <h3 style="color: #ffffff; margin-bottom: 1rem; font-size: 1.4rem; font-weight: 600;">Confirm Action</h3>
+        <h3 style="color: #ffffff; margin-bottom: 1rem; font-size: 1.4rem; font-weight: 600;">Confirmar Ação</h3>
         <p id="confirm-message" style="color: #e5e7eb; margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.6; font-weight: 400;"></p>
         <div style="display: flex; gap: 1rem; justify-content: center;">
-            <button id="btn-confirm-cancel" class="btn btn-ghost" style="flex: 1; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);">Cancel</button>
-            <button id="btn-confirm-ok" class="btn btn-primary" style="flex: 1; background: #ef4444; color: white; border: none; font-weight: bold;">Confirm</button>
+            <button id="btn-confirm-cancel" class="btn btn-ghost" style="flex: 1; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);">Cancelar</button>
+            <button id="btn-confirm-ok" class="btn btn-primary" style="flex: 1; background: #ef4444; color: white; border: none; font-weight: bold;">Confirmar</button>
         </div>
     </div>
 </div>
@@ -198,7 +197,7 @@ function updateInstanceUI(id, data) {
         card.style.borderColor = 'rgba(16, 185, 129, 0.3)';
         document.getElementById(`qr-section-${id}`).style.display = 'none';
     } else {
-        badge.innerText = data.status === 'open' ? 'Awaiting Scan' : 'Disconnected';
+        badge.innerText = data.status === 'open' ? 'Aguardando leitura' : 'Desconectado';
         badge.style.background = 'rgba(245, 158, 11, 0.1)';
         badge.style.color = '#f59e0b';
         activeActions.style.display = 'none';
@@ -230,25 +229,25 @@ async function connectInstance(id) {
                 if (status.connected) {
                     clearInterval(poll);
                     updateInstanceUI(id, status);
-                    showToast("Account successfully connected!", "success");
+                    showToast('Conta conectada com sucesso!', 'success');
                 }
             }, 3000);
         } else {
-            showToast("Failed to generate QR. Try deleting and recreating the instance.", "error");
+            showToast('Falha ao gerar QR Code. Tente excluir e recriar a instância.', 'error');
             qrSection.style.display = 'none';
         }
     } catch (e) { 
-        showToast("Failed to generate QR due to a network error.", "error"); 
+        showToast('Falha ao gerar QR Code. Verifique a conexão.', 'error'); 
         qrSection.style.display = 'none';
     }
 }
 
 async function deleteInstance(id) {
-    showConfirm("Are you sure you want to completely delete this WhatsApp instance? This action cannot be undone.", async () => {
+    showConfirm('Tem certeza que deseja excluir permanentemente esta instância WhatsApp? Esta ação não pode ser desfeita.', async () => {
         const btn = document.getElementById('btn-delete-inst');
         if (btn) {
             btn.disabled = true;
-            btn.innerText = 'Deleting...';
+            btn.innerText = 'Excluindo...';
         }
 
         try {
@@ -259,20 +258,20 @@ async function deleteInstance(id) {
                 const card = document.getElementById(`instance-${id}`);
                 if (card) card.remove();
                 hideDetailsModal();
-                showToast("Instance deleted successfully.", "success");
+                showToast('Instância excluída com sucesso.', 'success');
                 
                 if (document.querySelectorAll('.instance-card').length === 0) {
                     setTimeout(() => window.location.reload(), 1500);
                 }
             } else {
-                showToast("Failed to delete the instance.", "error");
+                showToast('Falha ao excluir a instância.', 'error');
             }
         } catch (e) {
-            showToast("Network error while deleting instance.", "error");
+            showToast('Erro de rede ao excluir instância.', 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = 'Delete Instance';
+                btn.innerText = 'Excluir Instância';
             }
         }
     });
@@ -294,7 +293,7 @@ async function renameInstance() {
     const btn = document.getElementById('btn-save-name');
     
     btn.disabled = true;
-    btn.innerText = 'Saving...';
+    btn.innerText = 'Salvando...';
 
     const formData = new FormData();
     formData.append('new_name', newName);
@@ -315,12 +314,12 @@ async function renameInstance() {
             }
 
             hideDetailsModal();
-            showToast("Instance renamed successfully.", "success");
+            showToast('Nome atualizado com sucesso.', 'success');
         } else {
-            showToast(data.error || "Failed to rename instance.", "error");
+            showToast(data.error || 'Falha ao renomear instância.', 'error');
         }
-    } catch (e) { showToast("Network error while saving name.", "error"); }
-    finally { btn.disabled = false; btn.innerText = 'Update Name'; }
+    } catch (e) { showToast('Erro de rede ao salvar nome.', 'error'); }
+    finally { btn.disabled = false; btn.innerText = 'Salvar Nome'; }
 }
 
 async function deleteInstanceFromModal() {
@@ -329,11 +328,11 @@ async function deleteInstanceFromModal() {
 }
 
 async function disconnectInstance(id) {
-    showConfirm("Are you sure you want to disconnect this WhatsApp session? It will remain in the database but require a new QR code to connect.", async () => {
+    showConfirm('Tem certeza que deseja desconectar esta sessão WhatsApp? Ela permanecerá no banco de dados, mas precisará de um novo QR Code para conectar.', async () => {
         const btn = document.getElementById(`btn-disconnect-${id}`);
         if (btn) {
             btn.disabled = true;
-            btn.innerText = 'Disconnecting...';
+            btn.innerText = 'Desconectando...';
         }
 
         try {
@@ -344,16 +343,16 @@ async function disconnectInstance(id) {
                 // Evolution API takes a few seconds to update state internally. 
                 // Force UI to Disconnected immediately for better user experience.
                 updateInstanceUI(id, { connected: false, status: 'disconnected' });
-                showToast("Session disconnected successfully.", "success");
+                showToast('Sessão desconectada com sucesso.', 'success');
             } else {
-                showToast("Failed to disconnect session.", "error");
+                showToast('Falha ao desconectar sessão.', 'error');
             }
         } catch (e) {
-            showToast("Network error while disconnecting.", "error");
+            showToast('Erro de rede ao desconectar.', 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = 'Disconnect Session';
+                btn.innerText = 'Desconectar Sessão';
             }
         }
     });
@@ -366,7 +365,7 @@ async function createInstance() {
     const name = document.getElementById('new-inst-name').value;
     const btn = document.getElementById('btn-create-inst');
     btn.disabled = true;
-    btn.innerText = 'Creating...';
+    btn.innerText = 'Criando...';
 
     const formData = new FormData();
     formData.append('name', name);
@@ -375,13 +374,13 @@ async function createInstance() {
         const res = await fetch('/whatsapp/instance/new', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
-            showToast("Instance created!", "success");
+            showToast('Instância criada com sucesso!', 'success');
             setTimeout(() => window.location.reload(), 1000);
         } else {
-            showToast(data.error || "Failed to create instance.", "error");
+            showToast(data.error || 'Falha ao criar instância.', 'error');
         }
-    } catch (e) { showToast("Network error while creating.", "error"); }
-    finally { btn.disabled = false; btn.innerText = 'Provision Account'; }
+    } catch (e) { showToast('Erro de rede ao criar instância.', 'error'); }
+    finally { btn.disabled = false; btn.innerText = 'Provisionar Conta'; }
 }
 
 async function fetchGroups(id) {
@@ -391,13 +390,13 @@ async function fetchGroups(id) {
     
     modal.style.display = 'flex';
     container.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner"></div></div>';
-    title.innerText = "Fetching Targets...";
+    title.innerText = 'Buscando Destinos...';
 
     try {
         const res = await fetch(`/whatsapp/groups/${id}`);
         const data = await res.json();
         if (data.success && data.groups) {
-            title.innerText = "Available Targets";
+            title.innerText = 'Destinos Disponíveis';
             container.innerHTML = '';
             data.groups.forEach(g => {
                 const item = document.createElement('div');
@@ -411,7 +410,7 @@ async function fetchGroups(id) {
                 container.appendChild(item);
             });
         }
-    } catch (e) { container.innerHTML = '<p style="color: #ef4444;">Error fetching groups.</p>'; }
+    } catch (e) { container.innerHTML = '<p style="color: #ef4444;">Erro ao buscar grupos.</p>'; }
 }
 
 function hideTargetsModal() { document.getElementById('targets-modal').style.display = 'none'; }

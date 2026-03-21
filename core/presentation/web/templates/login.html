@@ -1,25 +1,25 @@
 {% extends "base.html" %}
 
-{% block page_title %}Sign In{% endblock %}
-{% block page_subtitle %}Access your autonomous sales dashboard.{% endblock %}
+{% block page_title %}Entrar{% endblock %}
+{% block page_subtitle %}Acesse seu painel de vendas automatizadas.{% endblock %}
 
 {% block content %}
 <div class="animate-fade-in" style="max-width: 450px; margin: 4rem auto;">
     <div class="card" style="padding: 2.5rem; border: 1px solid var(--border); background: var(--bg-card); box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
         <div style="text-align: center; margin-bottom: 2.5rem;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
-            <h2 style="font-size: 1.5rem; color: #fff;">Welcome Back</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Sign in to manage your AI sales agents.</p>
+            <h2 style="font-size: 1.5rem; color: #fff;">Bem-vindo de volta</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Acesse seus agentes de vendas com IA.</p>
         </div>
 
         <form action="/login" method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
             <div class="form-group">
-                <label class="form-label">Email Address</label>
-                <input type="email" name="username" class="form-input" placeholder="name@company.com" required style="padding: 0.75rem 1rem;">
+                <label class="form-label">E-mail</label>
+                <input type="email" name="username" class="form-input" placeholder="nome@empresa.com" required style="padding: 0.75rem 1rem;">
             </div>
 
             <div class="form-group">
-                <label class="form-label">Password</label>
+                <label class="form-label">Senha</label>
                 <input type="password" name="password" class="form-input" placeholder="••••••••" required style="padding: 0.75rem 1rem;">
             </div>
 
@@ -30,18 +30,17 @@
             {% endif %}
 
             <button type="submit" class="btn btn-primary" style="padding: 0.85rem; font-weight: 700; font-size: 1rem; margin-top: 0.5rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                Sign In to Dashboard
+                Entrar no Painel
             </button>
         </form>
 
         <div style="margin-top: 2rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
-            Don't have an account? <a href="/register" style="color: var(--primary); font-weight: 600; text-decoration: none;">Create one now</a>
+            Não tem uma conta? <a href="/register" style="color: var(--primary); font-weight: 600; text-decoration: none;">Criar agora</a>
         </div>
     </div>
 </div>
 
 <style>
-/* Hide sidebar on login page */
 .sidebar { display: none !important; }
 .main-layout { margin-left: 0 !important; width: 100% !important; }
 .top-bar { display: none !important; }
