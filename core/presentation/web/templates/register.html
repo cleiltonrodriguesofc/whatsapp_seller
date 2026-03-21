@@ -1,38 +1,38 @@
 {% extends "base.html" %}
 
-{% block page_title %}Start Your Free Trial{% endblock %}
-{% block page_subtitle %}Join the next generation of autonomous commerce.{% endblock %}
+{% block page_title %}Criar Conta Gratuita{% endblock %}
+{% block page_subtitle %}Comece a automatizar suas vendas em minutos.{% endblock %}
 
 {% block content %}
 <div class="animate-fade-in" style="max-width: 500px; margin: 3rem auto;">
     <div class="card" style="padding: 2.5rem; border: 1px solid var(--border); background: var(--bg-card); box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
         <div style="text-align: center; margin-bottom: 2.5rem;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
-            <h2 style="font-size: 1.5rem; color: #fff;">Create Your Account</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Start automating your sales in minutes.</p>
+            <h2 style="font-size: 1.5rem; color: #fff;">Criar sua Conta</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Automatize suas vendas em minutos.</p>
         </div>
 
         <form action="/register" method="post" style="display: flex; flex-direction: column; gap: 1.25rem;">
             <div class="form-group">
-                <label class="form-label">Business / Display Name</label>
-                <input type="text" name="business_name" class="form-input" placeholder="e.g., Star Electronics" required style="padding: 0.75rem 1rem;">
-                <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.4rem;">This will be used to create your WhatsApp instance.</p>
+                <label class="form-label">Nome do Negócio / Apelido</label>
+                <input type="text" name="business_name" class="form-input" placeholder="Ex: Eletrônicos Star" required style="padding: 0.75rem 1rem;">
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.4rem;">Será usado para identificar sua instância WhatsApp.</p>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Email Address</label>
-                <input type="email" name="email" class="form-input" placeholder="name@company.com" required style="padding: 0.75rem 1rem;">
+                <label class="form-label">E-mail</label>
+                <input type="email" name="email" class="form-input" placeholder="nome@empresa.com" required style="padding: 0.75rem 1rem;">
             </div>
 
             <div class="form-group">
-                <label class="form-label">Password</label>
-                <input type="password" name="password" class="form-input" placeholder="Minimum 8 characters" required style="padding: 0.75rem 1rem;">
+                <label class="form-label">Senha</label>
+                <input type="password" name="password" class="form-input" placeholder="Mínimo 8 caracteres" required style="padding: 0.75rem 1rem;">
             </div>
 
             <div style="display: flex; align-items: flex-start; gap: 0.75rem; margin: 0.5rem 0;">
                 <input type="checkbox" id="terms" required style="margin-top: 0.25rem; width: 16px; height: 16px; accent-color: var(--primary);">
                 <label for="terms" style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">
-                    I agree to the <a href="#" style="color: var(--primary);">Terms of Service</a> and allow the system to provision a temporary WhatsApp instance.
+                    Concordo com os <a href="#" style="color: var(--primary);">Termos de Uso</a> e permito o provisionamento da instância WhatsApp.
                 </label>
             </div>
 
@@ -43,18 +43,17 @@
             {% endif %}
 
             <button type="submit" class="btn btn-primary" style="padding: 0.85rem; font-weight: 700; font-size: 1rem; margin-top: 0.5rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                Create My Account & Provision Instance
+                Criar Minha Conta e Ativar Instância
             </button>
         </form>
 
         <div style="margin-top: 2rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
-            Already have an account? <a href="/login" style="color: var(--primary); font-weight: 600; text-decoration: none;">Sign in here</a>
+            Já tem uma conta? <a href="/login" style="color: var(--primary); font-weight: 600; text-decoration: none;">Entrar aqui</a>
         </div>
     </div>
 </div>
 
 <style>
-/* Hide sidebar on register page */
 .sidebar { display: none !important; }
 .main-layout { margin-left: 0 !important; width: 100% !important; }
 .top-bar { display: none !important; }

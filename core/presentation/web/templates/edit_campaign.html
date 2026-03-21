@@ -1,20 +1,23 @@
 {% extends "base.html" %}
 
-{% block page_title %}Edit Marketing Campaign{% endblock %}
-{% block page_subtitle %}Modify your scheduled broadcast or change the target settings.{% endblock %}
+{% block page_title %}Editar Campanha{% endblock %}
+{% block page_subtitle %}Modifique o agendamento, os destinos ou a mensagem da campanha.{% endblock %}
 
 {% block content %}
-<div class="card animate-fade-in" style="max-width: 800px; margin: 0 auto;">
-    <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Campaign Details</h2>
+<div class="card animate-fade-in" style="max-width: 820px; margin: 0 auto;">
+    <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Detalhes da Campanha</h2>
     <form action="/campaigns/edit/{{ campaign.id }}" method="post">
+
+        <!-- Título -->
         <div class="form-group">
-            <label class="form-label">Campaign Title</label>
-            <input type="text" name="title" class="form-input" value="{{ campaign.title }}" placeholder="e.g., Weekly Electronics Sale" required>
+            <label class="form-label">Título da Campanha</label>
+            <input type="text" name="title" class="form-input" value="{{ campaign.title }}" placeholder="Ex: Promoção Semanal de Eletrônicos" required>
         </div>
 
+        <!-- Instância + Produto -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div class="form-group">
-                <label class="form-label">WhatsApp Sending Account</label>
+                <label class="form-label">Conta de Envio</label>
                 <select name="instance_id" class="form-select" required>
                     {% for inst in instances %}
                     <option value="{{ inst.id }}" {{ 'selected' if inst.id == campaign.instance_id else '' }}>{{ inst.name }}</option>
@@ -22,7 +25,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Product Asset</label>
+                <label class="form-label">Produto</label>
                 <select name="product_id" class="form-select" required>
                     {% for product in products %}
                     <option value="{{ product.id }}" {{ 'selected' if product.id == campaign.product.id else '' }}>{{ product.name }} (R$ {{ product.price }})</option>
@@ -31,134 +34,305 @@
             </div>
         </div>
 
+        <!-- Agendamento -->
         <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <label class="form-label" style="margin-bottom: 0;">Scheduling Type</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <label class="form-label" style="margin-bottom: 0;">Tipo de Agendamento</label>
                 <div style="display: flex; gap: 0.5rem; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
-                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn {{ 'btn-primary' if not campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Once</button>
-                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn {{ 'btn-primary' if campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">Recurring (Alarm)</button>
+                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn {{ 'btn-primary' if not campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">Uma vez</button>
+                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn {{ 'btn-primary' if campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⏰ Alarmado</button>
                 </div>
             </div>
-            
+
             <input type="hidden" name="is_recurring" id="is_recurring" value="{{ 'true' if campaign.is_recurring else 'false' }}">
 
-            <!-- One-off Schedule -->
-            <div id="section-once" style="{{ 'display: block;' if not campaign.is_recurring else 'display: none;' }}">
-                <label class="form-label">Send At</label>
-                <input type="datetime-local" name="scheduled_at" class="form-input" value="{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign.scheduled_at else '' }}">
+            <!-- Pontual -->
+            <div id="section-once" style="{{ 'display:block;' if not campaign.is_recurring else 'display:none;' }}">
+                <label class="form-label">Data e Hora do Envio <span style="font-size:0.75rem;color:var(--text-muted);">(Horário de Brasília — BRT)</span></label>
+                <input type="datetime-local" name="scheduled_at" class="form-input" step="60"
+                    value="{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign.scheduled_at else '' }}">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Escolha a data e hora exata para um único disparo.</p>
             </div>
 
-            <!-- Recurring Schedule -->
-            <div id="section-recurring" style="{{ 'display: block;' if campaign.is_recurring else 'display: none;' }}">
-                <label class="form-label">Send Times (Multiple comma-separated, e.g., 08:00, 14:00)</label>
-                <input type="text" name="send_time" class="form-input" value="{{ campaign.send_time or '' }}" placeholder="08:00, 14:00, 20:00">
-                
-                <label class="form-label" style="margin-top: 1rem;">Repeat on Days</label>
+            <!-- Recorrente com Relógio -->
+            <div id="section-recurring" style="{{ 'display:block;' if campaign.is_recurring else 'display:none;' }}">
+                <label class="form-label">Horários de Envio</label>
+
+                <!-- Clock Picker -->
+                <div class="clock-picker">
+                    <div class="clock-display" id="clock-display">08:00</div>
+                    <div class="clock-controls">
+                        <div class="clock-col">
+                            <button type="button" class="clock-btn" onclick="adjustTime('h', 1)">▲</button>
+                            <div class="clock-unit" id="disp-h">08</div>
+                            <button type="button" class="clock-btn" onclick="adjustTime('h', -1)">▼</button>
+                            <div class="clock-label">horas</div>
+                        </div>
+                        <div class="clock-sep">:</div>
+                        <div class="clock-col">
+                            <button type="button" class="clock-btn" onclick="adjustTime('m', 1)">▲</button>
+                            <div class="clock-unit" id="disp-m">00</div>
+                            <button type="button" class="clock-btn" onclick="adjustTime('m', -1)">▼</button>
+                            <div class="clock-label">minutos</div>
+                        </div>
+                        <button type="button" class="btn btn-primary" style="align-self: center; padding: 0.6rem 1.25rem; font-size: 0.85rem; border-radius: 10px; margin-left: 1.5rem;" onclick="addTimeChip()">+ Adicionar</button>
+                    </div>
+                    <div id="time-chips" class="time-chips"></div>
+                    <!-- hidden field populated by JS, pre-filled from saved value -->
+                    <input type="hidden" name="send_time" id="send_time_hidden" value="{{ campaign.send_time or '' }}">
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem;">Formato 24h (BRT). Adicione múltiplos horários para disparos ao longo do dia.</p>
+                </div>
+
+                <label class="form-label" style="margin-top: 1.5rem;">Repetir nos dias</label>
+                {% set saved_days = campaign.recurrence_days.split(',') if campaign.recurrence_days else [] %}
                 <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;">
-                    {% set days = campaign.recurrence_days.split(',') if campaign.recurrence_days else [] %}
-                    {% for day in ['sun','mon','tue','wed','thu','fri','sat'] %}
-                    <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card);">
-                        <input type="checkbox" name="recurrence_days" value="{{ day }}" style="width: 16px; height: 16px;" {{ 'checked' if day in days else '' }}>
-                        <span style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">{{ day }}</span>
+                    {% for day, label in [('sun','Dom'),('mon','Seg'),('tue','Ter'),('wed','Qua'),('thu','Qui'),('fri','Sex'),('sat','Sáb')] %}
+                    <label class="day-chip">
+                        <input type="checkbox" name="recurrence_days" value="{{ day }}" style="width: 16px; height: 16px; accent-color: var(--primary);" {{ 'checked' if day in saved_days else '' }}>
+                        <span>{{ label }}</span>
                     </label>
                     {% endfor %}
                 </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">Selecione os dias em que a campanha se repetirá automaticamente.</p>
             </div>
         </div>
 
+        <!-- Destinos: Abas Grupos / Contatos -->
         <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
-                <label class="form-label" style="margin-bottom: 0;">Target Channels</label>
-                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">🔄 Refresh List</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <label class="form-label" style="margin-bottom: 0;">Destinos</label>
+                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Lista</button>
             </div>
-            <div id="targets-list" style="max-height: 250px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; display: grid; gap: 0.5rem;">
-                <!-- We'll populate this with JS based on the selected instance -->
-                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Loading targets for sending account...</p>
+
+            <div class="target-tabs">
+                <button type="button" class="tab-btn active" id="tab-groups" onclick="switchTab('groups')">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
+                <button type="button" class="tab-btn" id="tab-contacts" onclick="switchTab('contacts')">👤 Contatos <span class="tab-count" id="count-contacts">–</span></button>
+            </div>
+
+            <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
+
+            <div id="panel-groups" class="target-panel">
+                <p style="text-align:center; color:var(--text-muted); padding:1rem;">Carregando destinos...</p>
+            </div>
+            <div id="panel-contacts" class="target-panel" style="display:none;">
+                <p style="text-align:center; color:var(--text-muted); padding:1rem;">Carregando destinos...</p>
             </div>
         </div>
 
+        <!-- Mensagem -->
         <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
-                <label class="form-label" style="margin-bottom: 0;">Campaign Message</label>
-                <button type="button" onclick="improveMessageWithAI()" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; color: var(--primary);">✨ Improve with AI</button>
+                <label class="form-label" style="margin-bottom: 0;">Mensagem da Campanha</label>
+                <button type="button" onclick="improveMessageWithAI()" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; color: var(--primary); border: 1px solid var(--primary); border-radius: 6px;">✨ Melhorar com IA</button>
             </div>
             <textarea name="custom_message" id="custom_message" class="form-input" rows="6">{{ campaign.custom_message }}</textarea>
         </div>
 
         <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <a href="/" class="btn btn-ghost" style="flex: 1; text-align: center;">Cancel</a>
-            <button type="submit" class="btn btn-primary" style="flex: 2;">Update Campaign</button>
+            <a href="/" class="btn btn-ghost" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center;">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
         </div>
     </form>
 </div>
 
-<script>
-function setScheduleType(type) {
-    const sectionOnce = document.getElementById('section-once');
-    const sectionRecurring = document.getElementById('section-recurring');
-    const btnOnce = document.getElementById('btn-once');
-    const btnRecurring = document.getElementById('btn-recurring');
-    const isRecurring = document.getElementById('is_recurring');
+<style>
+.clock-picker {
+    background: rgba(99,102,241,0.05);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.clock-display {
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    margin-bottom: 1rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.clock-controls { display: flex; align-items: flex-start; justify-content: center; gap: 0.5rem; }
+.clock-col { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+.clock-unit { font-size: 2rem; font-weight: 800; color: white; min-width: 3rem; text-align: center; font-variant-numeric: tabular-nums; }
+.clock-btn { background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: white; width: 44px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; }
+.clock-btn:hover { background: rgba(99,102,241,0.25); border-color: var(--primary); }
+.clock-sep { font-size: 2.5rem; font-weight: 900; color: var(--text-muted); margin-top: 1.25rem; line-height: 1; }
+.clock-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.time-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; min-height: 1rem; }
+.time-chip { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #c7d2fe; padding: 0.3rem 0.75rem; border-radius: 100px; font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.time-chip button { background: none; border: none; color: #c7d2fe; cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; transition: color 0.2s; }
+.time-chip button:hover { color: #ef4444; }
+.target-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); padding: 0.6rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-btn:hover { color: white; }
+.tab-count { background: rgba(255,255,255,0.08); border-radius: 100px; padding: 1px 7px; font-size: 0.7rem; font-weight: 700; }
+.tab-btn.active .tab-count { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+.target-panel { max-height: 280px; overflow-y: auto; background: var(--bg-main); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; padding: 0.5rem; display: grid; gap: 0.35rem; }
+.target-item { display: flex; align-items: center; gap: 1rem; padding: 0.65rem 0.75rem; border-radius: 8px; cursor: pointer; border: 1px solid transparent; background: rgba(255,255,255,0.02); transition: all 0.15s; }
+.target-item:hover { border-color: var(--primary); background: rgba(99,102,241,0.05); }
+.day-chip { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); transition: all 0.15s; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+.day-chip:hover { border-color: var(--primary); background: rgba(99,102,241,0.1); }
+</style>
 
+<script>
+// pre-load saved times from campaign
+const savedTimes = "{{ campaign.send_time or '' }}";
+const savedTargets = {{ campaign.target_groups | tojson if campaign.target_groups else '[]' }};
+
+let clockH = 8, clockM = 0;
+const timeSet = new Set(savedTimes ? savedTimes.split(',').map(t => t.trim()).filter(Boolean) : []);
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function renderClock() {
+    const str = `${pad(clockH)}:${pad(clockM)}`;
+    document.getElementById('clock-display').textContent = str;
+    document.getElementById('disp-h').textContent = pad(clockH);
+    document.getElementById('disp-m').textContent = pad(clockM);
+}
+
+function adjustTime(part, delta) {
+    if (part === 'h') clockH = (clockH + delta + 24) % 24;
+    else clockM = (clockM + delta * 5 + 60) % 60;
+    renderClock();
+}
+
+function addTimeChip() {
+    const t = `${pad(clockH)}:${pad(clockM)}`;
+    if (timeSet.has(t)) return;
+    timeSet.add(t);
+    renderChips();
+}
+
+function removeChip(t) { timeSet.delete(t); renderChips(); }
+
+function renderChips() {
+    const container = document.getElementById('time-chips');
+    container.innerHTML = '';
+    [...timeSet].sort().forEach(t => {
+        const chip = document.createElement('div');
+        chip.className = 'time-chip';
+        chip.innerHTML = `${t} <button type="button" onclick="removeChip('${t}')" title="Remover">✕</button>`;
+        container.appendChild(chip);
+    });
+    document.getElementById('send_time_hidden').value = [...timeSet].sort().join(', ');
+}
+
+renderClock();
+renderChips(); // render pre-saved times
+
+function setScheduleType(type) {
+    const once = document.getElementById('section-once');
+    const rec  = document.getElementById('section-recurring');
+    const btnO = document.getElementById('btn-once');
+    const btnR = document.getElementById('btn-recurring');
+    const hid  = document.getElementById('is_recurring');
     if (type === 'once') {
-        sectionOnce.style.display = 'block';
-        sectionRecurring.style.display = 'none';
-        btnOnce.classList.add('btn-primary');
-        btnOnce.classList.remove('btn-ghost');
-        btnRecurring.classList.remove('btn-primary');
-        btnRecurring.classList.add('btn-ghost');
-        isRecurring.value = 'false';
+        once.style.display = 'block'; rec.style.display = 'none';
+        btnO.className = btnO.className.replace('btn-ghost','btn-primary');
+        btnR.className = btnR.className.replace('btn-primary','btn-ghost');
+        hid.value = 'false';
     } else {
-        sectionOnce.style.display = 'none';
-        sectionRecurring.style.display = 'block';
-        btnOnce.classList.remove('btn-primary');
-        btnOnce.classList.add('btn-ghost');
-        btnRecurring.classList.add('btn-primary');
-        btnRecurring.classList.remove('btn-ghost');
-        isRecurring.value = 'true';
+        once.style.display = 'none'; rec.style.display = 'block';
+        btnR.className = btnR.className.replace('btn-ghost','btn-primary');
+        btnO.className = btnO.className.replace('btn-primary','btn-ghost');
+        hid.value = 'true';
     }
+}
+
+let activeTab = 'groups';
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('panel-groups').style.display  = tab === 'groups'   ? 'grid' : 'none';
+    document.getElementById('panel-contacts').style.display = tab === 'contacts' ? 'grid' : 'none';
+    document.getElementById('tab-groups').classList.toggle('active', tab === 'groups');
+    document.getElementById('tab-contacts').classList.toggle('active', tab === 'contacts');
+    document.getElementById('target-search').value = '';
+    filterTargets();
+}
+
+function filterTargets() {
+    const term = document.getElementById('target-search').value.toLowerCase();
+    const panel = document.getElementById(activeTab === 'groups' ? 'panel-groups' : 'panel-contacts');
+    panel.querySelectorAll('.target-item').forEach(item => {
+        const name = item.querySelector('.target-name')?.innerText.toLowerCase() || '';
+        item.style.display = name.includes(term) ? 'flex' : 'none';
+    });
+}
+
+function updateCounters() {
+    document.getElementById('count-groups').textContent   = document.querySelectorAll('#panel-groups .target-item').length;
+    document.getElementById('count-contacts').textContent = document.querySelectorAll('#panel-contacts .target-item').length;
 }
 
 async function refreshTargets() {
-    const list = document.getElementById('targets-list');
+    const btn = document.getElementById('btn-refresh-targets');
     const instanceId = document.querySelector('select[name="instance_id"]').value;
     if (!instanceId) return;
-    
-    list.innerHTML = '<div style="text-align: center; padding: 1rem;"><div class="spinner"></div></div>';
-    
+    const orig = btn.innerHTML;
+    btn.disabled = true; btn.innerText = '⌛ Buscando...';
+    const panelG = document.getElementById('panel-groups');
+    const panelC = document.getElementById('panel-contacts');
+    const spinner = '<div style="text-align:center;padding:1.5rem;"><div class="spinner"></div></div>';
+    panelG.innerHTML = spinner; panelC.innerHTML = spinner;
     try {
         const res = await fetch(`/whatsapp/groups/${instanceId}`);
         const data = await res.json();
-        
         if (data.success && data.groups) {
-            list.innerHTML = '';
-            // WhatsApp Status always available
-            const savedTgt = {{ campaign.target_groups | tojson if campaign.target_groups else '[]' }};
-            
-            const statusLabel = createTargetItem("status@broadcast", "📱 My WhatsApp Status", "Direct broadcast", savedTgt.includes("status@broadcast"));
-            list.appendChild(statusLabel);
-
+            panelG.innerHTML = ''; panelC.innerHTML = '';
+            panelG.appendChild(buildStatusItem());
             data.groups.forEach(g => {
-                const label = createTargetItem(g.id, g.subject, g.id.includes('@g.us') ? 'Group' : 'Contact', savedTgt.includes(g.id));
-                list.appendChild(label);
+                const isGroup = g.id.includes('@g.us');
+                const item = buildTargetItem(g.id, g.subject, isGroup, savedTargets.includes(g.id));
+                (isGroup ? panelG : panelC).appendChild(item);
             });
+            if (panelC.children.length === 0)
+                panelC.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:var(--text-muted);">Nenhum contato encontrado.</p></div>';
+        } else {
+            panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar destinos.</p></div>';
+            panelC.innerHTML = panelG.innerHTML;
         }
     } catch (e) {
-        list.innerHTML = '<p style="color: #ef4444; text-align: center;">Error loading targets.</p>';
+        panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Timeout.</p></div>';
+        panelC.innerHTML = panelG.innerHTML;
+    } finally {
+        btn.disabled = false; btn.innerHTML = orig;
+        updateCounters();
     }
 }
 
-function createTargetItem(id, name, type, checked) {
-    const label = document.createElement('label');
-    label.style = 'display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.02); border: 1px solid transparent;';
-    label.innerHTML = `
-        <input type="checkbox" name="groups" value="${id}" ${checked ? 'checked' : ''} style="width: 18px; height: 18px;">
-        <div style="flex-grow: 1;">
-            <div style="font-weight: 600; font-size: 0.95rem;">${name}</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${type}</div>
+function buildStatusItem() {
+    const lbl = document.createElement('label');
+    lbl.className = 'target-item status-target';
+    lbl.style = 'border:1px solid var(--primary);background:rgba(99,102,241,0.08);';
+    const checked = savedTargets.includes('status@broadcast') ? 'checked' : '';
+    lbl.innerHTML = `
+        <input type="checkbox" name="groups" value="status@broadcast" ${checked} style="width:18px;height:18px;accent-color:var(--primary);">
+        <div style="flex-grow:1;">
+            <div class="target-name" style="font-weight:700;color:var(--primary);">📱 Meu Status do WhatsApp</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">Disparo direto para todos os seus contatos</div>
+        </div>
+        <span style="font-size:0.7rem;background:var(--primary);color:white;padding:2px 8px;border-radius:4px;font-weight:800;">AUTO</span>
+    `;
+    return lbl;
+}
+
+function buildTargetItem(id, name, isGroup, checked) {
+    const lbl = document.createElement('label');
+    lbl.className = 'target-item';
+    lbl.innerHTML = `
+        <input type="checkbox" name="groups" value="${id}" ${checked ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--primary);">
+        <div style="flex-grow:1;">
+            <div class="target-name" style="font-weight:600;">${name}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);">${isGroup ? '👥 Grupo' : '👤 Contato'}</div>
         </div>
     `;
-    return label;
+    return lbl;
 }
 
 async function improveMessageWithAI() {
@@ -167,12 +341,11 @@ async function improveMessageWithAI() {
     const formData = new FormData();
     formData.append('text', textMsg);
     formData.append('product_id', productId);
-    
     try {
         const res = await fetch('/campaign/rewrite', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.improved_text) document.getElementById('custom_message').value = data.improved_text;
-    } catch (e) { alert("AI failed."); }
+    } catch (e) { alert('A IA falhou. Tente novamente.'); }
 }
 
 document.querySelector('select[name="instance_id"]').addEventListener('change', refreshTargets);
