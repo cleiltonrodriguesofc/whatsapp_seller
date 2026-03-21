@@ -1039,6 +1039,66 @@ async def delete_campaign(
     return RedirectResponse(url="/", status_code=303)
 
 
+# ── upload helper ──────────────────────────────────────────────────────────────
+
+_ALLOWED_IMAGE_TYPES = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif"}
+_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+async def _save_uploaded_image(image_file: UploadFile) -> str:
+    """
+    Validates that the uploaded file is a real image (using Pillow, not the
+    filename extension), enforces a size limit, and saves it to static/uploads.
+    Returns the public URL path or raises HTTPException on failure.
+    """
+    from PIL import Image
+    import io
+
+    raw = await image_file.read()
+
+    # enforce size limit before touching disk
+    if len(raw) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Image too large. Maximum allowed size is {_MAX_UPLOAD_BYTES // (1024*1024)} MB.",
+        )
+
+    # validate real mime type via Pillow — this catches disguised files
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.verify()  # raises if not a valid image
+    except Exception:
+        raise HTTPException(
+            status_code=415,
+            detail="Invalid image file. Only JPEG, PNG, WEBP and GIF are accepted.",
+        )
+
+    # re-open (verify() closes the file pointer) to get the real format
+    img = Image.open(io.BytesIO(raw))
+    fmt = img.format  # e.g. "JPEG", "PNG"
+    if fmt not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported image format '{fmt}'. Allowed: {', '.join(_ALLOWED_IMAGE_TYPES)}.",
+        )
+
+    ext = _ALLOWED_IMAGE_TYPES[fmt]
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    upload_dir = os.path.join("core", "presentation", "web", "static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    upload_path = os.path.join(upload_dir, unique_filename)
+
+    # convert to RGB before saving (handles RGBA PNGs, palettes, etc.)
+    img = img.convert("RGB") if fmt == "JPEG" else img
+    img.save(upload_path)
+
+    logger.info("uploaded image saved: %s (%d bytes, format=%s)", unique_filename, len(raw), fmt)
+    return f"/static/uploads/{unique_filename}"
+
+
+# ── product endpoints ──────────────────────────────────────────────────────────
+
+
 @app.post("/products/new")
 async def create_product(
     name: str = Form(...),
@@ -1053,25 +1113,10 @@ async def create_product(
 ):
     product_repo = SQLProductRepository(db)
 
-    # Handle image file upload
+    # handle image file upload with MIME validation
     final_image_url = image_url
     if image_file and image_file.filename:
-        # Create unique filename
-        file_ext = os.path.splitext(image_file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        upload_path = os.path.join(
-            "core/presentation/web/static/uploads", unique_filename
-        )
-
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-
-        # Save file
-        with open(upload_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-
-        # URL for the saved file
-        final_image_url = f"/static/uploads/{unique_filename}"
+        final_image_url = await _save_uploaded_image(image_file)
 
     product = Product(
         name=name,
@@ -1121,18 +1166,10 @@ async def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Handle image file upload
+    # handle image file upload with MIME validation
     final_image_url = image_url or product.image_url
     if image_file and image_file.filename:
-        file_ext = os.path.splitext(image_file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        upload_path = os.path.join(
-            "core/presentation/web/static/uploads", unique_filename
-        )
-        os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-        with open(upload_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-        final_image_url = f"/static/uploads/{unique_filename}"
+        final_image_url = await _save_uploaded_image(image_file)
 
     # Update product entity fields
     product.name = name
