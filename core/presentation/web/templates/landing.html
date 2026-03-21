@@ -9,134 +9,93 @@
         :root {
             --glass: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.08);
+            --p-grad: linear-gradient(135deg, var(--primary), var(--secondary));
         }
         body {
             display: block;
-            background: radial-gradient(circle at top right, #1a1b2e 0%, #0a0b10 100%);
+            background: #0a0b10;
             overflow-x: hidden;
-        }
-        .hero-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 8rem 2rem 4rem;
-            min-height: 90vh;
-            position: relative;
-        }
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 400px;
-            background: var(--primary);
-            filter: blur(150px);
-            opacity: 0.15;
-            z-index: -1;
-        }
-        .hero-title {
-            font-size: 4.5rem;
-            font-weight: 800;
-            letter-spacing: -2px;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            background: linear-gradient(to bottom, #fff 40%, rgba(255,255,255,0.7));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .hero-subtitle {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-            max-width: 700px;
-            margin-bottom: 3rem;
-            line-height: 1.6;
+            scroll-behavior: smooth;
         }
         .nav-landing {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 1.5rem 4rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(10, 11, 16, 0.7);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            z-index: 1000;
+            position: fixed; top: 0; left: 0; right: 0; padding: 1.25rem 4rem;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(10, 11, 16, 0.8); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border); z-index: 1000;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+        
+        /* Hero */
+        .hero {
+            padding: 10rem 0 6rem; text-align: center; position: relative;
+        }
+        .hero::after {
+            content: ''; position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 300px; background: var(--primary); filter: blur(140px); opacity: 0.1; z-index: -1;
+        }
+        .hero-title {
+            font-size: 5rem; font-weight: 850; letter-spacing: -3px; line-height: 1; margin-bottom: 1.5rem;
+            background: linear-gradient(to bottom, #fff 60%, rgba(255,255,255,0.5));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero-subtitle {
+            font-size: 1.25rem; color: var(--text-secondary); max-width: 750px; margin: 0 auto 3.5rem; line-height: 1.6;
         }
         .hero-mockup {
-            width: 100%;
-            max-width: 1100px;
-            border-radius: 20px;
-            border: 1px solid var(--border-hover);
-            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.8);
-            margin-top: 2rem;
-            transition: var(--transition);
-            background: var(--bg-card);
+            width: 100%; border-radius: 24px; border: 1px solid var(--border-hover);
+            box-shadow: 0 50px 100px -20px rgba(0,0,0,0.9); margin-top: 4rem;
+            background: var(--bg-card); transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .hero-mockup:hover {
-            transform: scale(1.02);
-            border-color: var(--primary);
-        }
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-            padding: 6rem 8rem;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .feature-item {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            padding: 2.5rem;
-            border-radius: 24px;
-            text-align: left;
-            transition: var(--transition);
-        }
-        .feature-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--primary);
-            transform: translateY(-5px);
-        }
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1.5rem;
-            display: block;
-        }
-        .feature-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-        }
-        .feature-desc {
-            color: var(--text-secondary);
-            line-height: 1.6;
-            font-size: 0.95rem;
-        }
-        .floating-cta {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            padding: 1rem 2.5rem;
-            border-radius: 100px;
-            color: white;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1.1rem;
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
-            transition: var(--transition);
-        }
-        .floating-cta:hover {
-            transform: scale(1.05);
-            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.6);
-        }
-        @media (max-width: 1024px) {
+        .hero-mockup:hover { transform: scale(1.01) translateY(-10px); border-color: var(--primary); }
+
+        /* Trusted By */
+        .trusted-by { padding: 4rem 0; text-align: center; border-bottom: 1px solid var(--border); }
+        .trusted-text { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 2rem; }
+        .logo-cloud { display: flex; justify-content: center; gap: 4rem; opacity: 0.5; filter: grayscale(1); }
+
+        /* Features */
+        .section-header { text-align: center; padding: 8rem 0 4rem; }
+        .section-tag { color: var(--primary); font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 1rem; display: block; }
+        .section-title { font-size: 3rem; font-weight: 800; letter-spacing: -1.5px; }
+        
+        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin: 4rem 0; }
+        .feat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 3rem 2rem; border-radius: 32px; transition: var(--transition); }
+        .feat-card:hover { background: rgba(255,255,255,0.05); border-color: var(--primary); }
+        .feat-icon { font-size: 2.5rem; margin-bottom: 1.5rem; display: block; }
+
+        /* Success Stories */
+        .testimonials { background: #0d0e14; padding: 8rem 0; }
+        .testi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .testi-card { background: var(--bg-card); padding: 2.5rem; border-radius: 24px; border: 1px solid var(--border); }
+        .testi-text { font-style: italic; font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem; color: var(--text-primary); }
+        .testi-author { display: flex; align-items: center; gap: 1rem; }
+        .author-img { width: 44px; height: 44px; border-radius: 50%; background: var(--p-grad); display: flex; align-items: center; justify-content: center; font-weight: 800; }
+
+        /* Pricing */
+        .pricing { padding: 8rem 0; }
+        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 4rem; }
+        .price-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 3rem 2rem; border-radius: 32px; text-align: center; position: relative; }
+        .price-card.popular { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); transform: scale(1.05); }
+        .popular-badge { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: var(--p-grad); padding: 5px 15px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+        .price-val { font-size: 3.5rem; font-weight: 800; margin: 1.5rem 0; }
+        .price-val span { font-size: 1rem; color: var(--text-muted); }
+        .price-list { list-style: none; text-align: left; margin: 2rem 0; }
+        .price-list li { margin: 1rem 0; display: flex; align-items: center; gap: 0.75rem; color: var(--text-secondary); }
+        .price-list li::before { content: '✓'; color: var(--primary); font-weight: 900; }
+
+        /* FAQ */
+        .faq { padding: 8rem 0; max-width: 800px; margin: 0 auto; }
+        .faq-item { margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+        .faq-q { font-size: 1.25rem; font-weight: 700; color: white; margin-bottom: 1rem; cursor: pointer; display: flex; justify-content: space-between; }
+        .faq-a { color: var(--text-secondary); line-height: 1.6; font-size: 1rem; }
+
+        /* Utils */
+        .btn-p { background: var(--p-grad); color: white; padding: 1rem 2.5rem; border-radius: 100px; text-decoration: none; font-weight: 700; transition: var(--transition); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); display: inline-block; }
+        .btn-p:hover { transform: scale(1.05); box-shadow: 0 20px 40px rgba(99, 102, 241, 0.6); }
+
+        @media (max-width: 900px) {
             .hero-title { font-size: 3rem; }
-            .features-grid { grid-template-columns: 1fr; padding: 4rem 2rem; }
+            .features-grid, .price-grid, .testi-grid { grid-template-columns: 1fr; }
             .nav-landing { padding: 1rem 2rem; }
         }
     </style>
@@ -147,58 +106,162 @@
             <span>🚀</span> WhatsApp <span>Seller</span>
         </div>
         <div style="display: flex; gap: 2rem; align-items: center;">
-            <a href="/login" style="color: var(--text-primary); text-decoration: none; font-weight: 600;">Sign In</a>
-            <a href="/register" class="floating-cta" style="padding: 0.7rem 1.5rem; font-size: 0.9rem;">Join Now</a>
+            <a href="/login" style="color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Sign In</a>
+            <a href="/register" class="btn-p" style="padding: 0.6rem 1.75rem; font-size: 0.85rem;">Get Started</a>
         </div>
     </nav>
 
-    <header class="hero-section">
-        <div class="animate-fade-in">
-            <h1 class="hero-title">Sell More.<br>Automate Smarter.</h1>
-            <p class="hero-subtitle">The most advanced WhatsApp marketing dashboard for professional sellers. Scale your outreach with AI-powered campaigns and human-like automation.</p>
-            <div style="display: flex; gap: 1.5rem; justify-content: center;">
-                <a href="/register" class="floating-cta">Get Started Free</a>
-                <a href="#features" class="btn btn-ghost" style="padding: 1rem 2rem; border-radius: 100px;">Explore Features</a>
+    <div class="container">
+        <header class="hero">
+            <h1 class="hero-title animate-fade-in">Supercharge your<br>WhatsApp Sales</h1>
+            <p class="hero-subtitle animate-fade-in" style="animation-delay: 0.1s;">The only professional-grade dashboard with AI-driven copy, built-in anti-ban protection, and high-performance automation. Scaling your business has never been this secure.</p>
+            <div style="display: flex; gap: 1.5rem; justify-content: center;" class="animate-fade-in" style="animation-delay: 0.2s;">
+                <a href="/register" class="btn-p">Start Free Forever</a>
+                <a href="#features" class="btn btn-ghost" style="border-radius: 100px; padding: 1rem 2.5rem;">Watch Demo</a>
             </div>
-        </div>
-        <img src="/static/dashboard_v3_mockup_1774045102162.png" alt="Dashboard Mockup" class="hero-mockup animate-fade-in" style="animation-delay: 0.2s;">
-    </header>
+            <img src="/static/dashboard_v3_mockup_1774045102162.png" alt="Dashboard Mockup" class="hero-mockup animate-fade-in" style="animation-delay: 0.4s;">
+        </header>
 
-    <section id="features" class="features-grid">
-        <div class="feature-item">
-            <span class="feature-icon">🛡️</span>
-            <h3 class="feature-title">Anti-Ban Engine</h3>
-            <p class="feature-desc">Dynamic Spintax support and randomized humanized delays between messages to keep your business records safe.</p>
-        </div>
-        <div class="feature-item">
-            <span class="feature-icon">🤖</span>
-            <h3 class="feature-title">AI Copywriter</h3>
-            <p class="feature-desc">Integrated GPT-4o support to rewrite and improve your sales pitches for maximum conversion rates.</p>
-        </div>
-        <div class="feature-item">
-            <span class="feature-icon">📅</span>
-            <h3 class="feature-title">Smart Scheduler</h3>
-            <p class="feature-desc">Set recurring "Alarm-style" campaigns. Automate your follow-ups and greetings with pinpoint precision.</p>
-        </div>
-        <div class="feature-item">
-            <span class="feature-icon">📱</span>
-            <h3 class="feature-title">Multi-Account</h3>
-            <p class="feature-desc">Control multiple WhatsApp instances from a single dashboard. Scale your sales team without limits.</p>
-        </div>
-        <div class="feature-item">
-            <span class="feature-icon">📊</span>
-            <h3 class="feature-title">Real-time Analytics</h3>
-            <p class="feature-desc">Monitor campaign performance, message status, and connection health with instant live updates.</p>
-        </div>
-        <div class="feature-item">
-            <span class="feature-icon">🔒</span>
-            <h3 class="feature-title">Enterpise Security</h3>
-            <p class="feature-desc">Bank-grade security with HSTS, CSP, and secure session management. Your data stays yours.</p>
+        <section class="trusted-by">
+            <p class="trusted-text">Powering 500+ Digital Businesses Worldwide</p>
+            <div class="logo-cloud">
+                <span style="font-size: 1.5rem; font-weight: 900; color: white;">CLUBE 1000</span>
+                <span style="font-size: 1.5rem; font-weight: 900; color: white;">ECOMM PRO</span>
+                <span style="font-size: 1.5rem; font-weight: 900; color: white;">AGENCY MAX</span>
+                <span style="font-size: 1.5rem; font-weight: 900; color: white;">TECH SELL</span>
+            </div>
+        </section>
+
+        <section id="features">
+            <div class="section-header">
+                <span class="section-tag">Core Capabilities</span>
+                <h2 class="section-title">Built for Serious Growth</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feat-card">
+                    <span class="feat-icon">🛡️</span>
+                    <h3 class="feat-title">Anti-Ban 2.0</h3>
+                    <p class="feat-desc">Each message is unique using Spintax. Combined with our human-jitter delay, your account stays off the radar.</p>
+                </div>
+                <div class="feat-card">
+                    <span class="feat-icon">🤖</span>
+                    <h3 class="feat-title">AI Content Copilot</h3>
+                    <p class="feat-desc">Never write a boring pitch again. Our integrated GPT-4 model rewrites your offers to convert 3x more.</p>
+                </div>
+                <div class="feat-card">
+                    <span class="feat-icon">📅</span>
+                    <h3 class="feat-title">Infinite Scheduler</h3>
+                    <p class="feat-desc">Setup recurring greetings, weekly offers, or monthly follow-ups. Set it once, sell forever on autopilot.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="testimonials">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Success Stories</span>
+                <h2 class="section-title">What our sellers say</h2>
+            </div>
+            <div class="testi-grid">
+                <div class="testi-card">
+                    <p class="testi-text">"Before Seller Pro, I used to lose 2 accounts a month to bans. Since switching, I've sent over 50,000 messages without a single flag."</p>
+                    <div class="testi-author">
+                        <div class="author-img">RL</div>
+                        <div>
+                            <div style="font-weight: 700;">Ricardo Lima</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">E-commerce Owner</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testi-card">
+                    <p class="testi-text">"The AI rewriter is pure magic. It took my dry sales pitch and turned it into an irresistible offer. My ROI increased by 45% in one week."</p>
+                    <div class="testi-author">
+                        <div class="author-img">AM</div>
+                        <div>
+                            <div style="font-weight: 700;">Ana Mendes</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Digital Agency Director</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
-    <footer style="padding: 4rem; text-align: center; border-top: 1px solid var(--border);">
-        <p style="color: var(--text-muted);">&copy; 2026 WhatsApp Seller Pro. All rights reserved.</p>
+    <div class="container">
+        <section id="pricing" class="pricing">
+            <div class="section-header">
+                <span class="section-tag">Simple Pricing</span>
+                <h2 class="section-title">Choose your power level</h2>
+            </div>
+            <div class="price-grid">
+                <div class="price-card">
+                    <h3>Starter</h3>
+                    <div class="price-val">Free</div>
+                    <ul class="price-list">
+                        <li>1 WhatsApp Instance</li>
+                        <li>100 Messages / day</li>
+                        <li>Manual Spintax</li>
+                        <li>Community Support</li>
+                    </ul>
+                    <a href="/register" class="btn btn-ghost" style="width: 100%; border-radius: 12px;">Get Started</a>
+                </div>
+                <div class="price-card popular">
+                    <div class="popular-badge">MOST POPULAR</div>
+                    <h3>Growth</h3>
+                    <div class="price-val">R$ 97<span>/mo</span></div>
+                    <ul class="price-list">
+                        <li>5 WhatsApp Instances</li>
+                        <li>Unlimited Messages</li>
+                        <li>AI Message Copilot</li>
+                        <li>Priority Support</li>
+                    </ul>
+                    <a href="/register" class="btn-p" style="width: 100%; border-radius: 12px; padding: 0.75rem;">Choose Growth</a>
+                </div>
+                <div class="price-card">
+                    <h3>Pro</h3>
+                    <div class="price-val">R$ 197<span>/mo</span></div>
+                    <ul class="price-list">
+                        <li>20 WhatsApp Instances</li>
+                        <li>All AI Features</li>
+                        <li>White-label Reports</li>
+                        <li>Dedicated Account Manager</li>
+                    </ul>
+                    <a href="/register" class="btn btn-ghost" style="width: 100%; border-radius: 12px;">Go Pro</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="faq">
+            <div class="section-header">
+                <h2 class="section-title">Frequently Asked questions</h2>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Will my account be banned? <span>+</span></div>
+                <p class="faq-a">Our system uses advanced human-mimicking behavior and unique message generation (Spintax) to minimize surface risk. However, we always recommend warming up new accounts gradually.</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Do I need my own Evolution API? <span>+</span></div>
+                <p class="faq-a">When deploying on Render, you can connect your own self-hosted Evolution API or use our integrated instances for maximum performance.</p>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q">Can I automate group messages? <span>+</span></div>
+                <p class="faq-a">Yes! Our platform supports both individual contacts and group broadcasts, including status updates.</p>
+            </div>
+        </section>
+    </div>
+
+    <footer style="padding: 6rem 0; border-top: 1px solid var(--border); text-align: center;">
+        <div class="sidebar-logo" style="justify-content: center;">
+            <span>🚀</span> WhatsApp <span>Seller</span>
+        </div>
+        <p style="color: var(--text-muted); margin-top: 1.5rem;">The world's most professional WhatsApp automation tool.</p>
+        <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 2rem;">
+            <a href="#" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;">Terms</a>
+            <a href="#" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;">Privacy</a>
+            <a href="#" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;">Documentation</a>
+        </div>
+        <p style="color: var(--text-muted); margin-top: 3rem; font-size: 0.8rem;">&copy; 2026 WhatsApp Seller Pro. All rights reserved.</p>
     </footer>
 </body>
 </html>
