@@ -11,40 +11,70 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
-      
-      - name: Run tests
-        run: |
-          pytest tests/unit
-          pytest tests/integration
 
-  build-docker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Docker image
-        run: docker build . -t whatsapp-sales-agent:${{ github.sha }}
+      - name: Run unit tests
+        run: pytest tests/unit --cov=core --cov-report=xml --cov-fail-under=50
+
+      - name: Run integration tests
+        run: pytest tests/integration
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install linting tools
-        run: pip install flake8 black
-      - name: Check formatting with Black
-        run: black --check core tests
-      - name: Lint with flake8
-        run: flake8 core tests --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: pip install ruff
+
+      - name: Lint and format check with Ruff
+        run: ruff check core tests
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install security tools
+        run: pip install bandit safety
+
+      - name: Run bandit (SAST)
+        # b109,b113 are about hardcoded bind-all address (uvicorn fine), b104 bind-all address
+        run: bandit -r core -ll --skip B104,B113
+
+      - name: Check dependencies for known vulnerabilities
+        run: safety check -r requirements.txt
+
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build . -t whatsapp-sales-agent:${{ github.sha }}
