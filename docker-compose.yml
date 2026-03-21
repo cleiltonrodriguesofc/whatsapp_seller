@@ -3,17 +3,40 @@ version: '3.8'
 services:
   app:
     build: .
-    volumes:
-      - .:/app
+    ports:
+      - "10000:10000"
     env_file:
       - .env
     environment:
-      - EVOLUTION_API_URL=${EVOLUTION_API_URL}
-      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
-      - EVOLUTION_INSTANCE=${EVOLUTION_INSTANCE}
+      - PORT=10000
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
 
-  # You can add the Evolution API service here if you want to run it together
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-whatsapp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-whatsapp_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-whatsapp_user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # optional: self-host evolution api locally for development
   # evolution-api:
   #   image: atendere/evolution-api:latest
-  #   ...
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+
+volumes:
+  postgres_data:
