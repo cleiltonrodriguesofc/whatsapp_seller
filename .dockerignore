@@ -1,0 +1,38 @@
+# python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# git
+.git
+.gitignore
+.github
+
+# environment & secrets (never bake into image)
+.env
+.env.*
+
+# local databases (sqlite dev files)
+*.db
+*.sqlite3
+
+# virtual environment
+venv
+ENV
+
+# dev tools
+.vscode
+.idea
+Dockerfile
+docker-compose.yml
+README.md
+
+# test artifacts
+.pytest_cache
+tests/
+conftest.py
+
+# temp / uploads (use volumes or object storage in production)
+tmp/
+create_response.json
