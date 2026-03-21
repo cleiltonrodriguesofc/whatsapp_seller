@@ -1,12 +1,21 @@
 import bcrypt
 import jwt
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 import os
 
+logger = logging.getLogger(__name__)
+
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-it-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
+
+if SECRET_KEY == "your-secret-key-change-it-in-prod":
+    logger.warning(
+        "JWT_SECRET_KEY is using the insecure default value. "
+        "Set JWT_SECRET_KEY environment variable before deploying to production."
+    )
 
 
 class AuthService:

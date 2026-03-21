@@ -1,7 +1,8 @@
 import os
 import sys
+import logging
 
-# Ensure core is in path
+# ensure core is in path
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 )
@@ -9,6 +10,9 @@ sys.path.insert(
 from core.infrastructure.database.session import SessionLocal
 from core.infrastructure.database.repositories import SQLProductRepository
 from core.domain.entities import Product
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def seed():
@@ -31,7 +35,7 @@ def seed():
     )
 
     product_repo.save(asus)
-    print(f"Seeded product: {asus.name}")
+    logger.info("seeded product: %s", asus.name)
     db.close()
 
 

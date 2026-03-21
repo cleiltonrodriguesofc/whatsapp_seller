@@ -1,7 +1,10 @@
 import os
+import logging
 from typing import Optional
 from openai import AsyncOpenAI
 from core.application.interfaces import AIService
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIService(AIService):
@@ -29,5 +32,6 @@ class OpenAIService(AIService):
                 temperature=0.7,
             )
             return response.choices[0].message.content or ""
-        except Exception as e:
-            return f"Error communicating with OpenAI (Async): {str(e)}"
+        except Exception as exc:
+            logger.error("openai api call failed: %s", exc, exc_info=True)
+            raise

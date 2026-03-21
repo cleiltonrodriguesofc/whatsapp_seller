@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from core.application.repositories import ProductRepository, CampaignRepository
@@ -16,6 +17,8 @@ from core.infrastructure.database.models import (
 )
 from sqlalchemy import select
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class SQLProductRepository(ProductRepository):
@@ -301,7 +304,8 @@ class SQLCampaignRepository(CampaignRepository):
         if model.target_config:
             try:
                 campaign_entity.target_config = json.loads(model.target_config)
-            except:
+            except (json.JSONDecodeError, TypeError) as exc:
+                logger.warning("failed to deserialise target_config for campaign %s: %s", model.id, exc)
                 campaign_entity.target_config = {}
 
         return campaign_entity
