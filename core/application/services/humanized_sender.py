@@ -5,7 +5,7 @@ from typing import List, Optional
 from core.infrastructure.notifications.evolution_whatsapp import (
     EvolutionWhatsAppService,
 )
-from core.domain.entities import Campaign
+
 
 logger = logging.getLogger(__name__)
 

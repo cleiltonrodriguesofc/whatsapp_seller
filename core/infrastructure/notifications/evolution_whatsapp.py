@@ -1,7 +1,6 @@
 import os
 import httpx
 import logging
-import asyncio
 import base64
 import uuid
 from typing import Optional

@@ -1,4 +1,3 @@
-import pytest
 from core.domain.entities import Product
 from core.infrastructure.database.repositories import SQLProductRepository, SQLUserRepository
 from core.infrastructure.database.models import UserModel

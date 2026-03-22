@@ -1,6 +1,10 @@
+import json
 import logging
+from datetime import datetime
 from typing import List, Optional
+
 from sqlalchemy.orm import Session
+
 from core.application.repositories import ProductRepository, CampaignRepository
 from core.domain.entities import (
     Product,
@@ -14,9 +18,8 @@ from core.infrastructure.database.models import (
     UserModel,
     InstanceModel,
     CampaignStatus as ModelCampaignStatus,
+    campaign_groups,
 )
-from sqlalchemy import select
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +118,6 @@ class SQLProductRepository(ProductRepository):
         )
 
 
-import json
 
 
 class SQLCampaignRepository(CampaignRepository):
@@ -349,7 +351,7 @@ class SQLTargetRepository:
         return (
             self.db.query(WhatsAppTargetModel)
             .filter(
-                WhatsAppTargetModel.is_active == True,
+                WhatsAppTargetModel.is_active,
                 WhatsAppTargetModel.user_id == user_id,
             )
             .all()
