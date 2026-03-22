@@ -101,10 +101,9 @@
                 <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Lista</button>
             </div>
 
-            <!-- Tabs -->
+            <!-- Tabs: apenas grupos -->
             <div class="target-tabs">
-                <button type="button" class="tab-btn active" id="tab-groups" onclick="switchTab('groups')">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
-                <button type="button" class="tab-btn" id="tab-contacts" onclick="switchTab('contacts')">👤 Contatos <span class="tab-count" id="count-contacts">–</span></button>
+                <button type="button" class="tab-btn active" id="tab-groups" style="cursor:default;">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
             </div>
 
             <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
@@ -131,23 +130,6 @@
                 {% if not targets %}
                 <div style="text-align: center; padding: 2rem;">
                     <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhum grupo encontrado. <a href="/whatsapp/connect" style="color: var(--primary); font-weight: 700;">Conecte o WhatsApp</a> e clique em Atualizar.</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <div id="panel-contacts" class="target-panel" style="display: none;">
-                {% for target in targets %}{% if target.type != 'group' %}
-                <label class="target-item">
-                    <input type="checkbox" name="groups" value="{{ target.id }}" style="width: 18px; height: 18px; accent-color: var(--primary);">
-                    <div style="flex-grow: 1;">
-                        <div class="target-name" style="font-weight: 600;">{{ target.name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">👤 Contato</div>
-                    </div>
-                </label>
-                {% endif %}{% endfor %}
-                {% if not targets %}
-                <div style="text-align: center; padding: 2rem;">
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhum contato encontrado ainda. Clique em Atualizar Lista.</p>
                 </div>
                 {% endif %}
             </div>
@@ -415,20 +397,9 @@ function setScheduleType(type) {
 /* ── Destinos: tabs grupos/contatos ── */
 let activeTab = 'groups';
 
-function switchTab(tab) {
-    activeTab = tab;
-    document.getElementById('panel-groups').style.display  = tab === 'groups'   ? 'grid' : 'none';
-    document.getElementById('panel-contacts').style.display = tab === 'contacts' ? 'grid' : 'none';
-    document.getElementById('tab-groups').classList.toggle('active', tab === 'groups');
-    document.getElementById('tab-contacts').classList.toggle('active', tab === 'contacts');
-    document.getElementById('target-search').value = '';
-    filterTargets();
-}
-
 function filterTargets() {
     const term = document.getElementById('target-search').value.toLowerCase();
-    const panel = document.getElementById(activeTab === 'groups' ? 'panel-groups' : 'panel-contacts');
-    panel.querySelectorAll('.target-item').forEach(item => {
+    document.querySelectorAll('#panel-groups .target-item').forEach(item => {
         const name = item.querySelector('.target-name')?.innerText.toLowerCase() || '';
         item.style.display = name.includes(term) ? 'flex' : 'none';
     });
@@ -436,9 +407,7 @@ function filterTargets() {
 
 function updateCounters() {
     const gItems = document.querySelectorAll('#panel-groups .target-item').length;
-    const cItems = document.querySelectorAll('#panel-contacts .target-item').length;
     document.getElementById('count-groups').textContent = gItems;
-    document.getElementById('count-contacts').textContent = cItems;
 }
 
 async function refreshTargets() {
@@ -462,20 +431,15 @@ async function refreshTargets() {
 
         if (data.success && data.groups) {
             panelG.innerHTML = '';
-            panelC.innerHTML = '';
 
-            // Status (always in groups)
+            // status (always in groups)
             panelG.appendChild(buildStatusItem());
 
-            data.groups.forEach(g => {
-                const isGroup = g.id.includes('@g.us');
-                const item = buildTargetItem(g.id, g.subject, isGroup);
-                (isGroup ? panelG : panelC).appendChild(item);
-            });
+            // only show actual groups (jid contains @g.us), filter contacts out
+            data.groups
+                .filter(g => g.id.includes('@g.us'))
+                .forEach(g => panelG.appendChild(buildTargetItem(g.id, g.subject, true)));
 
-            if (panelC.children.length === 0) {
-                panelC.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:var(--text-muted);">Nenhum contato individual encontrado.</p></div>';
-            }
         } else {
             panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar destinos. WhatsApp está conectado?</p></div>';
             panelC.innerHTML = panelG.innerHTML;
