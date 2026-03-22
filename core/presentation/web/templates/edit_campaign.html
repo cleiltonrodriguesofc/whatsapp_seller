@@ -104,18 +104,15 @@
                 <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Lista</button>
             </div>
 
+            <!-- tabs: grupos apenas -->
             <div class="target-tabs">
-                <button type="button" class="tab-btn active" id="tab-groups" onclick="switchTab('groups')">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
-                <button type="button" class="tab-btn" id="tab-contacts" onclick="switchTab('contacts')">👤 Contatos <span class="tab-count" id="count-contacts">–</span></button>
+                <button type="button" class="tab-btn active" id="tab-groups" style="cursor:default;">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
             </div>
 
             <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
 
             <div id="panel-groups" class="target-panel">
-                <p style="text-align:center; color:var(--text-muted); padding:1rem;">Carregando destinos...</p>
-            </div>
-            <div id="panel-contacts" class="target-panel" style="display:none;">
-                <p style="text-align:center; color:var(--text-muted); padding:1rem;">Carregando destinos...</p>
+                <p style="text-align:center; color:var(--text-muted); padding:1rem;">Carregando grupos...</p>
             </div>
         </div>
 
@@ -246,28 +243,17 @@ function setScheduleType(type) {
 }
 
 let activeTab = 'groups';
-function switchTab(tab) {
-    activeTab = tab;
-    document.getElementById('panel-groups').style.display  = tab === 'groups'   ? 'grid' : 'none';
-    document.getElementById('panel-contacts').style.display = tab === 'contacts' ? 'grid' : 'none';
-    document.getElementById('tab-groups').classList.toggle('active', tab === 'groups');
-    document.getElementById('tab-contacts').classList.toggle('active', tab === 'contacts');
-    document.getElementById('target-search').value = '';
-    filterTargets();
-}
 
 function filterTargets() {
     const term = document.getElementById('target-search').value.toLowerCase();
-    const panel = document.getElementById(activeTab === 'groups' ? 'panel-groups' : 'panel-contacts');
-    panel.querySelectorAll('.target-item').forEach(item => {
+    document.querySelectorAll('#panel-groups .target-item').forEach(item => {
         const name = item.querySelector('.target-name')?.innerText.toLowerCase() || '';
         item.style.display = name.includes(term) ? 'flex' : 'none';
     });
 }
 
 function updateCounters() {
-    document.getElementById('count-groups').textContent   = document.querySelectorAll('#panel-groups .target-item').length;
-    document.getElementById('count-contacts').textContent = document.querySelectorAll('#panel-contacts .target-item').length;
+    document.getElementById('count-groups').textContent = document.querySelectorAll('#panel-groups .target-item').length;
 }
 
 async function refreshTargets() {
@@ -284,15 +270,17 @@ async function refreshTargets() {
         const res = await fetch(`/whatsapp/groups/${instanceId}`);
         const data = await res.json();
         if (data.success && data.groups) {
-            panelG.innerHTML = ''; panelC.innerHTML = '';
+            panelG.innerHTML = '';
             panelG.appendChild(buildStatusItem());
-            data.groups.forEach(g => {
-                const isGroup = g.id.includes('@g.us');
-                const item = buildTargetItem(g.id, g.subject, isGroup, savedTargets.includes(g.id));
-                (isGroup ? panelG : panelC).appendChild(item);
-            });
-            if (panelC.children.length === 0)
-                panelC.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:var(--text-muted);">Nenhum contato encontrado.</p></div>';
+
+            // only groups (@g.us) — contacts are a Pro feature
+            data.groups
+                .filter(g => g.id.includes('@g.us'))
+                .forEach(g => {
+                    const item = buildTargetItem(g.id, g.subject, true, savedTargets.includes(g.id));
+                    panelG.appendChild(item);
+                });
+
         } else {
             panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar destinos.</p></div>';
             panelC.innerHTML = panelG.innerHTML;
