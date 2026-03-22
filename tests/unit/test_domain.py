@@ -1,5 +1,3 @@
-import pytest
-from datetime import datetime
 from core.domain.entities import Product, Contact, Message, MessageType
 
 

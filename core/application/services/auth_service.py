@@ -2,7 +2,7 @@ import bcrypt
 import jwt
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict
+from typing import Optional
 import os
 
 logger = logging.getLogger(__name__)

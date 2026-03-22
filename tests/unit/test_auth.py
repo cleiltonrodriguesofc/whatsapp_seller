@@ -1,4 +1,3 @@
-import pytest
 from core.application.services.auth_service import AuthService
 
 

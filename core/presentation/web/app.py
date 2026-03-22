@@ -1,29 +1,56 @@
+import asyncio
+import json
 import logging
+import os
+import uuid
+from datetime import datetime
+from typing import List, Optional
+
+from dotenv import load_dotenv
 from fastapi import (
-    FastAPI,
-    Request,
-    Form,
     Depends,
-    HTTPException,
     File,
-    UploadFile,
+    FastAPI,
+    Form,
+    HTTPException,
     Query,
+    Request,
+    UploadFile,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-from datetime import datetime
-from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import os
-import asyncio
-import shutil
-import uuid
-import json
-from typing import List, Optional
+from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session
+from starlette.status import HTTP_303_SEE_OTHER
+
+from core.application.services.auth_service import AuthService
+from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
+from core.application.use_cases.schedule_campaign import ScheduleCampaign
+from core.domain.entities import (
+    Campaign,
+    CampaignStatus as DomainCampaignStatus,
+    Product,
+)
+from core.infrastructure.ai.openai_service import OpenAIService
+from core.infrastructure.database.models import (
+    Base,
+    CampaignModel,
+    CampaignStatus as ModelCampaignStatus,
+    InstanceModel,
+    UserModel,
+    campaign_groups,
+)
+from core.infrastructure.database.repositories import (
+    SQLCampaignRepository,
+    SQLProductRepository,
+    SQLTargetRepository,
+)
+from core.infrastructure.database.session import SessionLocal, engine, get_db
+from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 
 # Load environment variables
 load_dotenv()
@@ -34,36 +61,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-from core.infrastructure.database.session import get_db, engine, SessionLocal
-from core.infrastructure.database.models import (
-    Base,
-    CampaignStatus as ModelCampaignStatus,
-    CampaignModel,
-    UserModel,
-    InstanceModel,
-    campaign_groups,
-)
-from core.infrastructure.database.repositories import (
-    SQLProductRepository,
-    SQLCampaignRepository,
-    SQLTargetRepository,
-)
-from core.application.use_cases.schedule_campaign import ScheduleCampaign
-from core.infrastructure.notifications.evolution_whatsapp import (
-    EvolutionWhatsAppService,
-)
-from core.domain.entities import (
-    Campaign,
-    Product,
-    CampaignStatus as DomainCampaignStatus,
-)
-from core.infrastructure.ai.openai_service import OpenAIService
-from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
-from core.application.use_cases.send_daily_greeting import SendDailyGreeting
-from core.application.services.auth_service import AuthService
-from fastapi.security import OAuth2PasswordBearer
-from starlette.status import HTTP_303_SEE_OTHER
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -160,7 +157,7 @@ async def campaign_scheduler_loop():
                 db.query(CampaignModel)
                 .filter(
                     CampaignModel.status == ModelCampaignStatus.SCHEDULED,
-                    CampaignModel.is_recurring == False,
+                    not CampaignModel.is_recurring,
                     CampaignModel.scheduled_at <= now,
                 )
                 .all()
@@ -176,7 +173,7 @@ async def campaign_scheduler_loop():
             recurring_campaigns = (
                 db.query(CampaignModel)
                 .filter(
-                    CampaignModel.is_recurring == True,
+                    CampaignModel.is_recurring,
                     CampaignModel.status != ModelCampaignStatus.FAILED,
                 )
                 .all()
@@ -343,7 +340,7 @@ async def home(
         db.query(CampaignModel)
         .filter(
             CampaignModel.user_id == current_user.id,
-            CampaignModel.is_ai_generated == True,
+            CampaignModel.is_ai_generated,
         )
         .count()
     )
@@ -704,9 +701,8 @@ async def logout_whatsapp(
     
     # Evolution API takes a few seconds to drop the websocket and update its internal state
     # We will poll it until it reflects the logout, or timeout after 10 seconds
-    import asyncio
     for _ in range(10):
-        status_data = await whatsapp_service.get_connection_status()
+        status_data = await whatsapp_service.get_status()
         if status_data and isinstance(status_data, dict):
             # Typical v2 response: {'instance': {'state': 'close'}}
             inst_data = status_data.get("instance", {})
@@ -741,7 +737,6 @@ async def get_whatsapp_groups(
         instance=instance_model.name,
         apikey=instance_model.apikey
     )
-    target_repo = SQLTargetRepository(db)
 
     # For multi-instance, we might want to sync targets per instance?
     # For now, let's just fetch from API and return.
@@ -1024,20 +1019,6 @@ async def update_campaign(
     return RedirectResponse(url="/", status_code=303)
 
 
-@app.post("/campaigns/delete/{campaign_id}")
-async def delete_campaign(
-    campaign_id: int,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(login_required),
-):
-    campaign_repo = SQLCampaignRepository(db)
-    success = campaign_repo.delete(campaign_id, user_id=current_user.id)
-    if not success:
-        raise HTTPException(
-            status_code=404, detail="Campaign not found or not owned by user"
-        )
-    return RedirectResponse(url="/", status_code=303)
-
 
 # ── upload helper ──────────────────────────────────────────────────────────────
 
@@ -1214,11 +1195,11 @@ async def rewrite_campaign_message(
         product = product_repo.get_by_id(product_id, user_id=current_user.id)
 
     ai_service = OpenAIService()
-    prompt = f"Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "
+    prompt = "Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "
     if product:
         prompt += f"Considerei os detalhes do produto: {product.name} - {product.description}. "
-    prompt += f"MANTENHA O LINK ABAIXO EXATAMENTE COMO ESTÁ, NO FINAL DA MENSAGEM. "
-    prompt += f"Mantenha emojis e um tom amigável. Não use markdown links (como [texto](url)).\n\n"
+    prompt += "MANTENHA O LINK ABAIXO EXATAMENTE COMO ESTÁ, NO FINAL DA MENSAGEM. "
+    prompt += "Mantenha emojis e um tom amigável. Não use markdown links (como [texto](url)).\n\n"
     prompt += f"Link que DEVE estar na mensagem: {product.affiliate_link if product else ''}\n\n"
     prompt += f"Texto original: {text}"
 
