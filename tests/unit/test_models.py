@@ -1,11 +1,9 @@
-from datetime import datetime
 from core.infrastructure.database.models import (
     UserModel,
     InstanceModel,
     ProductModel,
     WhatsAppTargetModel,
     CampaignModel,
-    CampaignStatus,
 )
 
 def test_user_model():
