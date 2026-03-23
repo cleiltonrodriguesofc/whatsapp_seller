@@ -74,6 +74,7 @@ class Sale:
 
 
 class CampaignStatus(Enum):
+    DRAFT = "draft"
     PENDING = "pending"
     SCHEDULED = "scheduled"
     SENDING = "sending"

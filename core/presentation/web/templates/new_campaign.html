@@ -94,14 +94,25 @@
             </div>
         </div>
 
-        <!-- Destinos: Abas Grupos / Contatos -->
+        <!-- Destinos: Status card fixo + Grupos -->
         <div class="form-group">
+            <!-- Status: card dedicado, independente dos grupos -->
+            <label class="form-label">Destinos</label>
+            <label class="target-item status-target" id="status-card" style="border: 1px solid var(--primary); background: rgba(99,102,241,0.08); margin-bottom: 1rem; cursor: pointer;">
+                <input type="checkbox" name="groups" value="status@broadcast" id="chk-status" style="width: 20px; height: 20px; accent-color: var(--primary);">
+                <div style="flex-grow: 1;">
+                    <div class="target-name" style="font-weight: 700; color: var(--primary); font-size: 1rem;">📱 Meu Status do WhatsApp</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Disparo direto para <strong>todos os seus contatos</strong> — não precisa carregar grupos</div>
+                </div>
+                <span id="status-badge" style="font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 10px; border-radius: 4px; font-weight: 800;">AUTO</span>
+            </label>
+
+            <!-- Grupos (opcionais) -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                <label class="form-label" style="margin-bottom: 0;">Destinos</label>
-                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Lista</button>
+                <label class="form-label" style="margin-bottom: 0; font-size: 0.9rem; color: var(--text-muted);">Grupos (opcional)</label>
+                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Grupos</button>
             </div>
 
-            <!-- Tabs: apenas grupos -->
             <div class="target-tabs">
                 <button type="button" class="tab-btn active" id="tab-groups" style="cursor:default;">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
             </div>
@@ -109,15 +120,6 @@
             <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
 
             <div id="panel-groups" class="target-panel">
-                <!-- Status -->
-                <label class="target-item status-target" style="border: 1px solid var(--primary); background: rgba(99,102,241,0.08);">
-                    <input type="checkbox" name="groups" value="status@broadcast" style="width: 18px; height: 18px; accent-color: var(--primary);">
-                    <div style="flex-grow: 1;">
-                        <div class="target-name" style="font-weight: 700; color: var(--primary);">📱 Meu Status do WhatsApp</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Disparo direto para todos os seus contatos</div>
-                    </div>
-                    <span style="font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-weight: 800;">AUTO</span>
-                </label>
                 {% for target in targets %}{% if target.type == 'group' %}
                 <label class="target-item">
                     <input type="checkbox" name="groups" value="{{ target.id }}" style="width: 18px; height: 18px; accent-color: var(--primary);">
@@ -127,11 +129,9 @@
                     </div>
                 </label>
                 {% endif %}{% endfor %}
-                {% if not targets %}
-                <div style="text-align: center; padding: 2rem;">
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhum grupo encontrado. <a href="/whatsapp/connect" style="color: var(--primary); font-weight: 700;">Conecte o WhatsApp</a> e clique em Atualizar.</p>
+                <div style="text-align: center; padding: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Clique em <strong>Atualizar Grupos</strong> para carregar sua lista.</p>
                 </div>
-                {% endif %}
             </div>
         </div>
 
@@ -149,10 +149,12 @@
         </div>
 
         <input type="hidden" name="use_ai" value="false">
+        <input type="hidden" name="save_as_draft" id="save_as_draft_field" value="false">
 
         <div style="display: flex; gap: 1rem;">
             <a href="/" class="btn btn-ghost" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center;">Cancelar</a>
-            <button type="submit" class="btn btn-primary" style="flex: 2;">🚀 Iniciar Campanha</button>
+            <button type="submit" onclick="setSaveDraft(true)" class="btn btn-ghost" style="flex: 1; border: 1px solid var(--border); color: var(--text-secondary);">💾 Salvar Rascunho</button>
+            <button type="submit" onclick="setSaveDraft(false)" class="btn btn-primary" style="flex: 2;">🚀 Iniciar Campanha</button>
         </div>
     </form>
 </div>
@@ -420,10 +422,8 @@ async function refreshTargets() {
     btn.innerText = '⌛ Buscando...';
 
     const panelG = document.getElementById('panel-groups');
-    const panelC = document.getElementById('panel-contacts');
     const spinner = '<div style="text-align:center;padding:1.5rem;"><div class="spinner"></div><p style="color:var(--text-muted);font-size:0.85rem;">Conectando à conta selecionada...</p></div>';
     panelG.innerHTML = spinner;
-    panelC.innerHTML = spinner;
 
     try {
         const res = await fetch(`/whatsapp/groups/${instanceId}`);
@@ -432,42 +432,24 @@ async function refreshTargets() {
         if (data.success && data.groups) {
             panelG.innerHTML = '';
 
-            // status (always in groups)
-            panelG.appendChild(buildStatusItem());
-
-            // only show actual groups (jid contains @g.us), filter contacts out
-            data.groups
-                .filter(g => g.id.includes('@g.us'))
-                .forEach(g => panelG.appendChild(buildTargetItem(g.id, g.subject, true)));
-
+            // only show actual groups (jid contains @g.us)
+            const groups = data.groups.filter(g => g.id.includes('@g.us'));
+            if (groups.length === 0) {
+                panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:var(--text-muted);font-size:0.85rem;">Nenhum grupo encontrado para esta conta.</p></div>';
+            } else {
+                groups.forEach(g => panelG.appendChild(buildTargetItem(g.id, g.subject, true)));
+            }
         } else {
-            panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar destinos. WhatsApp está conectado?</p></div>';
-            panelC.innerHTML = panelG.innerHTML;
+            panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar grupos. WhatsApp está conectado?</p></div>';
         }
     } catch (e) {
         console.error('Erro ao atualizar destinos', e);
         panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Timeout. Tente novamente.</p></div>';
-        panelC.innerHTML = panelG.innerHTML;
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
         updateCounters();
     }
-}
-
-function buildStatusItem() {
-    const lbl = document.createElement('label');
-    lbl.className = 'target-item status-target';
-    lbl.style = 'border: 1px solid var(--primary); background: rgba(99,102,241,0.08);';
-    lbl.innerHTML = `
-        <input type="checkbox" name="groups" value="status@broadcast" style="width:18px;height:18px;accent-color:var(--primary);">
-        <div style="flex-grow:1;">
-            <div class="target-name" style="font-weight:700;color:var(--primary);">📱 Meu Status do WhatsApp</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">Disparo direto para todos os seus contatos</div>
-        </div>
-        <span style="font-size:0.7rem;background:var(--primary);color:white;padding:2px 8px;border-radius:4px;font-weight:800;">AUTO</span>
-    `;
-    return lbl;
 }
 
 function buildTargetItem(id, name, isGroup) {
@@ -481,6 +463,11 @@ function buildTargetItem(id, name, isGroup) {
         </div>
     `;
     return lbl;
+}
+
+/* toggle save-as-draft field before form submission */
+function setSaveDraft(isDraft) {
+    document.getElementById('save_as_draft_field').value = isDraft ? 'true' : 'false';
 }
 
 async function improveMessageWithAI() {
@@ -511,7 +498,7 @@ async function improveMessageWithAI() {
     }
 }
 
-document.querySelector('select[name="instance_id"]').addEventListener('change', refreshTargets);
-document.addEventListener('DOMContentLoaded', () => { refreshTargets(); updateCounters(); });
+document.addEventListener('DOMContentLoaded', () => { updateCounters(); });
 </script>
 {% endblock %}
+

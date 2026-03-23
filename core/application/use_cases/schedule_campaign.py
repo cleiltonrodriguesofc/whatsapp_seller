@@ -35,15 +35,16 @@ class ScheduleCampaign:
         use_ai: bool = True,
         user_id: Optional[int] = None,
         instance_id: Optional[int] = None,
+        save_as_draft: bool = False,
     ) -> Campaign:
         # 1. Fetch Product
         product = self.product_repo.get_by_id(product_id)
         if not product:
             raise ValueError(f"Product with ID {product_id} not found")
 
-        # 2. Generate Message Copy (Optional)
+        # 2. Generate Message Copy (Optional — skip for drafts to save time)
         message_copy = custom_message
-        if not message_copy and use_ai and self.ai_service:
+        if not message_copy and use_ai and self.ai_service and not save_as_draft:
             prompt = (
                 f"Crie uma mensagem persuasiva de vendas para o WhatsApp para o produto: {product.name}. "
                 f"Descrição: {product.description}. Preço: R$ {product.price:.2f}. "
@@ -53,19 +54,20 @@ class ScheduleCampaign:
             message_copy = await self.ai_service.chat(prompt)
 
         # 3. Create Campaign Entity
+        status = CampaignStatus.DRAFT if save_as_draft else CampaignStatus.SCHEDULED
         campaign = Campaign(
             title=title,
             product=product,
             target_groups=target_groups,
             scheduled_at=scheduled_at or datetime.now(),
-            status=CampaignStatus.SCHEDULED,
+            status=status,
             custom_message=message_copy,
             user_id=user_id,
             instance_id=instance_id,
             is_recurring=is_recurring,
             recurrence_days=recurrence_days,
             send_time=send_time,
-            is_ai_generated=bool(not custom_message and use_ai),
+            is_ai_generated=bool(not custom_message and use_ai and not save_as_draft),
         )
 
         # 4. Save to Repository
