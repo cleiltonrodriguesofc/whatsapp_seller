@@ -894,13 +894,14 @@ async def new_campaign_form(
 async def create_campaign(
     title: str = Form(...),
     product_id: int = Form(...),
-    groups: List[str] = Form(...),
+    groups: List[str] = Form([]),
     instance_id: int = Form(...),
     custom_message: Optional[str] = Form(None),
     scheduled_at: Optional[str] = Form(None),
     is_recurring: bool = Form(False),
     recurrence_days: List[str] = Form([]),
     send_time: Optional[str] = Form(None),
+    save_as_draft: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
@@ -939,9 +940,11 @@ async def create_campaign(
         recurrence_days=",".join(recurrence_days),
         send_time=send_time,
         user_id=current_user.id,
+        save_as_draft=save_as_draft,
     )
 
     return RedirectResponse(url="/", status_code=303)
+
 
 
 @app.get("/campaigns/edit/{campaign_id}", response_class=HTMLResponse)
