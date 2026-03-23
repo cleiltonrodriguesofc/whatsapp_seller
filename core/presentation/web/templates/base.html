@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title or "WhatsApp Seller Pro" }}</title>
+    <title>{{ title or "WhatSeller Pro" }}</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <aside class="sidebar">
-        <div class="sidebar-logo">
-            <span>🚀</span> WhatsApp <span>Seller</span>
-        </div>
+            <span>🚀</span> What<span>Seller</span>
         
         <nav class="nav-menu">
             <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
@@ -60,7 +58,7 @@
     <script>
         // Set dynamic page title if needed
         const title = document.querySelector('h1').innerText;
-        document.title = `${title} | WhatsApp Seller Pro`;
+        document.title = `${title} | WhatSeller Pro`;
     </script>
     <script>
         // Global WhatsApp Status Polling

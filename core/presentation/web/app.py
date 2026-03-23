@@ -67,7 +67,7 @@ Base.metadata.create_all(bind=engine)
 
 # rate limiter setup
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title="WhatsApp Seller Pro")
+app = FastAPI(title="WhatSeller Pro", debug=True)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
