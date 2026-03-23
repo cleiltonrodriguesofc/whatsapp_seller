@@ -310,6 +310,10 @@ async def send_campaign(campaign: Campaign, db: Session):
     logger.info("campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
 
 
+@app.head("/", include_in_schema=False)
+async def home_head():
+    return {}
+
 @app.get("/", response_class=HTMLResponse)
 async def home(
     request: Request,
@@ -595,6 +599,32 @@ async def get_whatsapp_qr(
     if qrcode_base64:
         return {"success": True, "qrcode": qrcode_base64}
     return {"success": False, "error": "Failed to generate QR code"}
+
+
+@app.get("/whatsapp/status")
+async def get_global_whatsapp_status(
+    current_user: UserModel = Depends(login_required),
+    db: Session = Depends(get_db),
+):
+    instances = (
+        db.query(InstanceModel)
+        .filter(InstanceModel.user_id == current_user.id)
+        .all()
+    )
+    if not instances:
+        return {"connected": False}
+
+    # Check if ANY instance is connected
+    for instance in instances:
+        whatsapp_service = EvolutionWhatsAppService(
+            instance=instance.name,
+            apikey=instance.apikey
+        )
+        status = await whatsapp_service.get_status()
+        if status.get("connected"):
+            return {"connected": True}
+
+    return {"connected": False}
 
 
 @app.get("/whatsapp/status/{instance_id}")
