@@ -317,7 +317,7 @@ async def home(
     current_user: Optional[UserModel] = Depends(get_current_user),
 ):
     if not current_user:
-        return templates.TemplateResponse("landing.html", {"request": request, "title": "Welcome"})
+        return templates.TemplateResponse(request=request, name="landing.html", context={"title": "Welcome"})
 
     campaign_repo = SQLCampaignRepository(db)
     campaigns = campaign_repo.list_all(user_id=current_user.id)
@@ -363,9 +363,9 @@ async def home(
         wa_status = status_data.get("status", "unknown")
 
     return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
+        request=request,
+        name="dashboard.html",
+        context={
             "campaigns": campaigns,
             "user": current_user,
             "total_campaigns": total_campaigns,
@@ -394,7 +394,7 @@ async def delete_campaign(
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "title": "Login"})
+    return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login"})
 
 
 @app.post("/login")
@@ -408,7 +408,7 @@ async def login_action(
     user = db.query(UserModel).filter(UserModel.email == username).first()
     if not user or not auth_service.verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Invalid email or password", "title": "Login"}
+            request=request, name="login.html", context={"error": "Invalid email or password", "title": "Login"}
         )
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
@@ -428,7 +428,7 @@ async def login_action(
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request, "title": "Register"})
+    return templates.TemplateResponse(request=request, name="register.html", context={"title": "Register"})
 
 
 @app.post("/register")
@@ -444,7 +444,7 @@ async def register_action(
     existing_user = db.query(UserModel).filter(UserModel.email == email).first()
     if existing_user:
         return templates.TemplateResponse(
-            "register.html", {"request": request, "error": "Email already registered", "title": "Register"}
+            request=request, name="register.html", context={"error": "Email already registered", "title": "Register"}
         )
 
     # 2. Create User
@@ -524,8 +524,9 @@ async def connect_whatsapp_page(
         db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
     )
     return templates.TemplateResponse(
-        "connect_whatsapp.html",
-        {"request": request, "user": current_user, "instances": instances, "title": "Connect WhatsApp"},
+        request=request,
+        name="connect_whatsapp.html",
+        context={"user": current_user, "instances": instances, "title": "Connect WhatsApp"},
     )
 
 
@@ -858,8 +859,9 @@ async def list_products(
     product_repo = SQLProductRepository(db)
     products = product_repo.list_all(user_id=current_user.id)
     return templates.TemplateResponse(
-        "products.html",
-        {"request": request, "products": products, "user": current_user, "title": "Products"},
+        request=request,
+        name="products.html",
+        context={"products": products, "user": current_user, "title": "Products"},
     )
 
 
@@ -877,9 +879,9 @@ async def new_campaign_form(
     products = product_repo.list_all(user_id=current_user.id)
 
     return templates.TemplateResponse(
-        "new_campaign.html",
-        {
-            "request": request,
+        request=request,
+        name="new_campaign.html",
+        context={
             "products": products,
             "instances": instances,
             "user": current_user,
@@ -962,9 +964,9 @@ async def edit_campaign_form(
     )
 
     return templates.TemplateResponse(
-        "edit_campaign.html",
-        {
-            "request": request,
+        request=request,
+        name="edit_campaign.html",
+        context={
             "campaign": campaign,
             "products": products,
             "instances": instances,
@@ -1124,8 +1126,9 @@ async def edit_product_form(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return templates.TemplateResponse(
-        "edit_product.html",
-        {"request": request, "product": product, "user": current_user},
+        request=request,
+        name="edit_product.html",
+        context={"product": product, "user": current_user},
     )
 
 
