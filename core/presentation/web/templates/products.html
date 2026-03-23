@@ -4,7 +4,7 @@
 {% block page_subtitle %}Gerencie seus produtos afiliados e ativos de marketing.{% endblock %}
 
 {% block content %}
-<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2.5rem; align-items: start;">
+<div class="grid-split">
     <!-- Formulário de Novo Produto -->
     <div class="card animate-fade-in">
         <h2 style="font-size: 1.25rem; margin-bottom: 2rem;">Adicionar Produto</h2>
@@ -19,7 +19,7 @@
                 <textarea name="description" class="form-textarea" rows="4" placeholder="Detalhes do produto..." required></textarea>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="grid-2">
                 <div class="form-group">
                     <label class="form-label">Preço (R$)</label>
                     <input type="number" step="0.01" name="price" class="form-input" required>
@@ -35,7 +35,7 @@
                 <input type="url" name="affiliate_link" class="form-input" placeholder="https://..." required>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+            <div class="grid-2" style="margin-bottom: 2rem;">
                 <div class="form-group">
                     <label class="form-label">URL da Imagem</label>
                     <input type="url" name="image_url" class="form-input" placeholder="https://...">
@@ -55,7 +55,7 @@
         <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Seus Produtos</h2>
         <div style="display: flex; flex-direction: column; gap: 1rem;">
             {% for product in products %}
-            <div class="card" style="display: flex; gap: 1.5rem; align-items: center;">
+            <div class="card product-row">
                 <div style="width: 80px; height: 80px; border-radius: 12px; background: var(--bg-main); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border);">
                     {% if product.image_url %}
                     <img src="{{ product.image_url }}" alt="Produto" style="width: 100%; height: 100%; object-fit: cover;">

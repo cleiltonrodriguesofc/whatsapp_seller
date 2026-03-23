@@ -1,15 +1,30 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "WhatSeller Pro" }}</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
+    <div class="mobile-header">
+        <a href="/" class="sidebar-logo" style="margin-bottom: 0; padding: 0; text-decoration: none;">
+            <span>🚀</span> <strong style="font-weight: 900;">What<span style="color: var(--primary);">Seller</span> Pro</strong>
+        </a>
+        <div style="margin-left: auto;">
+            {% if user %}
+            <a href="/logout"
+                style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none; font-weight: 600;">Sair</a>
+            {% endif %}
+        </div>
+    </div>
     <aside class="sidebar">
-            <span>🚀</span> What<span>Seller</span>
-        
+        <a href="/" class="sidebar-logo" style="text-decoration: none;">
+            <span>🚀</span> <strong style="font-weight: 900;">What<span style="color: var(--primary);">Seller</span> Pro</strong>
+        </a>
+
         <nav class="nav-menu">
             <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
                 <span class="nav-item-icon">📊</span> Painel
@@ -20,10 +35,12 @@
             <a href="/campaigns/new" class="nav-item {{ 'active' if request.url.path == '/campaigns/new' else '' }}">
                 <span class="nav-item-icon">📅</span> Campanhas
             </a>
-            <a href="/whatsapp/connect" class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
+            <a href="/whatsapp/connect"
+                class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
                 <span class="nav-icon">📱</span>
                 <span>WhatsApp</span>
-                <span id="sidebar-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; margin-left: auto;"></span>
+                <span id="sidebar-status-dot"
+                    style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; margin-left: auto;"></span>
             </a>
         </nav>
     </aside>
@@ -31,10 +48,12 @@
     <main class="main-layout">
         <header class="top-bar">
             <div>
-                <h1 id="page-title" class="animate-fade-in" style="font-size: 1.75rem; font-weight: 700;">{% block page_title %}Dashboard{% endblock %}</h1>
-                <p style="color: var(--text-secondary); font-size: 0.95rem;">{% block page_subtitle %}Gerencie seus ativos de marketing automatizado.{% endblock %}</p>
+                <h1 id="page-title" class="animate-fade-in" style="font-size: 1.75rem; font-weight: 700;">{% block
+                    page_title %}Dashboard{% endblock %}</h1>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">{% block page_subtitle %}Gerencie seus
+                    ativos de marketing automatizado.{% endblock %}</p>
             </div>
-            
+
             {% if user %}
             <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
                 <div style="text-align: right;">
@@ -43,7 +62,8 @@
                         <a href="/logout" style="color: #ef4444; text-decoration: none;">Sair</a>
                     </div>
                 </div>
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                <div
+                    style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; font-weight: 700;">
                     {{ user.email[0].upper() }}
                 </div>
             </div>
@@ -78,10 +98,11 @@
                 console.error('Sidebar status poll failed');
             }
         }
-        
+
         // Poll every 30 seconds
         setInterval(updateSidebarStatus, 30000);
         updateSidebarStatus(); // Initial check
     </script>
 </body>
+
 </html>

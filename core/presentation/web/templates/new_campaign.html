@@ -15,7 +15,7 @@
         </div>
 
         <!-- Instância + Produto -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="grid-2">
             <div class="form-group">
                 <label class="form-label">Conta de Envio</label>
                 <select name="instance_id" class="form-select" required>
@@ -82,7 +82,7 @@
                 </div>
 
                 <label class="form-label" style="margin-top: 1.5rem;">Repetir nos dias</label>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;">
+                <div class="grid-7">
                     {% for day, label in [('sun','Dom'),('mon','Seg'),('tue','Ter'),('wed','Qua'),('thu','Qui'),('fri','Sex'),('sat','Sáb')] %}
                     <label class="day-chip">
                         <input type="checkbox" name="recurrence_days" value="{{ day }}" style="width: 16px; height: 16px; accent-color: var(--primary);">
