@@ -90,7 +90,7 @@ class SQLProductRepository(ProductRepository):
         self, product_id: int, user_id: Optional[int] = None
     ) -> Optional[Product]:
         query = self.db.query(ProductModel).filter(
-            ProductModel.id == product_id, ProductModel.is_active == True
+            ProductModel.id == product_id, ProductModel.is_active
         )
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
@@ -100,7 +100,7 @@ class SQLProductRepository(ProductRepository):
         return self._to_entity(model)
 
     def list_all(self, user_id: Optional[int] = None) -> List[Product]:
-        query = self.db.query(ProductModel).filter(ProductModel.is_active == True)
+        query = self.db.query(ProductModel).filter(ProductModel.is_active)
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
         models = query.all()
