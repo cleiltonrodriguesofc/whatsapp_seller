@@ -1,6 +1,7 @@
 import io
 import httpx
 import base64
+import os
 from PIL import Image
 
 
@@ -22,7 +23,13 @@ async def get_optimized_base64(
         base64_str = path_or_url.split(",", 1)[-1]
         img_data = base64.b64decode(base64_str)
     else:
-        with open(path_or_url, "rb") as f:
+        # Resolve /static/ paths to local filesystem if necessary
+        local_path = path_or_url
+        if path_or_url.startswith("/static/"):
+            # Map /static/ to core/presentation/web/static/
+            local_path = os.path.join("core", "presentation", "web", "static", path_or_url.lstrip("/"))
+        
+        with open(local_path, "rb") as f:
             img_data = f.read()
 
     # Open image with Pillow

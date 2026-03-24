@@ -172,20 +172,18 @@ async def campaign_scheduler_loop():
             current_time_str = now.strftime("%H:%M")
             current_day_str = now.strftime("%a").lower()  # "mon", "tue", etc.
 
-            campaign_repo = SQLCampaignRepository(db)
-
             # 1. Handle One-off Campaigns
-            pending_one_off = (
+            one_off_campaigns = (
                 db.query(CampaignModel)
                 .filter(
                     CampaignModel.status == ModelCampaignStatus.SCHEDULED,
-                    CampaignModel.is_recurring == False,
+                    ~CampaignModel.is_recurring,
                     CampaignModel.scheduled_at <= now,
                 )
                 .all()
             )
 
-            for campaign_model in pending_one_off:
+            for campaign_model in one_off_campaigns:
                 logger.info("scheduling one-off campaign task: %s", campaign_model.title)
                 # Mark it as SENDING immediately to prevent duplicate runs
                 campaign_model.status = ModelCampaignStatus.SENDING
