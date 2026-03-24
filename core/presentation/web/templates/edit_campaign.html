@@ -263,9 +263,8 @@ async function refreshTargets() {
     const orig = btn.innerHTML;
     btn.disabled = true; btn.innerText = '⌛ Buscando...';
     const panelG = document.getElementById('panel-groups');
-    const panelC = document.getElementById('panel-contacts');
     const spinner = '<div style="text-align:center;padding:1.5rem;"><div class="spinner"></div></div>';
-    panelG.innerHTML = spinner; panelC.innerHTML = spinner;
+    panelG.innerHTML = spinner;
     try {
         const res = await fetch(`/whatsapp/groups/${instanceId}`);
         const data = await res.json();
@@ -283,11 +282,9 @@ async function refreshTargets() {
 
         } else {
             panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar destinos.</p></div>';
-            panelC.innerHTML = panelG.innerHTML;
         }
     } catch (e) {
         panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Timeout.</p></div>';
-        panelC.innerHTML = panelG.innerHTML;
     } finally {
         btn.disabled = false; btn.innerHTML = orig;
         updateCounters();
