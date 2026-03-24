@@ -142,6 +142,7 @@ class SQLCampaignRepository(CampaignRepository):
                 model.recurrence_days = campaign.recurrence_days
                 model.send_time = campaign.send_time
                 model.is_ai_generated = campaign.is_ai_generated
+                model.sent_at = campaign.sent_at
                 model.target_config = (
                     json.dumps(campaign.target_config)
                     if campaign.target_config

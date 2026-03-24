@@ -39,15 +39,25 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                 <label class="form-label" style="margin-bottom: 0;">Tipo de Agendamento</label>
                 <div style="display: flex; gap: 0.5rem; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
-                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn btn-primary" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">Uma vez</button>
-                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn btn-ghost" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⏰ Alarmado</button>
+                    <button type="button" id="btn-now" onclick="setScheduleType('now')" class="btn btn-primary" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⚡ Agora</button>
+                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn btn-ghost" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">📅 Agendar</button>
+                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn btn-ghost" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⏰ Recorrente</button>
                 </div>
             </div>
 
             <input type="hidden" name="is_recurring" id="is_recurring" value="false">
 
+            <!-- Agora -->
+            <div id="section-now">
+                <label class="form-label">Envio Imediato</label>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); color: var(--success); padding: 1rem; border-radius: 8px;">
+                    <strong style="display: block; margin-bottom: 0.25rem;">🚀 Disparo Instantâneo</strong>
+                    <span style="font-size: 0.85rem;">Assim que a campanha for salva, ela entrará na fila imediatamente (disparo inicia em ~1 minuto).</span>
+                </div>
+            </div>
+
             <!-- Pontual -->
-            <div id="section-once">
+            <div id="section-once" style="display: none;">
                 <label class="form-label">Data e Hora do Envio <span style="font-size:0.75rem;color:var(--text-muted);">(Horário de Brasília — BRT)</span></label>
                 <input type="datetime-local" name="scheduled_at" class="form-input" step="60">
                 <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Escolha a data e hora exata para um único disparo.</p>
@@ -379,20 +389,30 @@ renderClock();
 function setScheduleType(type) {
     const once = document.getElementById('section-once');
     const rec  = document.getElementById('section-recurring');
+    const now  = document.getElementById('section-now');
     const btnO = document.getElementById('btn-once');
     const btnR = document.getElementById('btn-recurring');
+    const btnN = document.getElementById('btn-now');
     const hid  = document.getElementById('is_recurring');
 
+    [btnO, btnR, btnN].forEach(b => {
+        if(b) b.classList.replace('btn-primary', 'btn-ghost');
+    });
+
     if (type === 'once') {
-        once.style.display = 'block'; rec.style.display = 'none';
+        once.style.display = 'block'; rec.style.display = 'none'; now.style.display = 'none';
         btnO.classList.replace('btn-ghost','btn-primary');
-        btnR.classList.replace('btn-primary','btn-ghost');
         hid.value = 'false';
-    } else {
-        once.style.display = 'none'; rec.style.display = 'block';
+    } else if (type === 'recurring') {
+        once.style.display = 'none'; rec.style.display = 'block'; now.style.display = 'none';
         btnR.classList.replace('btn-ghost','btn-primary');
-        btnO.classList.replace('btn-primary','btn-ghost');
         hid.value = 'true';
+    } else if (type === 'now') {
+        once.style.display = 'none'; rec.style.display = 'none'; now.style.display = 'block';
+        btnN.classList.replace('btn-ghost','btn-primary');
+        hid.value = 'false';
+        const dateInput = document.querySelector('input[name="scheduled_at"]');
+        if(dateInput) dateInput.value = '';
     }
 }
 
@@ -488,7 +508,17 @@ async function improveMessageWithAI() {
         const res = await fetch('/campaign/rewrite', { method: 'POST', body: form });
         if (!res.ok) throw new Error('Falha na requisição');
         const data = await res.json();
-        if (data.improved_text) document.getElementById('custom_message').value = data.improved_text;
+        if (data.improved_text) {
+            document.getElementById('custom_message').value = data.improved_text;
+            let useAiField = document.querySelector('input[name="use_ai"]');
+            if(!useAiField) {
+                useAiField = document.createElement('input');
+                useAiField.type = 'hidden';
+                useAiField.name = 'use_ai';
+                document.querySelector('form').appendChild(useAiField);
+            }
+            useAiField.value = 'true';
+        }
     } catch (e) {
         console.error('Erro na IA:', e);
         alert('A IA falhou desta vez. Tente novamente ou verifique sua chave de API.');

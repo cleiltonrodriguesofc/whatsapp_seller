@@ -39,12 +39,22 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                 <label class="form-label" style="margin-bottom: 0;">Tipo de Agendamento</label>
                 <div style="display: flex; gap: 0.5rem; background: var(--bg-card); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
-                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn {{ 'btn-primary' if not campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">Uma vez</button>
-                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn {{ 'btn-primary' if campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⏰ Alarmado</button>
+                    <button type="button" id="btn-now" onclick="setScheduleType('now')" class="btn btn-ghost" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⚡ Agora</button>
+                    <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn {{ 'btn-primary' if not campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">📅 Agendar</button>
+                    <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn {{ 'btn-primary' if campaign.is_recurring else 'btn-ghost' }}" style="padding: 4px 14px; font-size: 0.8rem; border-radius: 6px;">⏰ Recorrente</button>
                 </div>
             </div>
 
             <input type="hidden" name="is_recurring" id="is_recurring" value="{{ 'true' if campaign.is_recurring else 'false' }}">
+
+            <!-- Agora -->
+            <div id="section-now" style="display: none;">
+                <label class="form-label">Envio Imediato</label>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); color: var(--success); padding: 1rem; border-radius: 8px;">
+                    <strong style="display: block; margin-bottom: 0.25rem;">🚀 Disparo Instantâneo</strong>
+                    <span style="font-size: 0.85rem;">Assim que a campanha for salva, ela entrará na fila imediatamente (disparo inicia em ~1 minuto).</span>
+                </div>
+            </div>
 
             <!-- Pontual -->
             <div id="section-once" style="{{ 'display:block;' if not campaign.is_recurring else 'display:none;' }}">
@@ -97,14 +107,29 @@
             </div>
         </div>
 
-        <!-- Destinos: Abas Grupos / Contatos -->
+        <!-- Destinos -->
         <div class="form-group">
+            <label class="form-label">Destinos</label>
+
+            <!-- status card: static, always visible -->
+            {% set saved = campaign.target_groups or [] %}
+            <label class="target-item status-target" style="border: 1px solid var(--primary); background: rgba(99,102,241,0.08); margin-bottom: 1rem; cursor: pointer;">
+                <input type="checkbox" name="groups" value="status@broadcast" id="chk-status"
+                    {{ 'checked' if 'status@broadcast' in saved else '' }}
+                    style="width: 20px; height: 20px; accent-color: var(--primary);">
+                <div style="flex-grow: 1;">
+                    <div class="target-name" style="font-weight: 700; color: var(--primary); font-size: 1rem;">📱 Meu Status do WhatsApp</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Disparo direto para <strong>todos os seus contatos</strong> — não precisa carregar grupos</div>
+                </div>
+                <span style="font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 10px; border-radius: 4px; font-weight: 800;">AUTO</span>
+            </label>
+
+            <!-- groups (optional) -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                <label class="form-label" style="margin-bottom: 0;">Destinos</label>
-                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Lista</button>
+                <label class="form-label" style="margin-bottom: 0; font-size: 0.9rem; color: var(--text-muted);">Grupos (opcional)</label>
+                <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Grupos</button>
             </div>
 
-            <!-- tabs: grupos apenas -->
             <div class="target-tabs">
                 <button type="button" class="tab-btn active" id="tab-groups" style="cursor:default;">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
             </div>
@@ -112,7 +137,7 @@
             <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
 
             <div id="panel-groups" class="target-panel">
-                <p style="text-align:center; color:var(--text-muted); padding:1rem;">Carregando grupos...</p>
+                <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem;">Clique em <strong>Atualizar Grupos</strong> para carregar sua lista.</p>
             </div>
         </div>
 
@@ -226,19 +251,30 @@ renderChips(); // render pre-saved times
 function setScheduleType(type) {
     const once = document.getElementById('section-once');
     const rec  = document.getElementById('section-recurring');
+    const now  = document.getElementById('section-now');
     const btnO = document.getElementById('btn-once');
     const btnR = document.getElementById('btn-recurring');
+    const btnN = document.getElementById('btn-now');
     const hid  = document.getElementById('is_recurring');
+
+    [btnO, btnR, btnN].forEach(b => {
+        if(b) b.classList.replace('btn-primary', 'btn-ghost');
+    });
+
     if (type === 'once') {
-        once.style.display = 'block'; rec.style.display = 'none';
-        btnO.className = btnO.className.replace('btn-ghost','btn-primary');
-        btnR.className = btnR.className.replace('btn-primary','btn-ghost');
+        once.style.display = 'block'; rec.style.display = 'none'; now.style.display = 'none';
+        btnO.classList.replace('btn-ghost','btn-primary');
         hid.value = 'false';
-    } else {
-        once.style.display = 'none'; rec.style.display = 'block';
-        btnR.className = btnR.className.replace('btn-ghost','btn-primary');
-        btnO.className = btnO.className.replace('btn-primary','btn-ghost');
+    } else if (type === 'recurring') {
+        once.style.display = 'none'; rec.style.display = 'block'; now.style.display = 'none';
+        btnR.classList.replace('btn-ghost','btn-primary');
         hid.value = 'true';
+    } else if (type === 'now') {
+        once.style.display = 'none'; rec.style.display = 'none'; now.style.display = 'block';
+        btnN.classList.replace('btn-ghost','btn-primary');
+        hid.value = 'false';
+        const dateInput = document.querySelector('input[name="scheduled_at"]');
+        if(dateInput) dateInput.value = '';
     }
 }
 
@@ -263,48 +299,30 @@ async function refreshTargets() {
     const orig = btn.innerHTML;
     btn.disabled = true; btn.innerText = '⌛ Buscando...';
     const panelG = document.getElementById('panel-groups');
-    const spinner = '<div style="text-align:center;padding:1.5rem;"><div class="spinner"></div></div>';
+    const spinner = '<div style="text-align:center;padding:1.5rem;"><div class="spinner"></div><p style="color:var(--text-muted);font-size:0.85rem;">Conectando à conta...</p></div>';
     panelG.innerHTML = spinner;
     try {
         const res = await fetch(`/whatsapp/groups/${instanceId}`);
         const data = await res.json();
         if (data.success && data.groups) {
             panelG.innerHTML = '';
-            panelG.appendChild(buildStatusItem());
-
-            // only groups (@g.us) — contacts are a Pro feature
-            data.groups
-                .filter(g => g.id.includes('@g.us'))
-                .forEach(g => {
-                    const item = buildTargetItem(g.id, g.subject, true, savedTargets.includes(g.id));
-                    panelG.appendChild(item);
+            const groups = data.groups.filter(g => g.id.includes('@g.us'));
+            if (groups.length === 0) {
+                panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:var(--text-muted);font-size:0.85rem;">Nenhum grupo encontrado para esta conta.</p></div>';
+            } else {
+                groups.forEach(g => {
+                    panelG.appendChild(buildTargetItem(g.id, g.subject, true, savedTargets.includes(g.id)));
                 });
-
+            }
         } else {
-            panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar destinos.</p></div>';
+            panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Falha ao buscar grupos. WhatsApp está conectado?</p></div>';
         }
     } catch (e) {
-        panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Timeout.</p></div>';
+        panelG.innerHTML = '<div style="text-align:center;padding:1.5rem;"><p style="color:#ef4444;">Timeout. Tente novamente.</p></div>';
     } finally {
         btn.disabled = false; btn.innerHTML = orig;
         updateCounters();
     }
-}
-
-function buildStatusItem() {
-    const lbl = document.createElement('label');
-    lbl.className = 'target-item status-target';
-    lbl.style = 'border:1px solid var(--primary);background:rgba(99,102,241,0.08);';
-    const checked = savedTargets.includes('status@broadcast') ? 'checked' : '';
-    lbl.innerHTML = `
-        <input type="checkbox" name="groups" value="status@broadcast" ${checked} style="width:18px;height:18px;accent-color:var(--primary);">
-        <div style="flex-grow:1;">
-            <div class="target-name" style="font-weight:700;color:var(--primary);">📱 Meu Status do WhatsApp</div>
-            <div style="font-size:0.75rem;color:var(--text-muted);">Disparo direto para todos os seus contatos</div>
-        </div>
-        <span style="font-size:0.7rem;background:var(--primary);color:white;padding:2px 8px;border-radius:4px;font-weight:800;">AUTO</span>
-    `;
-    return lbl;
 }
 
 function buildTargetItem(id, name, isGroup, checked) {
@@ -323,14 +341,34 @@ function buildTargetItem(id, name, isGroup, checked) {
 async function improveMessageWithAI() {
     const textMsg = document.getElementById('custom_message').value;
     const productId = document.querySelector('select[name="product_id"]').value;
-    const formData = new FormData();
-    formData.append('text', textMsg);
-    formData.append('product_id', productId);
+    const btn = document.getElementById('btn-improve-ai');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '🪄 <span style="font-size:0.75rem;">IA trabalhando...</span>';
     try {
-        const res = await fetch('/campaign/rewrite', { method: 'POST', body: formData });
+        const form = new FormData();
+        form.append('text', textMsg);
+        form.append('product_id', productId);
+        const res = await fetch('/campaign/rewrite', { method: 'POST', body: form });
+        if (!res.ok) throw new Error('Falha na requisição');
         const data = await res.json();
-        if (data.improved_text) document.getElementById('custom_message').value = data.improved_text;
-    } catch (e) { alert('A IA falhou. Tente novamente.'); }
+        if (data.improved_text) {
+            document.getElementById('custom_message').value = data.improved_text;
+            let useAiField = document.querySelector('input[name="use_ai"]');
+            if(!useAiField) {
+                useAiField = document.createElement('input');
+                useAiField.type = 'hidden';
+                useAiField.name = 'use_ai';
+                document.querySelector('form').appendChild(useAiField);
+            }
+            useAiField.value = 'true';
+        }
+    } catch (e) {
+        alert('A IA falhou. Tente novamente ou verifique sua chave de API.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
 }
 
 document.querySelector('select[name="instance_id"]').addEventListener('change', refreshTargets);
