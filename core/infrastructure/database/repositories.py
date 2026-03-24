@@ -42,6 +42,7 @@ class SQLProductRepository(ProductRepository):
                 model.affiliate_link = product.affiliate_link
                 model.image_url = product.image_url
                 model.category = product.category
+                model.click_count = product.click_count
                 model.is_active = product.is_active
             else:
                 model = ProductModel(
@@ -51,6 +52,7 @@ class SQLProductRepository(ProductRepository):
                     affiliate_link=product.affiliate_link,
                     image_url=product.image_url,
                     category=product.category,
+                    click_count=product.click_count,
                     is_active=product.is_active,
                     user_id=product.user_id,
                 )
@@ -63,6 +65,7 @@ class SQLProductRepository(ProductRepository):
                 affiliate_link=product.affiliate_link,
                 image_url=product.image_url,
                 category=product.category,
+                click_count=product.click_count,
                 is_active=product.is_active,
                 user_id=product.user_id,
             )
@@ -106,6 +109,12 @@ class SQLProductRepository(ProductRepository):
         models = query.all()
         return [self._to_entity(m) for m in models]
 
+    def increment_clicks(self, product_id: int):
+        model = self.db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        if model:
+            model.click_count += 1
+            self.db.commit()
+
     def _to_entity(self, model: ProductModel) -> Product:
         return Product(
             id=model.id,
@@ -116,6 +125,7 @@ class SQLProductRepository(ProductRepository):
             affiliate_link=model.affiliate_link,
             image_url=model.image_url,
             category=model.category,
+            click_count=model.click_count,
             is_active=model.is_active,
             created_at=model.created_at,
         )

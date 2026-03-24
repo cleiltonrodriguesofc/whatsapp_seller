@@ -69,6 +69,7 @@ class ProductModel(Base):
     affiliate_link = Column(String)
     image_url = Column(String, nullable=True)
     category = Column(String, nullable=True)
+    click_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

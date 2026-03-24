@@ -24,6 +24,7 @@ class Product:
     user_id: Optional[int] = None
     image_url: Optional[str] = None
     category: Optional[str] = None
+    click_count: int = 0
     is_active: bool = True
     id: Optional[int] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
