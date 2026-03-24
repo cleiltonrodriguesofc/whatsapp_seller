@@ -1217,13 +1217,13 @@ async def delete_product(
 
 @app.post("/campaign/rewrite")
 async def rewrite_campaign_message(
-    text: str = Form(...),
+    text: Optional[str] = Form(None),
     product_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
     """
-    Leverages AI to improve a campaign message.
+    Leverages AI to improve a campaign message or generate one from scratch.
     """
     product_repo = SQLProductRepository(db)
     product = None
@@ -1231,13 +1231,22 @@ async def rewrite_campaign_message(
         product = product_repo.get_by_id(product_id, user_id=current_user.id)
 
     ai_service = OpenAIService()
-    prompt = "Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "
+    
+    if text:
+        prompt = "Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "
+    else:
+        prompt = "Crie uma mensagem persuasiva de vendas para o WhatsApp do zero. "
+        
     if product:
-        prompt += f"Considerei os detalhes do produto: {product.name} - {product.description}. "
+        prompt += f"Considerei os detalhes do produto: {product.name} - {product.description}. O preço é R$ {product.price}. "
+        
     prompt += "MANTENHA O LINK ABAIXO EXATAMENTE COMO ESTÁ, NO FINAL DA MENSAGEM. "
-    prompt += "Mantenha emojis e um tom amigável. Não use markdown links (como [texto](url)).\n\n"
+    prompt += "Use emojis, bullet points e uma chamada para ação clara. Mantenha um tom amigável e focado em converter o cliente. "
+    prompt += "Não use markdown links (como [texto](url)).\n\n"
     prompt += f"Link que DEVE estar na mensagem: {product.affiliate_link if product else ''}\n\n"
-    prompt += f"Texto original: {text}"
+    
+    if text:
+        prompt += f"Texto original: {text}"
 
     improved_text = await ai_service.chat(prompt)
 

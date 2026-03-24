@@ -56,8 +56,16 @@
             </div>
 
             <div style="text-align: right;">
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Agendado para</div>
-                <div style="font-weight: 600;">{{ campaign.scheduled_at.strftime('%d/%m %H:%M') }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
+                    {% if campaign.is_recurring %}Disparos Diários{% else %}Agendado para{% endif %}
+                </div>
+                <div style="font-weight: 600;">
+                    {% if campaign.is_recurring %}
+                        {{ campaign.send_time or 'Não definido' }}
+                    {% else %}
+                        {{ campaign.scheduled_at.strftime('%d/%m %H:%M') if campaign.scheduled_at else 'Imediato' }}
+                    {% endif %}
+                </div>
             </div>
 
             <div style="text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; min-width: 250px;">
