@@ -1015,7 +1015,7 @@ async def update_campaign(
     title: str = Form(...),
     product_id: int = Form(...),
     instance_id: int = Form(...),
-    groups: List[str] = Form(...),
+    groups: List[str] = Form([]),
     custom_message: Optional[str] = Form(None),
     scheduled_at: Optional[str] = Form(None),
     is_recurring: bool = Form(False),
