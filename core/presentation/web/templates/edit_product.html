@@ -10,6 +10,15 @@
             <h2 style="font-size: 1.25rem; margin: 0;">Detalhes do Produto</h2>
             <a href="/products" class="btn btn-ghost">Cancelar</a>
         </div>
+
+        {% if product.image_url %}
+        <div style="margin-bottom: 2rem; text-align: center;">
+            <p class="form-label">Prévia da Imagem Atual:</p>
+            <div style="width: 200px; height: 200px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid var(--border);">
+                <img src="{{ get_proxy_url(product.image_url) }}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+        </div>
+        {% endif %}
         
         <form action="/products/edit/{{ product.id }}" method="post" enctype="multipart/form-data">
             <div class="form-group">
@@ -36,6 +45,7 @@
             <div class="form-group">
                 <label class="form-label">Link de Afiliado</label>
                 <input type="url" name="affiliate_link" class="form-input" value="{{ product.affiliate_link }}" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Protegido: <a href="/l/{{ product.id }}" target="_blank" style="color: var(--primary);">/l/{{ product.id }}</a></small>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">

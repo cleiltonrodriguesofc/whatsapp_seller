@@ -58,7 +58,7 @@
             <div class="card product-row">
                 <div style="width: 80px; height: 80px; border-radius: 12px; background: var(--bg-main); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border);">
                     {% if product.image_url %}
-                    <img src="{{ product.image_url }}" alt="Produto" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img src="{{ get_proxy_url(product.image_url) }}" alt="Produto" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
                     🛒
                     {% endif %}
@@ -67,6 +67,8 @@
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <div>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;">{{ product.name }}</h3>
+                            <a href="/l/{{ product.id }}" target="_blank" style="font-size: 0.7rem; color: var(--text-muted); text-decoration: none;">Link Protegido: /l/{{ product.id }}</a>
+                            <br>
                             <span style="font-size: 0.75rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">{{ product.category or 'Geral' }}</span>
                         </div>
                         <div style="font-weight: 800; color: var(--text-primary); font-size: 1.1rem;">R$ {{ "{:,.2f}".format(product.price) }}</div>

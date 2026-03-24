@@ -3,6 +3,7 @@ import httpx
 import base64
 import os
 from PIL import Image
+from core.infrastructure.services.supabase_storage import SupabaseStorageService
 
 
 async def get_optimized_base64(
@@ -18,6 +19,12 @@ async def get_optimized_base64(
             response = await client.get(path_or_url, headers=headers)
             response.raise_for_status()
             img_data = response.content
+    elif path_or_url.startswith("supabase://"):
+        # Authenticated download from private Supabase bucket
+        storage_svc = SupabaseStorageService()
+        img_data = storage_svc.download_image(path_or_url)
+        if not img_data:
+            raise ValueError(f"Failed to download private image from Supabase: {path_or_url}")
     elif path_or_url.startswith("data:"):
         # It's a Base64 Data URI stored in the DB
         base64_str = path_or_url.split(",", 1)[-1]
