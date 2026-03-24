@@ -235,6 +235,12 @@ class SQLCampaignRepository(CampaignRepository):
             .first()
         )
         if model:
+            # remove association table rows first to avoid fk violation
+            self.db.execute(
+                campaign_groups.delete().where(
+                    campaign_groups.c.campaign_id == model.id
+                )
+            )
             self.db.delete(model)
             self.db.commit()
             return True
