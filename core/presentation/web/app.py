@@ -81,6 +81,20 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Security Middlewares
+# Run auto-migrations on startup
+try:
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        # check if click_count exists
+        res = conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'click_count';"))
+        if not res.fetchone():
+            conn.execute(text("ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"))
+            conn.commit()
+            print("Auto-migration: Added 'click_count' to products table.")
+except Exception as e:
+    print(f"Auto-migration failed: {e}")
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -449,6 +463,10 @@ async def home(
         .count()
     )
 
+    # Click metrics for dashboard
+    products = db.query(ProductModel).filter(ProductModel.user_id == current_user.id).all()
+    total_clicks = sum(p.click_count or 0 for p in products)
+
     # Get user's instances
     instances = (
         db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
@@ -475,6 +493,7 @@ async def home(
             "total_campaigns": total_campaigns,
             "sent_count": sent_count,
             "ai_count": ai_count,
+            "total_clicks": total_clicks,
             "wa_connected": wa_connected,
             "wa_status": wa_status,
             "instances": instances,
@@ -1457,6 +1476,9 @@ async def redirect_to_affiliate(product_id: int, db: Session = Depends(get_db)):
     """
     from core.infrastructure.database.repositories import SQLProductRepository
     product_repo = SQLProductRepository(db)
+    # Increment click count before redirecting
+    product_repo.increment_clicks(product_id)
+    
     product = product_repo.get_by_id(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Link not found")

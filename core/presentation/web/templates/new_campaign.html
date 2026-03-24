@@ -28,7 +28,7 @@
                 <label class="form-label">Produto</label>
                 <select name="product_id" class="form-select" required>
                     {% for product in products %}
-                    <option value="{{ product.id }}">{{ product.name }} (R$ {{ product.price }})</option>
+                    <option value="{{ product.id }}">{{ product.name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -108,17 +108,17 @@
         <div class="form-group">
             <!-- Status: card dedicado, independente dos grupos -->
             <label class="form-label">Destinos</label>
-            <label class="target-item status-target" id="status-card" style="border: 1px solid var(--primary); background: rgba(99,102,241,0.08); margin-bottom: 1rem; cursor: pointer;">
-                <input type="checkbox" name="groups" value="status@broadcast" id="chk-status" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            <label class="target-item status-target" id="status-card" style="border: 2px solid var(--primary); background: rgba(99,102,241,0.08); margin-bottom: 1rem; cursor: pointer;">
+                <input type="checkbox" name="groups" value="status@broadcast" id="chk-status" checked onclick="return false;" style="width: 20px; height: 20px; accent-color: var(--primary);">
                 <div style="flex-grow: 1;">
-                    <div class="target-name" style="font-weight: 700; color: var(--primary); font-size: 1rem;">📱 Meu Status do WhatsApp</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">Disparo direto para <strong>todos os seus contatos</strong> — não precisa carregar grupos</div>
+                    <div class="target-name" style="font-weight: 700; color: var(--primary); font-size: 1rem;">📱 Enviar para o Status (Padrão)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Disponível na sua assinatura atual. Envio direto para seus contatos.</div>
                 </div>
-                <span id="status-badge" style="font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 10px; border-radius: 4px; font-weight: 800;">AUTO</span>
+                <span id="status-badge" style="font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 10px; border-radius: 4px; font-weight: 800;">ATIVO</span>
             </label>
 
-            <!-- Grupos (opcionais) -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <!-- Grupos: Ocultos por enquanto conforme solicitado -->
+            <div style="display: none;">
                 <label class="form-label" style="margin-bottom: 0; font-size: 0.9rem; color: var(--text-muted);">Grupos (opcional)</label>
                 <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Grupos</button>
             </div>

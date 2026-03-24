@@ -239,26 +239,33 @@
 
         /* ── Responsive ─────────────────────────────────────────── */
         @media (max-width: 960px) {
-            .hero-title { font-size: 3rem; letter-spacing: -1.5px; }
+            .hero-title { font-size: 3.5rem; letter-spacing: -2px; }
             .features-grid, .price-grid, .testi-grid, .stats-grid, .steps-grid { grid-template-columns: 1fr; }
             .nav-landing { padding: 1rem 1.5rem; }
             .steps-grid::before { display: none; }
             .section-title { font-size: 2.25rem; }
             .final-cta-title { font-size: 2.25rem; }
             .price-card.popular { transform: none; }
+            .hero { padding: 8rem 0 4rem; }
         }
 
         @media (max-width: 480px) {
-            .hero-title { font-size: 2.2rem; }
-            .hero-subtitle { font-size: 1rem; }
+            .hero-title { font-size: 2.5rem; line-height: 1.1; }
+            .hero-subtitle { font-size: 1rem; padding: 0 1rem; }
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
-            .nav-landing { flex-direction: column; gap: 1rem; padding: 1rem; }
-            .nav-landing > div { justify-content: center; width: 100%; }
-            .hero { padding: 8rem 0 4rem; }
-            .hero-ctas { flex-direction: column; width: 100%; }
-            .hero-ctas a { width: 100%; }
-            .btn-p, .btn-ghost-l { padding: 0.8rem 1rem; font-size: 0.9rem; text-align: center; }
-            .section-title { font-size: 1.8rem; }
+            .nav-landing { 
+                padding: 0.75rem 1rem;
+                flex-direction: row; /* keep it row on mobile but tighter */
+                justify-content: space-between;
+            }
+            .nav-logo { font-size: 0.9rem; }
+            .nav-landing > div { gap: 0.75rem !important; }
+            .hero { padding: 7rem 0 3rem; }
+            .hero-ctas { flex-direction: column; width: 100%; padding: 0 1.5rem; }
+            .hero-ctas a { width: 100%; text-align: center; }
+            .btn-p, .btn-ghost-l { padding: 1rem; font-size: 0.95rem; }
+            .section-title { font-size: 2rem; }
+            .stat-num { font-size: 2rem; }
         }
     </style>
 </head>
