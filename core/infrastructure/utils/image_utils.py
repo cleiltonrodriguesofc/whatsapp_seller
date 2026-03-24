@@ -11,10 +11,16 @@ async def get_optimized_base64(
     Downloads or reads an image, resizes it, compresses it and returns a Base64 string.
     """
     if path_or_url.startswith(("http://", "https://")):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(path_or_url)
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            # Mask user-agent to bypass basic CDN hotlink protections
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            response = await client.get(path_or_url, headers=headers)
             response.raise_for_status()
             img_data = response.content
+    elif path_or_url.startswith("data:"):
+        # It's a Base64 Data URI stored in the DB
+        base64_str = path_or_url.split(",", 1)[-1]
+        img_data = base64.b64decode(base64_str)
     else:
         with open(path_or_url, "rb") as f:
             img_data = f.read()
@@ -22,9 +28,19 @@ async def get_optimized_base64(
     # Open image with Pillow
     img = Image.open(io.BytesIO(img_data))
 
-    # Convert to RGB if necessary (e.g., RGBA or P)
-    if img.mode in ("RGBA", "P"):
-        img = img.convert("RGB")
+    # Convert to RGB unconditionally if not already RGB to support WebP/alpha safely
+    if img.mode != "RGB":
+        # Create a white background first to avoid black artifacts on transparent areas
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        if img.mode in ("RGBA", "LA", "P"):
+            try:
+                # If it has alpha, composite it
+                background.paste(img, mask=img.convert("RGBA").split()[3])
+            except Exception:
+                pass # fallback
+            img = background
+        else:
+            img = img.convert("RGB")
 
     # Resize keeping aspect ratio
     img.thumbnail(max_size, Image.Resampling.LANCZOS)

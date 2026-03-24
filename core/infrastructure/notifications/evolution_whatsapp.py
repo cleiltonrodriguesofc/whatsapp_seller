@@ -70,7 +70,7 @@ class EvolutionWhatsAppService(NotificationService):
             url = f"{self.base_url}/message/sendStatus/{self.instance}"
             payload = {
                 "type": "image",
-                "content": media if is_url else f"data:image/jpeg;base64,{media}",
+                "content": media if is_url else media,
                 "caption": caption,
                 "allContacts": True,
                 "mimetype": "image/jpeg",

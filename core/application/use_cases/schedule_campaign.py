@@ -67,7 +67,7 @@ class ScheduleCampaign:
             is_recurring=is_recurring,
             recurrence_days=recurrence_days,
             send_time=send_time,
-            is_ai_generated=bool(not custom_message and use_ai and not save_as_draft),
+            is_ai_generated=use_ai,
         )
 
         # 4. Save to Repository

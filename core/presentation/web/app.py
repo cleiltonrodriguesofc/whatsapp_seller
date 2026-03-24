@@ -139,6 +139,28 @@ async def startup_event():
     asyncio.create_task(campaign_scheduler_loop())
 
 
+async def execute_campaign_task(campaign_id: int):
+    """
+    Runs a campaign in the background using its own database session.
+    """
+    db = SessionLocal()
+    try:
+        logger.info("Executing background task for campaign ID %s", campaign_id)
+        campaign_repo = SQLCampaignRepository(db)
+        
+        # We must re-fetch the model inside this new thread/task DB session
+        model = db.query(CampaignModel).filter(CampaignModel.id == campaign_id).first()
+        if not model:
+            logger.error("Campaign %s not found in background task", campaign_id)
+            return
+
+        domain_campaign = campaign_repo._to_entity(model)
+        await send_campaign(domain_campaign, db)
+    except Exception as e:
+        logger.error("Error in background campaign task for %s: %s", campaign_id, e, exc_info=True)
+    finally:
+        db.close()
+
 async def campaign_scheduler_loop():
     """
     Background task to check and send scheduled/recurring campaigns.
@@ -146,7 +168,7 @@ async def campaign_scheduler_loop():
     while True:
         db = SessionLocal()
         try:
-            now = datetime.utcnow()  # Use utcnow for consistency
+            now = datetime.now()  # Fix: use local naive datetime because user inputs are BRT
             current_time_str = now.strftime("%H:%M")
             current_day_str = now.strftime("%a").lower()  # "mon", "tue", etc.
 
@@ -157,17 +179,21 @@ async def campaign_scheduler_loop():
                 db.query(CampaignModel)
                 .filter(
                     CampaignModel.status == ModelCampaignStatus.SCHEDULED,
-                    not CampaignModel.is_recurring,
+                    CampaignModel.is_recurring == False,
                     CampaignModel.scheduled_at <= now,
                 )
                 .all()
             )
 
             for campaign_model in pending_one_off:
-                logger.info("executing one-off campaign: %s", campaign_model.title)
-                # Convert Model to Domain entity
-                domain_campaign = campaign_repo._to_entity(campaign_model)
-                await send_campaign(domain_campaign, db)
+                logger.info("scheduling one-off campaign task: %s", campaign_model.title)
+                # Mark it as SENDING immediately to prevent duplicate runs
+                campaign_model.status = ModelCampaignStatus.SENDING
+                campaign_model.last_run_at = now
+                db.add(campaign_model)
+                db.commit()
+                
+                asyncio.create_task(execute_campaign_task(campaign_model.id))
 
             # Iterate through all recurring campaigns
             recurring_campaigns = (
@@ -211,11 +237,11 @@ async def campaign_scheduler_loop():
                             campaign_model.title,
                             current_time_str,
                         )
+                        campaign_model.status = ModelCampaignStatus.SENDING
                         campaign_model.last_run_at = now
                         db.add(campaign_model)
                         db.commit()
-                        domain_campaign = campaign_repo._to_entity(campaign_model)
-                        await send_campaign(domain_campaign, db)
+                        asyncio.create_task(execute_campaign_task(campaign_model.id))
 
                 # 2. Granular Target-Config Triggers (v3)
                 for target_type, t_schedule in target_config.items():
@@ -239,12 +265,12 @@ async def campaign_scheduler_loop():
                                 campaign_model.title,
                                 current_time_str,
                             )
+                            campaign_model.status = ModelCampaignStatus.SENDING
                             campaign_model.last_run_at = now
                             db.add(campaign_model)
                             db.commit()
-                            domain_campaign = campaign_repo._to_entity(campaign_model)
                             # Here we should optionally filter domain_campaign.target_groups by type
-                            await send_campaign(domain_campaign, db)
+                            asyncio.create_task(execute_campaign_task(campaign_model.id))
 
         except Exception as e:
             logger.error("error in scheduler loop: %s", e, exc_info=True)
@@ -931,6 +957,7 @@ async def create_campaign(
     is_recurring: bool = Form(False),
     recurrence_days: List[str] = Form([]),
     send_time: Optional[str] = Form(None),
+    use_ai: bool = Form(False),
     save_as_draft: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
@@ -969,6 +996,7 @@ async def create_campaign(
         is_recurring=is_recurring,
         recurrence_days=",".join(recurrence_days),
         send_time=send_time,
+        use_ai=use_ai,
         user_id=current_user.id,
         save_as_draft=save_as_draft,
     )
@@ -1021,6 +1049,7 @@ async def update_campaign(
     is_recurring: bool = Form(False),
     recurrence_days: List[str] = Form([]),
     send_time: Optional[str] = Form(None),
+    use_ai: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
@@ -1041,6 +1070,8 @@ async def update_campaign(
     campaign.is_recurring = is_recurring
     campaign.recurrence_days = ",".join(recurrence_days)
     campaign.send_time = send_time
+    if use_ai:
+        campaign.is_ai_generated = True
 
     if scheduled_at:
         try:
