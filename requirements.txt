@@ -15,3 +15,7 @@ pytest
 pytest-asyncio
 pytest-cov
 python-dotenv
+supabase
+
+supabase
+

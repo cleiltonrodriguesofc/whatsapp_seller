@@ -17,10 +17,17 @@ from fastapi import (
     Request,
     UploadFile,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    RedirectResponse,
+    Response,
+    FileResponse
+)
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from PIL import Image
+import io
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -41,6 +48,7 @@ from core.infrastructure.database.models import (
     CampaignModel,
     CampaignStatus as ModelCampaignStatus,
     InstanceModel,
+    ProductModel,
     UserModel,
     campaign_groups,
 )
@@ -51,6 +59,7 @@ from core.infrastructure.database.repositories import (
 )
 from core.infrastructure.database.session import SessionLocal, engine, get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.services.supabase_storage import SupabaseStorageService
 
 # Load environment variables
 load_dotenv()
@@ -83,7 +92,7 @@ async def add_security_headers(request: Request, call_next):
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https:; "
+        "img-src 'self' data: https: https://wjgxuhozvbybpojhvqzf.supabase.co; "
         "connect-src 'self' https:;"
     )
     # Strict-Transport-Security (HSTS) - only for production
@@ -101,11 +110,25 @@ async def health_check():
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 auth_service = AuthService()
 
+def get_proxy_url(url: str) -> str:
+    """
+    Helper for Jinja2 templates: converts supabase:// identifiers
+    to the authenticated proxy route.
+    """
+    if not url:
+        return "/static/img/no-image.png"
+    if url.startswith("supabase://"):
+        return f"/storage/view/{url.replace('supabase://', '')}"
+    return url
+
+
 # Mount static files and templates
 app.mount(
     "/static", StaticFiles(directory="core/presentation/web/static"), name="static"
 )
 templates = Jinja2Templates(directory="core/presentation/web/templates")
+templates.env.globals["get_proxy_url"] = get_proxy_url
+app.state.templates = templates
 
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)):
@@ -137,6 +160,52 @@ def login_required(user: UserModel = Depends(get_current_user)):
 async def startup_event():
     # start the background campaign scheduler
     asyncio.create_task(campaign_scheduler_loop())
+
+
+# ── storage proxy ──────────────────────────────────────────────────────────────
+
+@app.get("/storage/view/{filename:path}")
+async def serve_private_image(filename: str, user: UserModel = Depends(get_current_user)):
+    """
+    Proxies images from private Supabase bucket to the browser.
+    Requires the user to be logged in.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    storage_svc = SupabaseStorageService()
+    # filenames in DB are stored as supabase://uuid.ext or just uuid.ext
+    clean_path = filename.replace("supabase://", "")
+    
+    img_bytes = storage_svc.download_image(clean_path)
+    if not img_bytes:
+        raise HTTPException(status_code=404, detail="Image not found in storage")
+    
+    # Simple extension detection for content-type
+    ext = os.path.splitext(clean_path)[1].lower()
+    content_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif"
+    }
+    media_type = content_types.get(ext, "application/octet-stream")
+    
+    return Response(content=img_bytes, media_type=media_type)
+
+
+@app.get("/l/{product_id}")
+async def redirect_to_affiliate(product_id: int, db: Session = Depends(get_db)):
+    """
+    Cloaks affiliate links by using a redirector.
+    """
+    product = db.query(ProductModel).filter(ProductModel.id == product_id).first()
+    if not product or not product.affiliate_link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    
+    # Track click or just redirect (minimal effort for now)
+    return RedirectResponse(url=product.affiliate_link)
 
 
 async def execute_campaign_task(campaign_id: int):
@@ -308,9 +377,16 @@ async def send_campaign(campaign: Campaign, db: Session):
     campaign_repo.save(campaign)
 
     # 2. Prepare Content
+    base_url = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+    cloaked_link = f"{base_url}/l/{campaign.product.id}"
+    
     message = campaign.custom_message
     if not message:
-        message = f"Confira nosso produto: {campaign.product.name} - {campaign.product.affiliate_link}"
+        message = f"Confira nosso produto: {campaign.product.name} - {cloaked_link}"
+    else:
+        # Replacement pattern if user uses placeholders (optional but good)
+        message = message.replace("{{link}}", cloaked_link)
+        message = message.replace(campaign.product.affiliate_link, cloaked_link)
 
     # 3. Execute Humanized Send
     # We use target_groups for now, but in the future we might filter by target_config
@@ -1127,18 +1203,53 @@ async def _save_uploaded_image(image_file: UploadFile) -> str:
             detail=f"Unsupported image format '{fmt}'. Allowed: {', '.join(_ALLOWED_IMAGE_TYPES)}.",
         )
 
-    ext = _ALLOWED_IMAGE_TYPES[fmt]
+    ext = ".jpg"  # We'll save as JPEG for best compression/compatibility combo
     unique_filename = f"{uuid.uuid4()}{ext}"
-    upload_dir = os.path.join("core", "presentation", "web", "static", "uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-    upload_path = os.path.join(upload_dir, unique_filename)
 
-    # convert to RGB before saving (handles RGBA PNGs, palettes, etc.)
-    img = img.convert("RGB") if fmt == "JPEG" else img
-    img.save(upload_path)
+    # OPTIMIZATION: Resize and compress to stay under 50MB limit
+    try:
+        # Re-open for processing
+        img = Image.open(io.BytesIO(raw))
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        
+        # Max 800px width/height for web display
+        img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+        
+        # Save to buffer with compression
+        optimized_buffer = io.BytesIO()
+        img.save(optimized_buffer, format="JPEG", quality=75, optimize=True)
+        optimized_raw = optimized_buffer.getvalue()
+        
+        logger.info("Image optimized for Supabase: %d -> %d bytes", len(raw), len(optimized_raw))
+        raw = optimized_raw
+    except Exception as e:
+        logger.warning("Optimization failed, using raw: %s", e)
 
-    logger.info("uploaded image saved: %s (%d bytes, format=%s)", unique_filename, len(raw), fmt)
-    return f"/static/uploads/{unique_filename}"
+    # Use Supabase Storage for persistence across Render deployments
+    try:
+        storage_svc = SupabaseStorageService()
+        public_url = await storage_svc.upload_image(
+            file_content=raw,
+            filename=unique_filename,
+            content_type="image/jpeg"
+        )
+    except Exception as e:
+        logger.error("Supabase storage service error: %s", e)
+        public_url = None
+
+    if not public_url:
+        logger.error("Supabase upload failed, falling back to local (warning: ephemeral)")
+        # Fallback to local if Supabase fails (optional, or just raise error)
+        upload_dir = os.path.join("core", "presentation", "web", "static", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        upload_path = os.path.join(upload_dir, unique_filename)
+        img = img.convert("RGB") if fmt == "JPEG" else img
+        img.save(upload_path)
+        return f"/static/uploads/{unique_filename}"
+
+    logger.info("uploaded image saved to Supabase: %s", public_url)
+    return public_url
 
 
 # ── product endpoints ──────────────────────────────────────────────────────────
@@ -1215,7 +1326,36 @@ async def update_product(
     # handle image file upload with MIME validation
     final_image_url = image_url or product.image_url
     if image_file and image_file.filename:
+        # User uploaded a new file: use standard optimized upload
         final_image_url = await _save_uploaded_image(image_file)
+    elif final_image_url and final_image_url.startswith("/static/uploads/"):
+        # Legacy Migration: if it's still local and we haven't uploaded a new one, try to move it now
+        local_path = os.path.join("core", "presentation", "web", "static", "uploads", final_image_url.split("/")[-1])
+        if os.path.exists(local_path):
+            try:
+                with open(local_path, "rb") as f:
+                    content = f.read()
+                storage_svc = SupabaseStorageService()
+                # Re-optimize/compress even legacy images to save space
+                try:
+                    img = Image.open(io.BytesIO(content))
+                    if img.mode != "RGB": img = img.convert("RGB")
+                    img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+                    buffer = io.BytesIO()
+                    img.save(buffer, format="JPEG", quality=75, optimize=True)
+                    content = buffer.getvalue()
+                except: pass
+
+                migrated_url = await storage_svc.upload_image(
+                    file_content=content,
+                    filename=local_path,
+                    content_type="image/jpeg"
+                )
+                if migrated_url:
+                    final_image_url = migrated_url
+                    logger.info("lazy-migrated legacy image to Supabase: %s", migrated_url)
+            except Exception as e:
+                logger.error("Lazy migration failed: %s", e)
 
     # Update product entity fields
     product.name = name
@@ -1248,6 +1388,7 @@ async def delete_product(
 async def rewrite_campaign_message(
     text: Optional[str] = Form(None),
     product_id: Optional[int] = Form(None),
+    is_status: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
@@ -1267,12 +1408,20 @@ async def rewrite_campaign_message(
         prompt = "Crie uma mensagem persuasiva de vendas para o WhatsApp do zero. "
         
     if product:
-        prompt += f"Considerei os detalhes do produto: {product.name} - {product.description}. O preço é R$ {product.price}. "
+        prompt += f"Foque na **USABILIDADE** e benefícios práticos do produto: {product.name}. "
+        prompt += f"Descrição do produto: {product.description}. Preço: R$ {product.price}. "
         
-    prompt += "MANTENHA O LINK ABAIXO EXATAMENTE COMO ESTÁ, NO FINAL DA MENSAGEM. "
-    prompt += "Use emojis, bullet points e uma chamada para ação clara. Mantenha um tom amigável e focado em converter o cliente. "
+    if is_status:
+        prompt += "ESTA MENSAGEM É PARA O STATUS DO WHATSAPP. Seja extremamente conciso (máximo 700 caracteres) e impactante. "
+    else:
+        prompt += "Mantenha um tom amigável, amigável e focado em converter o cliente. "
+
+    prompt += "MANTENHA O LINK ABAIXO EXATAMENTE COMO ESTÁ NO FINAL DA MENSAGEM. "
+    prompt += "Use emojis, bullet points focados em benefícios e uma chamada para ação clara. "
     prompt += "Não use markdown links (como [texto](url)).\n\n"
-    prompt += f"Link que DEVE estar na mensagem: {product.affiliate_link if product else ''}\n\n"
+    
+    link = product.affiliate_link if product else (text if "http" in (text or "") else "")
+    prompt += f"Link que DEVE estar na mensagem: {link}\n\n"
     
     if text:
         prompt += f"Texto original: {text}"
@@ -1280,7 +1429,35 @@ async def rewrite_campaign_message(
     improved_text = await ai_service.chat(prompt)
 
     # Safety check: if AI removed the link, append it
-    if product and product.affiliate_link not in improved_text:
-        improved_text += f"\n\n👉 Compre aqui: {product.affiliate_link}"
+    if link and link not in improved_text:
+        improved_text += f"\n\n👉 Compre aqui: {link}"
 
     return {"improved_text": improved_text}
+
+
+@app.get("/storage/view/{filename}", response_class=FileResponse)
+async def serve_private_image(filename: str, current_user: UserModel = Depends(login_required)):
+    """
+    Securely serves images from the private Supabase bucket.
+    Requires active dashboard authentication.
+    """
+    storage_svc = SupabaseStorageService()
+    image_bytes = storage_svc.download_image(filename)
+    if not image_bytes:
+        raise HTTPException(
+            status_code=404, detail="Image not found in private storage"
+        )
+    return Response(content=image_bytes, media_type="image/jpeg")
+
+
+@app.get("/l/{product_id}", response_class=RedirectResponse)
+async def redirect_to_affiliate(product_id: int, db: Session = Depends(get_db)):
+    """
+    Cloaks affiliate links by redirecting through a local route.
+    """
+    from core.infrastructure.database.repositories import SQLProductRepository
+    product_repo = SQLProductRepository(db)
+    product = product_repo.get_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Link not found")
+    return RedirectResponse(url=product.affiliate_link)

@@ -1,0 +1,83 @@
+import os
+import uuid
+import logging
+from typing import Optional
+from supabase import create_client, Client
+
+logger = logging.getLogger(__name__)
+
+
+class SupabaseStorageService:
+    def __init__(self):
+        self.url: str = os.getenv("SUPABASE_URL", "")
+        self.key: str = os.getenv("SUPABASE_KEY", "")
+        self.bucket_name: str = "produtos"
+        
+        if not self.url or not self.key:
+            logger.warning("Supabase credentials not fully configured.")
+            self.client: Optional[Client] = None
+        else:
+            self.client = create_client(self.url, self.key)
+
+    async def upload_image(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Optional[str]:
+        """
+        Uploads image bytes to Supabase Storage and returns the UNIQUE PATH (filename).
+        Uses a private bucket approach where we don't expose public URLs.
+        """
+        if not self.client:
+            logger.error("Supabase client not initialized.")
+            return None
+
+        try:
+            ext = os.path.splitext(filename)[1] or ".jpg"
+            unique_name = f"{uuid.uuid4()}{ext}"
+            
+            # Suapbase python client storage is sync
+            res = self.client.storage.from_(self.bucket_name).upload(
+                path=unique_name,
+                file=file_content,
+                file_options={"content-type": content_type}
+            )
+            
+            # If storage service returns an error dict/response
+            if hasattr(res, 'get') and res.get('error'):
+                logger.error("Supabase Storage Error: %s", res['error'])
+                return None
+
+            logger.info("Image uploaded to Supabase (internal path): %s", unique_name)
+            # Prefix with supabase:// to identify it in the DB later
+            return f"supabase://{unique_name}"
+            
+        except Exception as e:
+            logger.error("Exception during Supabase upload: %s. Check if bucket '%s' exists and has RLS policies.", e, self.bucket_name)
+            return None
+
+    def download_image(self, path: str) -> Optional[bytes]:
+        """
+        Downloads raw bytes from the private bucket.
+        'path' should be the internal filename (without supabase:// prefix).
+        """
+        if not self.client:
+            return None
+        try:
+            clean_path = path.replace("supabase://", "")
+            return self.client.storage.from_(self.bucket_name).download(clean_path)
+        except Exception as e:
+            logger.error("Failed to download image from Supabase path '%s': %s", path, e)
+            return None
+
+    def get_signed_url(self, path: str, expires_in: int = 3600) -> Optional[str]:
+        """
+        Generates a temporary signed URL for viewing in the browser.
+        """
+        if not self.client:
+            return None
+        try:
+            clean_path = path.replace("supabase://", "")
+            res = self.client.storage.from_(self.bucket_name).create_signed_url(clean_path, expires_in)
+            # res might be a string directly or a dict depending on library version
+            if isinstance(res, dict): return res.get("signedURL")
+            return res
+        except Exception as e:
+            logger.error("Failed to create signed URL for '%s': %s", path, e)
+            return None
