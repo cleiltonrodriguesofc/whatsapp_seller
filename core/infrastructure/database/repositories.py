@@ -80,7 +80,8 @@ class SQLProductRepository(ProductRepository):
             .first()
         )
         if model:
-            self.db.delete(model)
+            # Soft delete: mark as inactive to prevent FK violations in campaigns
+            model.is_active = False
             self.db.commit()
             return True
         return False
@@ -88,7 +89,9 @@ class SQLProductRepository(ProductRepository):
     def get_by_id(
         self, product_id: int, user_id: Optional[int] = None
     ) -> Optional[Product]:
-        query = self.db.query(ProductModel).filter(ProductModel.id == product_id)
+        query = self.db.query(ProductModel).filter(
+            ProductModel.id == product_id, ProductModel.is_active == True
+        )
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
         model = query.first()
@@ -97,7 +100,7 @@ class SQLProductRepository(ProductRepository):
         return self._to_entity(model)
 
     def list_all(self, user_id: Optional[int] = None) -> List[Product]:
-        query = self.db.query(ProductModel)
+        query = self.db.query(ProductModel).filter(ProductModel.is_active == True)
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
         models = query.all()
