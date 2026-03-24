@@ -60,19 +60,7 @@ class HumanizedSender:
             # 3. Send the message
             success = False
             if optimized_media:
-                # If it's status, let's prepend the link to make it more obvious and clickable
-                status_caption = personalized_content
-                if target == "status@broadcast" and "http" in personalized_content:
-                    import re
-                    # Find first URL
-                    urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', personalized_content)
-                    if urls:
-                        link = urls[0]
-                        # Remove link from original and prepend it
-                        clean_text = personalized_content.replace(link, "").strip()
-                        status_caption = f"🚀 COMPRE AQUI: {link}\n\n{clean_text}"
-                
-                success = await self.svc.send_image(target, optimized_media, status_caption)
+                success = await self.svc.send_image(target, optimized_media, personalized_content)
             else:
                 success = await self.svc.send_text(target, personalized_content)
 
