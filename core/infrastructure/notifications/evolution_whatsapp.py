@@ -67,26 +67,12 @@ class EvolutionWhatsAppService(NotificationService):
         is_url = media.startswith("http")
 
         if phone == "status@broadcast":
-            url = f"{self.base_url}/message/sendStatus/{self.instance}"
-            payload = {
-                "type": "image",
-                "content": media if is_url else media,
-                "caption": caption,
-                "allContacts": True,
-                "mimetype": "image/jpeg",
-            }
-            # For Status, Evolution API v2 often only supports JSON with URL/Base64
-            # We'll try JSON first for Status.
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    res = await client.post(url, json=payload, headers=self._headers())
-                    if res.status_code >= 400:
-                        logger.error("Status Error: %s", res.text)
-                    res.raise_for_status()
-                    return True
-            except Exception as e:
-                logger.error("sendStatus failed: %s", e)
-                return False
+            # Use unified send_status for reliability
+            return await self.send_status(
+                content=media,
+                type="image",
+                caption=caption
+            )
         else:
             # For direct messages, we use sendMedia with multipart if possible
             url = f"{self.base_url}/message/sendMedia/{self.instance}"
@@ -141,16 +127,27 @@ class EvolutionWhatsAppService(NotificationService):
         jid_list: list = None,
         backgroundColor: str = "#128C7E",
         font: int = 1,
+        caption: str = "",
     ) -> bool:
         """
         Sends a status update (text or image).
         """
         url = f"{self.base_url}/message/sendStatus/{self.instance}"
+        is_url = content.startswith("http")
+        
+        # Format content for status images if it's base64/local
+        final_content = content
+        if type == "image" and not is_url and not content.startswith("data:"):
+             final_content = f"data:image/jpeg;base64,{content}"
+
         payload = {
             "type": type,
-            "content": content,
+            "content": final_content,
             "allContacts": True if not jid_list else False,
         }
+
+        if type == "image":
+            payload["caption"] = caption
 
         if type == "text":
             payload["backgroundColor"] = backgroundColor
