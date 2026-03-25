@@ -2,7 +2,7 @@ import pytest
 import io
 import base64
 from PIL import Image
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 from core.infrastructure.utils.image_utils import get_optimized_base64
 
 @pytest.fixture
