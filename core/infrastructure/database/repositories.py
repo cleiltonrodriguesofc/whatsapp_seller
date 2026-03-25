@@ -110,10 +110,19 @@ class SQLProductRepository(ProductRepository):
         return [self._to_entity(m) for m in models]
 
     def increment_clicks(self, product_id: int):
-        model = self.db.query(ProductModel).filter(ProductModel.id == product_id).first()
-        if model:
-            model.click_count += 1
+        from sqlalchemy import update, func
+        try:
+            # use coalesce to handle NULL values if they exist
+            self.db.execute(
+                update(ProductModel)
+                .where(ProductModel.id == product_id)
+                .values(click_count=func.coalesce(ProductModel.click_count, 0) + 1)
+            )
             self.db.commit()
+            print(f"DEBUG: Incremented clicks for product {product_id}")
+        except Exception as e:
+            self.db.rollback()
+            print(f"DEBUG: Failed to increment clicks: {e}")
 
     def _to_entity(self, model: ProductModel) -> Product:
         return Product(
