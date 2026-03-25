@@ -635,7 +635,8 @@ async def send_status_campaign(campaign: StatusCampaign, db: Session):
                 caption += f"\n\n👉 {item.link}"
             
             await whatsapp_service.send_status(
-                media_url=item.image_url,
+                content=item.image_url,
+                type="image",
                 caption=caption
             )
             await asyncio.sleep(3) # Delay between status items
