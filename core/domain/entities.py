@@ -126,3 +126,37 @@ class Instance:
     status: str = "disconnected"
     id: Optional[int] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+class StatusCampaignStatus(Enum):
+    DRAFT = "draft"
+    PENDING = "pending"
+    SCHEDULED = "scheduled"
+    SENDING = "sending"
+    SENT = "sent"
+    FAILED = "failed"
+
+
+@dataclass
+class StatusItem:
+    image_url: str
+    caption: Optional[str] = None
+    link: Optional[str] = None
+    price: Optional[float] = None
+    id: Optional[int] = None
+
+
+@dataclass
+class StatusCampaign:
+    title: str
+    items: List[StatusItem]
+    user_id: int
+    scheduled_at: Optional[datetime] = None
+    is_recurring: bool = False
+    recurrence_days: Optional[str] = None  # Comma separated "mon,tue"
+    send_time: Optional[str] = None  # "HH:MM"
+    status: StatusCampaignStatus = StatusCampaignStatus.DRAFT
+    instance_id: Optional[int] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    sent_at: Optional[datetime] = None
+    id: Optional[int] = None
