@@ -37,16 +37,23 @@ from starlette.status import HTTP_303_SEE_OTHER
 from core.application.services.auth_service import AuthService
 from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
+from core.application.use_cases.save_status_draft import SaveStatusCampaignDraft
+from core.application.use_cases.schedule_status_campaign import ScheduleStatusCampaign
+
 from core.domain.entities import (
     Campaign,
     CampaignStatus as DomainCampaignStatus,
     Product,
+    StatusCampaign,
+    StatusCampaignStatus as DomainStatusCampaignStatus,
 )
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.models import (
     Base,
     CampaignModel,
     CampaignStatus as ModelCampaignStatus,
+    StatusCampaignModel,
+    StatusCampaignStatus as ModelStatusCampaignStatus,
     InstanceModel,
     ProductModel,
     UserModel,
@@ -56,6 +63,7 @@ from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
     SQLProductRepository,
     SQLTargetRepository,
+    SQLStatusCampaignRepository,
 )
 from core.infrastructure.database.session import SessionLocal, engine, get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
