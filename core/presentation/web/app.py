@@ -178,48 +178,8 @@ async def startup_event():
 
 # ── storage proxy ──────────────────────────────────────────────────────────────
 
-@app.get("/storage/view/{filename:path}")
-async def serve_private_image(filename: str, user: UserModel = Depends(get_current_user)):
-    """
-    Proxies images from private Supabase bucket to the browser.
-    Requires the user to be logged in.
-    """
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    storage_svc = SupabaseStorageService()
-    # filenames in DB are stored as supabase://uuid.ext or just uuid.ext
-    clean_path = filename.replace("supabase://", "")
-    
-    img_bytes = storage_svc.download_image(clean_path)
-    if not img_bytes:
-        raise HTTPException(status_code=404, detail="Image not found in storage")
-    
-    # Simple extension detection for content-type
-    ext = os.path.splitext(clean_path)[1].lower()
-    content_types = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".gif": "image/gif"
-    }
-    media_type = content_types.get(ext, "application/octet-stream")
-    
-    return Response(content=img_bytes, media_type=media_type)
-
-
-@app.get("/l/{product_id}")
-async def redirect_to_affiliate(product_id: int, db: Session = Depends(get_db)):
-    """
-    Cloaks affiliate links by using a redirector.
-    """
-    product = db.query(ProductModel).filter(ProductModel.id == product_id).first()
-    if not product or not product.affiliate_link:
-        raise HTTPException(status_code=404, detail="Link not found")
-    
-    # Track click or just redirect (minimal effort for now)
-    return RedirectResponse(url=product.affiliate_link)
+# ── storage proxy ──────────────────────────────────────────────────────────────
+# (Redundant endpoints removed, consolidated at end of file)
 
 
 async def execute_campaign_task(campaign_id: int):
@@ -1358,12 +1318,14 @@ async def update_product(
                 # Re-optimize/compress even legacy images to save space
                 try:
                     img = Image.open(io.BytesIO(content))
-                    if img.mode != "RGB": img = img.convert("RGB")
+                    if img.mode != "RGB":
+                        img = img.convert("RGB")
                     img.thumbnail((800, 800), Image.Resampling.LANCZOS)
                     buffer = io.BytesIO()
                     img.save(buffer, format="JPEG", quality=75, optimize=True)
                     content = buffer.getvalue()
-                except: pass
+                except Exception:
+                    pass
 
                 migrated_url = await storage_svc.upload_image(
                     file_content=content,

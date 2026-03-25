@@ -76,7 +76,8 @@ class SupabaseStorageService:
             clean_path = path.replace("supabase://", "")
             res = self.client.storage.from_(self.bucket_name).create_signed_url(clean_path, expires_in)
             # res might be a string directly or a dict depending on library version
-            if isinstance(res, dict): return res.get("signedURL")
+            if isinstance(res, dict):
+                return res.get("signedURL")
             return res
         except Exception as e:
             logger.error("Failed to create signed URL for '%s': %s", path, e)
