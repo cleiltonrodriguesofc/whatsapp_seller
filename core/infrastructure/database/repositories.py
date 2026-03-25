@@ -5,19 +5,29 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from core.application.repositories import ProductRepository, CampaignRepository
+from core.application.repositories import (
+    ProductRepository,
+    CampaignRepository,
+    StatusCampaignRepository,
+)
 from core.domain.entities import (
     Product,
     Campaign,
+    StatusCampaign,
+    StatusItem,
     CampaignStatus as DomainCampaignStatus,
+    StatusCampaignStatus as DomainStatusCampaignStatus,
 )
 from core.infrastructure.database.models import (
     ProductModel,
     CampaignModel,
+    StatusCampaignModel,
+    StatusItemModel,
     WhatsAppTargetModel,
     UserModel,
     InstanceModel,
     CampaignStatus as ModelCampaignStatus,
+    StatusCampaignStatus as ModelStatusCampaignStatus,
     campaign_groups,
 )
 
@@ -421,3 +431,142 @@ class SQLInstanceRepository:
         self.db.commit()
         self.db.refresh(instance)
         return instance
+
+
+class SQLStatusCampaignRepository(StatusCampaignRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, campaign: StatusCampaign) -> StatusCampaign:
+        if campaign.id:
+            model = (
+                self.db.query(StatusCampaignModel)
+                .filter(StatusCampaignModel.id == campaign.id)
+                .first()
+            )
+            if model:
+                model.title = campaign.title
+                model.instance_id = campaign.instance_id
+                model.scheduled_at = campaign.scheduled_at
+                model.status = ModelStatusCampaignStatus[campaign.status.name]
+                model.is_recurring = campaign.is_recurring
+                model.recurrence_days = campaign.recurrence_days
+                model.send_time = campaign.send_time
+                model.sent_at = campaign.sent_at
+
+                # Sync items (simple delete/re-add)
+                self.db.query(StatusItemModel).filter(
+                    StatusItemModel.campaign_id == model.id
+                ).delete()
+                for idx, item in enumerate(campaign.items):
+                    item_model = StatusItemModel(
+                        campaign_id=model.id,
+                        image_url=item.image_url,
+                        caption=item.caption,
+                        link=item.link,
+                        price=item.price,
+                        position=idx,
+                    )
+                    self.db.add(item_model)
+        else:
+            model = StatusCampaignModel(
+                title=campaign.title,
+                user_id=campaign.user_id,
+                instance_id=campaign.instance_id,
+                scheduled_at=campaign.scheduled_at,
+                status=ModelStatusCampaignStatus[campaign.status.name],
+                is_recurring=campaign.is_recurring,
+                recurrence_days=campaign.recurrence_days,
+                send_time=campaign.send_time,
+            )
+            self.db.add(model)
+            self.db.flush()
+
+            for idx, item in enumerate(campaign.items):
+                item_model = StatusItemModel(
+                    campaign_id=model.id,
+                    image_url=item.image_url,
+                    caption=item.caption,
+                    link=item.link,
+                    price=item.price,
+                    position=idx,
+                )
+                self.db.add(item_model)
+
+        self.db.commit()
+        self.db.refresh(model)
+        campaign.id = model.id
+        # Update IDs in items from models
+        items_models = (
+            self.db.query(StatusItemModel)
+            .filter(StatusItemModel.campaign_id == model.id)
+            .order_by(StatusItemModel.position)
+            .all()
+        )
+        for i, m in enumerate(items_models):
+            if i < len(campaign.items):
+                campaign.items[i].id = m.id
+
+        return campaign
+
+    def get_by_id(
+        self, campaign_id: int, user_id: Optional[int] = None
+    ) -> Optional[StatusCampaign]:
+        query = self.db.query(StatusCampaignModel).filter(
+            StatusCampaignModel.id == campaign_id
+        )
+        if user_id:
+            query = query.filter(StatusCampaignModel.user_id == user_id)
+        model = query.first()
+        if not model:
+            return None
+        return self._to_entity(model)
+
+    def list_all(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
+        query = self.db.query(StatusCampaignModel)
+        if user_id:
+            query = query.filter(StatusCampaignModel.user_id == user_id)
+        models = query.all()
+        return [self._to_entity(m) for m in models]
+
+    def delete(self, campaign_id: int, user_id: int) -> bool:
+        model = (
+            self.db.query(StatusCampaignModel)
+            .filter(
+                StatusCampaignModel.id == campaign_id,
+                StatusCampaignModel.user_id == user_id,
+            )
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.commit()
+            return True
+        return False
+
+    def _to_entity(self, model: StatusCampaignModel) -> StatusCampaign:
+        items = [
+            StatusItem(
+                id=item.id,
+                image_url=item.image_url,
+                caption=item.caption,
+                link=item.link,
+                price=item.price,
+            )
+            for item in sorted(model.items, key=lambda x: x.position)
+        ]
+
+        return StatusCampaign(
+            id=model.id,
+            user_id=model.user_id,
+            instance_id=model.instance_id,
+            title=model.title,
+            items=items,
+            scheduled_at=model.scheduled_at,
+            is_recurring=model.is_recurring,
+            recurrence_days=model.recurrence_days,
+            send_time=model.send_time,
+            status=DomainStatusCampaignStatus[model.status.name],
+            created_at=model.created_at,
+            sent_at=model.sent_at,
+        )
