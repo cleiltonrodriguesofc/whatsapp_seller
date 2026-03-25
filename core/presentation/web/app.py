@@ -190,6 +190,155 @@ async def startup_event():
 # (Redundant endpoints removed, consolidated at end of file)
 
 
+# ── Status Campaigns ─────────────────────────────────────────────────────────
+
+@app.get("/status", response_class=HTMLResponse)
+async def status_campaigns_list(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    repo = SQLStatusCampaignRepository(db)
+    campaigns = repo.list_all(user_id=current_user.id)
+    return templates.TemplateResponse(
+        request=request,
+        name="status_list.html",
+        context={"campaigns": campaigns, "user": current_user, "title": "Meus Status"}
+    )
+
+@app.get("/status/new", response_class=HTMLResponse)
+async def status_campaign_new(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="status_editor.html",
+        context={
+            "user": current_user,
+            "instances": instances,
+            "campaign": None,
+            "title": "Novo Status Automático"
+        }
+    )
+
+@app.get("/status/edit/{campaign_id}", response_class=HTMLResponse)
+async def status_campaign_edit(
+    campaign_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    repo = SQLStatusCampaignRepository(db)
+    campaign = repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="status_editor.html",
+        context={
+            "user": current_user,
+            "instances": instances,
+            "campaign": campaign,
+            "title": f"Editar Status: {campaign.title}"
+        }
+    )
+
+@app.post("/status/save")
+async def status_campaign_save(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    data = await request.json()
+    repo = SQLStatusCampaignRepository(db)
+    use_case = SaveStatusCampaignDraft(repo)
+    
+    try:
+        campaign = await use_case.execute(
+            user_id=current_user.id,
+            title=data.get("title", "Status sem título"),
+            items_data=data.get("items", []),
+            campaign_id=data.get("id"),
+            instance_id=data.get("instance_id")
+        )
+        return {"success": True, "id": campaign.id}
+    except Exception as e:
+        logger.error("Error saving status draft: %s", e)
+        return {"success": False, "error": str(e)}
+
+@app.post("/status/schedule")
+async def status_campaign_schedule(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    data = await request.json()
+    repo = SQLStatusCampaignRepository(db)
+    ai_service = OpenAIService() # Wrap in try/except if needed
+    use_case = ScheduleStatusCampaign(repo, ai_service)
+    
+    scheduled_at = None
+    if data.get("scheduled_at"):
+        try:
+            scheduled_at = datetime.fromisoformat(data["scheduled_at"])
+        except:
+            pass
+
+    try:
+        campaign = await use_case.execute(
+            user_id=current_user.id,
+            title=data.get("title"),
+            items_data=data.get("items", []),
+            scheduled_at=scheduled_at,
+            is_recurring=data.get("is_recurring", False),
+            recurrence_days=data.get("recurrence_days"),
+            send_time=data.get("send_time"),
+            use_ai=data.get("use_ai", False),
+            campaign_id=data.get("id"),
+            instance_id=data.get("instance_id")
+        )
+        return {"success": True, "id": campaign.id}
+    except Exception as e:
+        logger.error("Error scheduling status campaign: %s", e)
+        return {"success": False, "error": str(e)}
+
+@app.post("/status/delete/{campaign_id}")
+async def status_campaign_delete(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    repo = SQLStatusCampaignRepository(db)
+    success = repo.delete(campaign_id, user_id=current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return RedirectResponse(url="/status", status_code=303)
+
+@app.post("/status/generate-caption")
+async def status_generate_caption(
+    request: Request,
+    current_user: UserModel = Depends(login_required),
+):
+    data = await request.json()
+    title = data.get("title", "algo especial")
+    price = data.get("price")
+    
+    ai_service = OpenAIService()
+    prompt = f"Descreva este item para um status de WhatsApp de forma vendedora e atraente: {title}."
+    if price:
+        prompt += f" O preço é R$ {price}."
+    
+    try:
+        caption = await ai_service.chat(prompt)
+        return {"success": True, "caption": caption}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 async def execute_campaign_task(campaign_id: int):
     """
     Runs a campaign in the background using its own database session.
@@ -244,6 +393,23 @@ async def campaign_scheduler_loop():
                 
                 asyncio.create_task(execute_campaign_task(campaign_model.id))
 
+            # --- Status Campaigns ---
+            one_off_statuses = (
+                db.query(StatusCampaignModel)
+                .filter(
+                    StatusCampaignModel.status == ModelStatusCampaignStatus.SCHEDULED,
+                    ~StatusCampaignModel.is_recurring,
+                    StatusCampaignModel.scheduled_at <= now,
+                )
+                .all()
+            )
+            for status_model in one_off_statuses:
+                logger.info("scheduling one-off status campaign: %s", status_model.title)
+                status_model.status = ModelStatusCampaignStatus.SENDING
+                db.add(status_model)
+                db.commit()
+                asyncio.create_task(execute_status_campaign_task(status_model.id))
+
             # Iterate through all recurring campaigns
             recurring_campaigns = (
                 db.query(CampaignModel)
@@ -253,6 +419,32 @@ async def campaign_scheduler_loop():
                 )
                 .all()
             )
+            # ... (omitted recurring campaign logic for brevity, keeping existing)
+            
+            # Recurring Status Campaigns
+            recurring_statuses = (
+                db.query(StatusCampaignModel)
+                .filter(
+                    StatusCampaignModel.is_recurring,
+                    StatusCampaignModel.status != ModelStatusCampaignStatus.FAILED,
+                )
+                .all()
+            )
+            for status_model in recurring_statuses:
+                if not status_model.recurrence_days: continue
+                if current_day_str not in status_model.recurrence_days.lower(): continue
+                
+                send_times = [t.strip() for t in (status_model.send_time or "").split(",") if t.strip()]
+                if current_time_str in send_times:
+                    # check if already run today/this minute
+                    # We would need last_run_at in StatusCampaignModel too
+                    # For now, let's just trigger if sent_at is not today
+                    if not status_model.sent_at or status_model.sent_at.strftime("%Y-%m-%d %H:%M") != now.strftime("%Y-%m-%d %H:%M"):
+                         logger.info("executing recurring status campaign: %s", status_model.title)
+                         status_model.status = ModelStatusCampaignStatus.SENDING
+                         db.add(status_model)
+                         db.commit()
+                         asyncio.create_task(execute_status_campaign_task(status_model.id))
 
             for campaign_model in recurring_campaigns:
                 if not campaign_model.recurrence_days:
@@ -390,6 +582,71 @@ async def send_campaign(campaign: Campaign, db: Session):
     campaign.sent_at = datetime.utcnow()
     campaign_repo.save(campaign)
     logger.info("campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
+
+
+async def execute_status_campaign_task(campaign_id: int):
+    """
+    Runs a status campaign in the background.
+    """
+    db = SessionLocal()
+    try:
+        logger.info("Executing background task for status campaign ID %s", campaign_id)
+        repo = SQLStatusCampaignRepository(db)
+        model = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id).first()
+        if not model:
+            return
+        
+        domain_campaign = repo._to_entity(model)
+        await send_status_campaign(domain_campaign, db)
+    except Exception as e:
+        logger.error("Error in background status campaign task: %s", e, exc_info=True)
+    finally:
+        db.close()
+
+
+async def send_status_campaign(campaign: StatusCampaign, db: Session):
+    """
+    Sends the status campaign items to WhatsApp.
+    """
+    instance_model = db.query(InstanceModel).filter(InstanceModel.id == campaign.instance_id).first()
+    if not instance_model:
+        instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == campaign.user_id).first()
+    
+    if not instance_model:
+        logger.error("No instance found for status campaign %s", campaign.id)
+        return
+
+    whatsapp_service = EvolutionWhatsAppService(
+        instance=instance_model.name,
+        apikey=instance_model.apikey
+    )
+
+    repo = SQLStatusCampaignRepository(db)
+    campaign.status = DomainStatusCampaignStatus.SENDING
+    repo.save(campaign)
+
+    try:
+        for item in campaign.items:
+            # Prepare caption
+            caption = item.caption or ""
+            if item.price:
+                caption += f"\n*Preço: R$ {item.price}*"
+            if item.link:
+                caption += f"\n\n👉 {item.link}"
+            
+            await whatsapp_service.send_status(
+                media_url=item.image_url,
+                caption=caption
+            )
+            await asyncio.sleep(3) # Delay between status items
+        
+        campaign.status = DomainStatusCampaignStatus.SENT
+    except Exception as e:
+        logger.error("Failed to send status campaign %s: %s", campaign.id, e)
+        campaign.status = DomainStatusCampaignStatus.FAILED
+    
+    campaign.sent_at = datetime.utcnow()
+    repo.save(campaign)
 
 
 @app.head("/", include_in_schema=False)
