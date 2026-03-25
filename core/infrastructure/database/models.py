@@ -25,6 +25,15 @@ class CampaignStatus(enum.Enum):
     FAILED = "failed"
 
 
+class StatusCampaignStatus(enum.Enum):
+    DRAFT = "draft"
+    PENDING = "pending"
+    SCHEDULED = "scheduled"
+    SENDING = "sending"
+    SENT = "sent"
+    FAILED = "failed"
+
+
 # Association table for Campaign - Group
 campaign_groups = Table(
     "campaign_groups",
@@ -123,3 +132,35 @@ class CampaignModel(Base):
         secondaryjoin="WhatsAppTargetModel.jid == campaign_groups.c.group_jid",
         viewonly=True,
     )
+
+
+class StatusCampaignModel(Base):
+    __tablename__ = "status_campaigns"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)
+    title = Column(String, nullable=False)
+    scheduled_at = Column(DateTime, nullable=True)
+    status = Column(SQLEnum(StatusCampaignStatus), default=StatusCampaignStatus.DRAFT, index=True)
+    is_recurring = Column(Boolean, default=False, index=True)
+    recurrence_days = Column(String, nullable=True)
+    send_time = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    sent_at = Column(DateTime, nullable=True)
+
+    items = relationship("StatusItemModel", back_populates="campaign", cascade="all, delete-orphan")
+    user = relationship("UserModel")
+    instance = relationship("InstanceModel")
+
+
+class StatusItemModel(Base):
+    __tablename__ = "status_items"
+    id = Column(Integer, primary_key=True, index=True)
+    campaign_id = Column(Integer, ForeignKey("status_campaigns.id"))
+    image_url = Column(String, nullable=False)
+    caption = Column(Text, nullable=True)
+    link = Column(String, nullable=True)
+    price = Column(Float, nullable=True)
+    position = Column(Integer, default=0)
+
+    campaign = relationship("StatusCampaignModel", back_populates="items")
