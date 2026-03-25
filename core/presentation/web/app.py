@@ -1422,22 +1422,19 @@ async def rewrite_campaign_message(
     ai_service = OpenAIService()
     
     if text:
-        prompt = "Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "
+        prompt = "Melhore esta mensagem de venda para WHATSAPP STATUS (Story), tornando-a altamente persuasiva e visual. "
     else:
-        prompt = "Crie uma mensagem persuasiva de vendas para o WhatsApp do zero. "
+        prompt = "Crie uma mensagem impactante para WHATSAPP STATUS (Story) do zero. "
         
     if product:
-        prompt += f"Foque na **USABILIDADE** e benefícios práticos do produto: {product.name}. "
-        prompt += f"Descrição do produto: {product.description}. Preço: R$ {product.price}. "
+        prompt += f"Destaque os benefícios do produto: {product.name}. "
+        prompt += f"Descrição: {product.description}. "
         
-    if is_status:
-        prompt += "ESTA MENSAGEM É PARA O STATUS DO WHATSAPP. Seja extremamente conciso (máximo 700 caracteres) e impactante. "
-    else:
-        prompt += "Mantenha um tom amigável, amigável e focado em converter o cliente. "
+    # Constant: we are strictly focusing on Status now
+    prompt += "ESTA MENSAGEM É PARA O STATUS. Seja EXTREMAMENTE conciso e use uma linguagem de Story (curta, direta, com ganchos). "
 
-    prompt += "MANTENHA O LINK ABAIXO EXATAMENTE COMO ESTÁ NO FINAL DA MENSAGEM. "
-    prompt += "Use emojis, bullet points focados em benefícios e uma chamada para ação clara. "
-    prompt += "Não use markdown links (como [texto](url)).\n\n"
+    prompt += "3. USE EMOJIS e chame a atenção para o link.\n"
+    prompt += "4. Não use markdown links (como [texto](url)).\n\n"
     
     link = product.affiliate_link if product else (text if "http" in (text or "") else "")
     prompt += f"Link que DEVE estar na mensagem: {link}\n\n"

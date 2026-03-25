@@ -121,26 +121,26 @@
             <div style="display: none;">
                 <label class="form-label" style="margin-bottom: 0; font-size: 0.9rem; color: var(--text-muted);">Grupos (opcional)</label>
                 <button type="button" id="btn-refresh-targets" onclick="refreshTargets()" class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.8rem;">🔄 Atualizar Grupos</button>
-            </div>
 
-            <div class="target-tabs">
-                <button type="button" class="tab-btn active" id="tab-groups" style="cursor:default;">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
-            </div>
+                <div class="target-tabs">
+                    <button type="button" class="tab-btn active" id="tab-groups" style="cursor:default;">👥 Grupos <span class="tab-count" id="count-groups">–</span></button>
+                </div>
 
-            <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
+                <input type="text" id="target-search" class="form-input" placeholder="Buscar por nome..." style="margin: 0.75rem 0; font-size: 0.9rem; padding: 0.5rem 1rem;" oninput="filterTargets()">
 
-            <div id="panel-groups" class="target-panel">
-                {% for target in targets %}{% if target.type == 'group' %}
-                <label class="target-item">
-                    <input type="checkbox" name="groups" value="{{ target.id }}" style="width: 18px; height: 18px; accent-color: var(--primary);">
-                    <div style="flex-grow: 1;">
-                        <div class="target-name" style="font-weight: 600;">{{ target.name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">👥 Grupo</div>
+                <div id="panel-groups" class="target-panel">
+                    {% for target in targets %}{% if target.type == 'group' %}
+                    <label class="target-item">
+                        <input type="checkbox" name="groups" value="{{ target.id }}" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <div style="flex-grow: 1;">
+                            <div class="target-name" style="font-weight: 600;">{{ target.name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">👥 Grupo</div>
+                        </div>
+                    </label>
+                    {% endif %}{% endfor %}
+                    <div style="text-align: center; padding: 1.5rem;">
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Clique em <strong>Atualizar Grupos</strong> para carregar sua lista.</p>
                     </div>
-                </label>
-                {% endif %}{% endfor %}
-                <div style="text-align: center; padding: 1.5rem;">
-                    <p style="color: var(--text-muted); font-size: 0.85rem;">Clique em <strong>Atualizar Grupos</strong> para carregar sua lista.</p>
                 </div>
             </div>
         </div>
