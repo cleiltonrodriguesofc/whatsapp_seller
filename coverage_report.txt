@@ -1,0 +1,132 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent
+configfile: pytest.ini
+plugins: anyio-4.12.1, asyncio-1.3.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 30 items
+
+tests/integration/test_api.py::test_login_page PASSED                    [  3%]
+tests/integration/test_api.py::test_registration_flow PASSED             [  6%]
+tests/integration/test_api.py::test_dashboard_login_required PASSED      [ 10%]
+tests/integration/test_api.py::test_successful_login PASSED              [ 13%]
+tests/integration/test_repositories.py::test_product_repository_save_and_get PASSED [ 16%]
+tests/integration/test_repositories.py::test_user_repository_get_by_email PASSED [ 20%]
+tests/integration/test_repositories.py::test_product_repository_list_all PASSED [ 23%]
+tests/unit/test_auth.py::test_password_hashing PASSED                    [ 26%]
+tests/unit/test_auth.py::test_token_creation_and_decoding PASSED         [ 30%]
+tests/unit/test_auth.py::test_invalid_token PASSED                       [ 33%]
+tests/unit/test_domain.py::test_product_creation PASSED                  [ 36%]
+tests/unit/test_domain.py::test_contact_creation PASSED                  [ 40%]
+tests/unit/test_domain.py::test_message_creation PASSED                  [ 43%]
+tests/unit/test_entities.py::test_product_entity PASSED                  [ 46%]
+tests/unit/test_entities.py::test_contact_entity PASSED                  [ 50%]
+tests/unit/test_entities.py::test_group_entity PASSED                    [ 53%]
+tests/unit/test_entities.py::test_conversation_entity PASSED             [ 56%]
+tests/unit/test_entities.py::test_message_entity PASSED                  [ 60%]
+tests/unit/test_entities.py::test_sale_entity PASSED                     [ 63%]
+tests/unit/test_entities.py::test_campaign_entity PASSED                 [ 66%]
+tests/unit/test_entities.py::test_user_entity PASSED                     [ 70%]
+tests/unit/test_entities.py::test_instance_entity PASSED                 [ 73%]
+tests/unit/test_humanized_sender.py::test_send_campaign_humanized_text_only PASSED [ 76%]
+tests/unit/test_humanized_sender.py::test_send_campaign_humanized_with_media PASSED [ 80%]
+tests/unit/test_humanized_sender.py::test_status_broadcast_skips_presence PASSED [ 83%]
+tests/unit/test_models.py::test_user_model PASSED                        [ 86%]
+tests/unit/test_models.py::test_instance_model PASSED                    [ 90%]
+tests/unit/test_models.py::test_product_model PASSED                     [ 93%]
+tests/unit/test_models.py::test_whatsapp_target_model PASSED             [ 96%]
+tests/unit/test_models.py::test_campaign_model PASSED                    [100%]
+
+============================== warnings summary ===============================
+core\presentation\web\app.py:173
+  C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent\core\presentation\web\app.py:173: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+venv\Lib\site-packages\fastapi\applications.py:4599
+  C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent\venv\Lib\site-packages\fastapi\applications.py:4599: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/integration/test_api.py::test_registration_flow
+tests/integration/test_api.py::test_registration_flow
+tests/integration/test_api.py::test_successful_login
+tests/integration/test_repositories.py::test_product_repository_save_and_get
+tests/integration/test_repositories.py::test_product_repository_save_and_get
+tests/integration/test_repositories.py::test_user_repository_get_by_email
+tests/integration/test_repositories.py::test_product_repository_list_all
+tests/integration/test_repositories.py::test_product_repository_list_all
+tests/integration/test_repositories.py::test_product_repository_list_all
+  C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent\venv\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/integration/test_api.py::test_registration_flow
+tests/integration/test_api.py::test_successful_login
+tests/unit/test_auth.py::test_token_creation_and_decoding
+  C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent\core\application\services\auth_service.py:42: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+tests/integration/test_repositories.py::test_product_repository_save_and_get
+tests/integration/test_repositories.py::test_product_repository_list_all
+tests/integration/test_repositories.py::test_product_repository_list_all
+tests/unit/test_domain.py::test_product_creation
+tests/unit/test_entities.py::test_product_entity
+tests/unit/test_entities.py::test_sale_entity
+tests/unit/test_entities.py::test_campaign_entity
+  <string>:13: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/unit/test_entities.py::test_campaign_entity
+  C:\Users\cleil\Documents\PROJETOS\whatsapp_sales_agent\tests\unit\test_entities.py:79: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    scheduled_at=datetime.utcnow()
+
+tests/unit/test_entities.py::test_campaign_entity
+  <string>:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/unit/test_entities.py::test_user_entity
+  <string>:7: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+tests/unit/test_entities.py::test_instance_entity
+  <string>:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.10-final-0 _______________
+
+Name                                                      Stmts   Miss  Cover   Missing
+---------------------------------------------------------------------------------------
+core\__init__.py                                              0      0   100%
+core\application\__init__.py                                  0      0   100%
+core\application\interfaces.py                               34     10    71%   12, 16, 22, 26, 32, 38, 42, 46, 50, 60
+core\application\repositories.py                             26      7    73%   9, 15, 19, 25, 31, 35, 39
+core\application\services\auth_service.py                    37      1    97%   40
+core\application\services\humanized_sender.py                44      6    86%   40-41, 54-55, 75-76
+core\application\use_cases\sales_agent_campaign.py           12      6    50%   14, 17-22
+core\application\use_cases\schedule_campaign.py              22     14    36%   20-23, 41-74
+core\domain\__init__.py                                       0      0   100%
+core\domain\entities.py                                      99      0   100%
+core\domain\exceptions.py                                     6      6     0%   1-16
+core\infrastructure\__init__.py                               0      0   100%
+core\infrastructure\ai\openai_service.py                     24     15    38%   16-20, 23-37
+core\infrastructure\database\models.py                       75      0   100%
+core\infrastructure\database\repositories.py                186    122    34%   33-59, 80-90, 99, 102, 113-116, 141-243, 246-261, 266-272, 282-288, 292-333, 338, 344-368, 371, 389-395, 400, 403, 408-414
+core\infrastructure\database\session.py                      13      4    69%   17-21
+core\infrastructure\notifications\__init__.py                 0      0   100%
+core\infrastructure\notifications\evolution_whatsapp.py     233    205    12%   20-23, 26, 32-35, 41-60, 67-121, 135-173, 176, 179-187, 190-198, 201-224, 230-253, 256-281, 284-303, 313-328, 331-340, 343-352, 357, 362, 367
+core\infrastructure\services\supabase_storage.py             52     41    21%   12-20, 27-53, 60-67, 73-84
+core\infrastructure\utils\image_utils.py                     41     34    17%   15-68
+core\infrastructure\utils\text_utils.py                      12      4    67%   12-13, 16, 26
+core\presentation\__init__.py                                 0      0   100%
+core\presentation\main.py                                    38     38     0%   1-64
+core\presentation\web\app.py                                626    418    33%   91-95, 114, 121, 132-136, 155, 159, 167, 186-202, 227-234, 247-314, 325-381, 386, 436-442, 468-472, 490, 511, 526, 551-554, 565-571, 592-594, 620-651, 660-677, 685-703, 712-730, 739-761, 771-784, 793-824, 833-865, 873-900, 910-920, 936-956, 965-967, 980-987, 1015-1054, 1065-1077, 1106-1135, 1151-1225, 1243-1260, 1270-1274, 1294-1344, 1353-1359, 1373-1410, 1419-1441, 1449-1456
+---------------------------------------------------------------------------------------
+TOTAL                                                      1580    931    41%
+====================== 30 passed, 25 warnings in 46.19s =======================
