@@ -6,9 +6,7 @@ from PIL import Image
 from core.infrastructure.services.supabase_storage import SupabaseStorageService
 
 
-async def get_optimized_base64(
-    path_or_url: str, max_size: tuple = (400, 400), quality: int = 70
-) -> str:
+async def get_optimized_base64(path_or_url: str, max_size: tuple = (400, 400), quality: int = 70) -> str:
     """
     Downloads or reads an image, resizes it, compresses it and returns a Base64 string.
     """
@@ -37,9 +35,9 @@ async def get_optimized_base64(
             # We remove the /static/ prefix before joining
             relative_path = path_or_url.replace("/static/", "", 1).lstrip("/")
             local_path = os.path.join("core", "presentation", "web", "static", relative_path)
-        
+
         if not os.path.exists(local_path):
-             raise FileNotFoundError(f"Local image not found: {local_path} (original: {path_or_url})")
+            raise FileNotFoundError(f"Local image not found: {local_path} (original: {path_or_url})")
 
         with open(local_path, "rb") as f:
             img_data = f.read()
@@ -56,7 +54,7 @@ async def get_optimized_base64(
                 # If it has alpha, composite it
                 background.paste(img, mask=img.convert("RGBA").split()[3])
             except Exception:
-                pass # fallback
+                pass  # fallback
             img = background
         else:
             img = img.convert("RGB")

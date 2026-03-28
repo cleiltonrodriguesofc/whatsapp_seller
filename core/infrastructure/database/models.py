@@ -93,9 +93,7 @@ class CampaignModel(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     title = Column(String, nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"))
-    instance_id = Column(
-        Integer, ForeignKey("instances.id"), nullable=True
-    )  # Link to specific instance
+    instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)  # Link to specific instance
     scheduled_at = Column(DateTime)
     status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
     custom_message = Column(Text, nullable=True)
@@ -106,9 +104,7 @@ class CampaignModel(Base):
     is_recurring = Column(Boolean, default=False, index=True)
     recurrence_days = Column(String, nullable=True)  # "mon,tue,wed,thu,fri,sat,sun"
     send_time = Column(String, nullable=True)  # "HH:MM"
-    last_run_at = Column(
-        DateTime, nullable=True
-    )  # To prevent double-send in the same day
+    last_run_at = Column(DateTime, nullable=True)  # To prevent double-send in the same day
     target_config = Column(
         Text, nullable=True
     )  # JSON stored as string: {"status": "07:00", "groups": ["08:00", "12:00"]}
@@ -133,6 +129,8 @@ class StatusCampaignModel(Base):
     image_url = Column(String, nullable=True)
     background_color = Column(String, nullable=True)
     caption = Column(Text, nullable=True)
+    link = Column(String, nullable=True)
+    price = Column(Float, nullable=True)
     instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)
     scheduled_at = Column(DateTime)
     status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)

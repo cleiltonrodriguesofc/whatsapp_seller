@@ -4,6 +4,7 @@ Responsibilities: app init, middleware, startup lifecycle, and router registrati
 All route handlers live in core/presentation/web/routers/.
 Background tasks live in core/presentation/web/scheduler.py.
 """
+
 import asyncio
 import logging
 import os
@@ -43,6 +44,7 @@ Base.metadata.create_all(bind=engine)
 # run auto-migrations on startup
 try:
     with engine.connect() as conn:
+        # products.click_count
         res = conn.execute(
             text(
                 "SELECT column_name FROM information_schema.columns "
@@ -50,11 +52,33 @@ try:
             )
         )
         if not res.fetchone():
-            conn.execute(
-                text("ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;")
-            )
+            conn.execute(text("ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"))
             conn.commit()
             logger.info("auto-migration: added 'click_count' to products table")
+        
+        # status_campaigns.link
+        res = conn.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'status_campaigns' AND column_name = 'link';"
+            )
+        )
+        if not res.fetchone():
+            conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN link TEXT;"))
+            conn.commit()
+            logger.info("auto-migration: added 'link' to status_campaigns table")
+
+        # status_campaigns.price
+        res = conn.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'status_campaigns' AND column_name = 'price';"
+            )
+        )
+        if not res.fetchone():
+            conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"))
+            conn.commit()
+            logger.info("auto-migration: added 'price' to status_campaigns table")
 except Exception as e:
     logger.warning("auto-migration failed: %s", e)
 
@@ -68,6 +92,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── security middleware ────────────────────────────────────────────────────────
 
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -79,13 +104,12 @@ async def add_security_headers(request: Request, call_next):
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https: https://wjgxuhozvbybpojhvqzf.supabase.co; "
+        "img-src 'self' data: https: "
+        "https://wjgxuhozvbybpojhvqzf.supabase.co; "
         "connect-src 'self' https:;"
     )
     if os.environ.get("RENDER"):
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -100,12 +124,14 @@ app.mount(
 
 # ── startup ────────────────────────────────────────────────────────────────────
 
+
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(campaign_scheduler_loop())
 
 
 # ── health check ───────────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 async def health_check():
