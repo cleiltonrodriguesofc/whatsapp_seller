@@ -4,7 +4,6 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core.infrastructure.database.models import Base
-from core.infrastructure.database.session import get_db
 
 # Add the project root to sys.path to allow importing the 'core' package
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))

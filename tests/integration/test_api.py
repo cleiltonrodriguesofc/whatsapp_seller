@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from core.presentation.web.app import app, get_db
+from core.presentation.web.app import app
+from core.infrastructure.database.session import get_db
 from core.infrastructure.database.models import UserModel
 from core.application.services.auth_service import AuthService
 
@@ -19,7 +20,7 @@ def test_login_page(client):
 def test_registration_flow(client, db_session):
     # Mocking Evolution API for instance creation
     from unittest.mock import patch, AsyncMock
-    with patch("core.presentation.web.app.EvolutionWhatsAppService") as mock_ws:
+    with patch("core.presentation.web.routers.auth.EvolutionWhatsAppService") as mock_ws:
         mock_instance = mock_ws.return_value
         mock_instance.create_instance = AsyncMock(return_value={"hash": {"apikey": "test_api_key"}})
         

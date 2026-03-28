@@ -5,30 +5,22 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from core.application.repositories import (
-    ProductRepository,
-    CampaignRepository,
-    StatusCampaignRepository,
-)
+from core.application.repositories import ProductRepository, CampaignRepository, StatusCampaignRepository
 from core.domain.entities import (
     Product,
     Campaign,
     StatusCampaign,
-    StatusItem,
     CampaignStatus as DomainCampaignStatus,
-    StatusCampaignStatus as DomainStatusCampaignStatus,
 )
 from core.infrastructure.database.models import (
     ProductModel,
     CampaignModel,
-    StatusCampaignModel,
-    StatusItemModel,
     WhatsAppTargetModel,
     UserModel,
     InstanceModel,
     CampaignStatus as ModelCampaignStatus,
-    StatusCampaignStatus as ModelStatusCampaignStatus,
     campaign_groups,
+    StatusCampaignModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,19 +112,10 @@ class SQLProductRepository(ProductRepository):
         return [self._to_entity(m) for m in models]
 
     def increment_clicks(self, product_id: int):
-        from sqlalchemy import update, func
-        try:
-            # use coalesce to handle NULL values if they exist
-            self.db.execute(
-                update(ProductModel)
-                .where(ProductModel.id == product_id)
-                .values(click_count=func.coalesce(ProductModel.click_count, 0) + 1)
-            )
+        model = self.db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        if model:
+            model.click_count += 1
             self.db.commit()
-            print(f"DEBUG: Incremented clicks for product {product_id}")
-        except Exception as e:
-            self.db.rollback()
-            print(f"DEBUG: Failed to increment clicks: {e}")
 
     def _to_entity(self, model: ProductModel) -> Product:
         return Product(
@@ -439,82 +422,47 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
 
     def save(self, campaign: StatusCampaign) -> StatusCampaign:
         if campaign.id:
-            model = (
-                self.db.query(StatusCampaignModel)
-                .filter(StatusCampaignModel.id == campaign.id)
-                .first()
-            )
+            model = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign.id).first()
             if model:
                 model.title = campaign.title
-                model.instance_id = campaign.instance_id
+                model.image_url = campaign.image_url
+                model.caption = campaign.caption
                 model.scheduled_at = campaign.scheduled_at
-                model.status = ModelStatusCampaignStatus[campaign.status.name]
+                model.status = ModelCampaignStatus[campaign.status.name]
+                model.instance_id = campaign.instance_id
+                model.user_id = campaign.user_id
+                model.target_contacts = json.dumps(campaign.target_contacts) if campaign.target_contacts else None
+                model.sent_at = campaign.sent_at
                 model.is_recurring = campaign.is_recurring
                 model.recurrence_days = campaign.recurrence_days
                 model.send_time = campaign.send_time
-                model.sent_at = campaign.sent_at
-
-                # Sync items (simple delete/re-add)
-                self.db.query(StatusItemModel).filter(
-                    StatusItemModel.campaign_id == model.id
-                ).delete()
-                for idx, item in enumerate(campaign.items):
-                    item_model = StatusItemModel(
-                        campaign_id=model.id,
-                        image_url=item.image_url,
-                        caption=item.caption,
-                        link=item.link,
-                        price=item.price,
-                        position=idx,
-                    )
-                    self.db.add(item_model)
+                model.last_run_at = campaign.last_run_at
         else:
             model = StatusCampaignModel(
                 title=campaign.title,
-                user_id=campaign.user_id,
-                instance_id=campaign.instance_id,
+                image_url=campaign.image_url,
+                caption=campaign.caption,
                 scheduled_at=campaign.scheduled_at,
-                status=ModelStatusCampaignStatus[campaign.status.name],
+                status=ModelCampaignStatus[campaign.status.name],
+                instance_id=campaign.instance_id,
+                user_id=campaign.user_id,
+                target_contacts=json.dumps(campaign.target_contacts) if campaign.target_contacts else None,
+                sent_at=campaign.sent_at,
                 is_recurring=campaign.is_recurring,
                 recurrence_days=campaign.recurrence_days,
                 send_time=campaign.send_time,
+                last_run_at=campaign.last_run_at
             )
             self.db.add(model)
             self.db.flush()
 
-            for idx, item in enumerate(campaign.items):
-                item_model = StatusItemModel(
-                    campaign_id=model.id,
-                    image_url=item.image_url,
-                    caption=item.caption,
-                    link=item.link,
-                    price=item.price,
-                    position=idx,
-                )
-                self.db.add(item_model)
-
         self.db.commit()
         self.db.refresh(model)
         campaign.id = model.id
-        # Update IDs in items from models
-        items_models = (
-            self.db.query(StatusItemModel)
-            .filter(StatusItemModel.campaign_id == model.id)
-            .order_by(StatusItemModel.position)
-            .all()
-        )
-        for i, m in enumerate(items_models):
-            if i < len(campaign.items):
-                campaign.items[i].id = m.id
-
         return campaign
 
-    def get_by_id(
-        self, campaign_id: int, user_id: Optional[int] = None
-    ) -> Optional[StatusCampaign]:
-        query = self.db.query(StatusCampaignModel).filter(
-            StatusCampaignModel.id == campaign_id
-        )
+    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[StatusCampaign]:
+        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id)
         if user_id:
             query = query.filter(StatusCampaignModel.user_id == user_id)
         model = query.first()
@@ -529,13 +477,19 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         models = query.all()
         return [self._to_entity(m) for m in models]
 
+    def list_pending(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
+        query = self.db.query(StatusCampaignModel).filter(
+            StatusCampaignModel.status == ModelCampaignStatus.SCHEDULED
+        )
+        if user_id:
+            query = query.filter(StatusCampaignModel.user_id == user_id)
+        models = query.all()
+        return [self._to_entity(m) for m in models]
+
     def delete(self, campaign_id: int, user_id: int) -> bool:
         model = (
             self.db.query(StatusCampaignModel)
-            .filter(
-                StatusCampaignModel.id == campaign_id,
-                StatusCampaignModel.user_id == user_id,
-            )
+            .filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == user_id)
             .first()
         )
         if model:
@@ -545,28 +499,28 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         return False
 
     def _to_entity(self, model: StatusCampaignModel) -> StatusCampaign:
-        items = [
-            StatusItem(
-                id=item.id,
-                image_url=item.image_url,
-                caption=item.caption,
-                link=item.link,
-                price=item.price,
-            )
-            for item in sorted(model.items, key=lambda x: x.position)
-        ]
-
-        return StatusCampaign(
+        target_contacts = []
+        if model.target_contacts:
+            try:
+                target_contacts = json.loads(model.target_contacts)
+            except Exception:
+                pass
+                
+        entity = StatusCampaign(
             id=model.id,
-            user_id=model.user_id,
-            instance_id=model.instance_id,
             title=model.title,
-            items=items,
+            image_url=model.image_url,
+            caption=model.caption,
             scheduled_at=model.scheduled_at,
-            is_recurring=model.is_recurring,
-            recurrence_days=model.recurrence_days,
-            send_time=model.send_time,
-            status=DomainStatusCampaignStatus[model.status.name],
+            status=DomainCampaignStatus[model.status.name],
+            instance_id=model.instance_id,
+            user_id=model.user_id,
+            target_contacts=target_contacts,
             created_at=model.created_at,
             sent_at=model.sent_at,
         )
+        entity.is_recurring = model.is_recurring
+        entity.recurrence_days = model.recurrence_days
+        entity.send_time = model.send_time
+        entity.last_run_at = model.last_run_at
+        return entity

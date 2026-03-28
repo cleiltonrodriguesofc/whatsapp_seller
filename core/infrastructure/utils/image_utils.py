@@ -33,9 +33,14 @@ async def get_optimized_base64(
         # Resolve /static/ paths to local filesystem if necessary
         local_path = path_or_url
         if path_or_url.startswith("/static/"):
-            # Map /static/ to core/presentation/web/static/
-            local_path = os.path.join("core", "presentation", "web", "static", path_or_url.lstrip("/"))
+            # The path starts with /static/, which maps to core/presentation/web/static/
+            # We remove the /static/ prefix before joining
+            relative_path = path_or_url.replace("/static/", "", 1).lstrip("/")
+            local_path = os.path.join("core", "presentation", "web", "static", relative_path)
         
+        if not os.path.exists(local_path):
+             raise FileNotFoundError(f"Local image not found: {local_path} (original: {path_or_url})")
+
         with open(local_path, "rb") as f:
             img_data = f.read()
 
