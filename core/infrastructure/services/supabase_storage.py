@@ -93,3 +93,30 @@ class SupabaseStorageService:
         except Exception as e:
             logger.error("Failed to create signed URL for '%s': %s", path, e)
             return None
+    def delete_image(self, path: str) -> bool:
+        """
+        Deletes an image from the private bucket.
+        'path' should be the internal filename (with or without supabase:// prefix).
+        """
+        if not self.client:
+            logger.error("Supabase client not initialized.")
+            return False
+
+        try:
+            # Clean protocol prefix if present
+            clean_path = path.replace("supabase://", "")
+            
+            # Remove from the current bucket
+            res = self.client.storage.from_(self.bucket_name).remove([clean_path])
+            
+            # Supabase remove returns a list of deleted objects
+            if res and len(res) > 0:
+                logger.info("Image deleted from Supabase: %s", clean_path)
+                return True
+            
+            logger.warning("Image not found or not deleted: %s", clean_path)
+            return False
+            
+        except Exception as e:
+            logger.error("Exception during Supabase delete: %s", e)
+            return False

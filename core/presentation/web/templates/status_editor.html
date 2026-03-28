@@ -4,8 +4,14 @@
 {% block page_subtitle %}Programe atualizações de mídia ou texto diretamente para o Status do seu WhatsApp.{% endblock %}
 
 {% block content %}
-<div class="card animate-fade-in" style="max-width: 820px; margin: 0 auto; padding: 2.5rem;">
-    <h2 style="font-size: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">Criar Status Automático</h2>
+<div class="card animate-fade-in" id="editor-container" 
+     data-clock-h="{{ (campaign.send_time.split(':')[0]|int) if campaign and campaign.send_time else 8 }}"
+     data-clock-m="{{ (campaign.send_time.split(':')[1]|int) if campaign and campaign.send_time else 0 }}"
+     data-is-recurring="{{ 'true' if campaign and campaign.is_recurring else 'false' }}"
+     data-has-scheduled-at="{{ 'true' if campaign and campaign.scheduled_at else 'false' }}"
+     data-send-time="{{ campaign.send_time if campaign and campaign.send_time else '' }}"
+     style="max-width: 820px; margin: 0 auto; padding: 2.5rem;">
+    <h2 style="font-size: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">{% if campaign %}Editar{% else %}Criar{% endif %} Status Automático</h2>
     
     <form action="/status_campaigns/{{ 'edit/' ~ campaign.id if campaign else 'new' }}" method="post" enctype="multipart/form-data">
 
@@ -42,57 +48,345 @@
 
         <!-- Legenda (Caption) -->
         <div class="form-group" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
                 <label class="form-label" style="margin-bottom: 0;">Legenda (Opcional)</label>
+                <button type="button" id="btn-improve-ai" onclick="improveCaptionWithAI()" class="btn btn-ghost" style="padding: 4px 12px; font-size: 0.8rem; color: var(--primary); border: 1px solid var(--primary); border-radius: 6px;">✨ Melhorar com IA</button>
             </div>
-            <textarea name="caption" class="form-input" rows="4" placeholder="Escreva o texto que acompanhará a sua imagem no Status..." style="font-size: 1rem; padding: 1rem;">{{ campaign.caption if campaign else '' }}</textarea>
+            <textarea name="caption" id="caption_field" class="form-input" rows="4" placeholder="Escreva o texto que acompanhará a sua imagem no Status ou clique em Melhorar com IA..." style="font-size: 1rem; padding: 1rem;">{{ campaign.caption if campaign else '' }}</textarea>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Dica: Use links no status se o conteúdo não for tão longo.</p>
         </div>
 
-        <!-- Agendamento (SIMPLIFICADO) -->
-        <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-top: 2rem;">
-            <label class="form-label" style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">📅 Agendamento Simples</label>
-            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Quando este status deve entrar no ar?</p>
+        <!-- Agendamento AVANÇADO -->
+        <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); margin-top: 2rem;">
+            <label class="form-label" style="font-size: 1rem; color: var(--text-primary); margin-bottom: 1.5rem; display: block;">Tipo de Agendamento</label>
             
-            <input type="datetime-local" name="scheduled_at" class="form-input" step="60" required style="font-size: 1.1rem; padding: 0.75rem;" value="{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign and campaign.scheduled_at else '' }}">
-            
-            <input type="hidden" name="is_recurring" value="false">
-            <input type="hidden" name="target_groups" value="[]">
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem;">
+                <button type="button" id="btn-now" onclick="setScheduleType('now')" class="btn btn-primary" style="flex: 1; border-radius: 12px; font-size: 0.9rem;">⚡ Agora</button>
+                <button type="button" id="btn-once" onclick="setScheduleType('once')" class="btn btn-ghost" style="flex: 1; border-radius: 12px; font-size: 0.9rem;">🗓️ Agendar</button>
+                <button type="button" id="btn-recurring" onclick="setScheduleType('recurring')" class="btn btn-ghost" style="flex: 1; border-radius: 12px; font-size: 0.9rem;">⏰ Recorrente</button>
+            </div>
 
-            <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; display: flex; gap: 1rem; align-items: center;">
+            <input type="hidden" name="is_recurring" id="is_recurring" value="{{ 'true' if campaign and campaign.is_recurring else 'false' }}">
+
+            <!-- Agendar Uma Vez -->
+            <div id="section-once" style="display: none;" class="animate-fade-in">
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Data e hora do disparo único:</p>
+                <input type="datetime-local" name="scheduled_at" class="form-input" step="60" style="font-size: 1.1rem; padding: 0.75rem;" value="{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') if campaign and campaign.scheduled_at else '' }}">
+            </div>
+
+            <!-- Recorrente -->
+            <div id="section-recurring" style="display: none;" class="animate-fade-in">
+                <div class="clock-picker">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 3rem;">
+                        <!-- Coluna Esquerda: Controles -->
+                        <div class="clock-controls" style="margin-bottom: 0; flex: 1.2; border-right: 1px solid var(--border); padding-right: 3rem;">
+                            <div class="clock-col">
+                                <button type="button" class="clock-btn" onclick="adjustTime('h', 1)">▲</button>
+                                <div id="disp-h" class="clock-unit">08</div>
+                                <button type="button" class="clock-btn" onclick="adjustTime('h', -1)">▼</button>
+                                <span class="clock-label">Horas</span>
+                            </div>
+                            <div class="clock-sep">:</div>
+                            <div class="clock-col">
+                                <button type="button" class="clock-btn" onclick="adjustTime('m', 1)">▲</button>
+                                <div id="disp-m" class="clock-unit">00</div>
+                                <button type="button" class="clock-btn" onclick="adjustTime('m', -1)">▼</button>
+                                <span class="clock-label">Minutos</span>
+                            </div>
+                        </div>
+
+                        <!-- Coluna Direita: Preview e Botão -->
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                            <div id="clock-display" class="clock-display" style="margin-bottom: 0;">08:00</div>
+                            <button type="button" onclick="addTimeChip()" class="btn btn-primary" style="width: 100%; white-space: nowrap; padding: 12px 20px; font-size: 0.9rem; border-radius: 12px; font-weight: 700;">➕ Adicionar Horário</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="time-chips" class="time-chips-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 2rem; min-height: 40px; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed var(--border);">
+                    <!-- chips added here -->
+                </div>
+                <input type="hidden" name="send_time" id="send_time" value="{{ campaign.send_time if campaign and campaign.send_time else '' }}">
+
+                <label class="form-label" style="margin-top: 1.5rem;">Repetir nos dias</label>
+                <div class="grid-7" style="margin-top: 0.75rem;">
+                    {% set days = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"] %}
+                    {% set saved_days = (campaign.recurrence_days or "").split(",") if campaign else [] %}
+                    {% for day in days %}
+                    <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.03); padding: 0.75rem 0.25rem; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: var(--transition);" class="day-chip">
+                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary);">{{ day }}</span>
+                        <input type="checkbox" name="recurrence_days" value="{{ loop.index0 }}" {% if loop.index0|string in saved_days %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--primary);">
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Enviar Agora -->
+            <div id="section-now" style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 12px; display: flex; gap: 1rem; align-items: center;" class="animate-fade-in">
                 <div style="font-size: 1.5rem; color: var(--success);">⚡</div>
                 <div>
                     <strong style="color: var(--success); display: block;">Disparo Instantâneo</strong>
-                    <span style="font-size: 0.85rem; color: var(--text-secondary);">Para postar agora mesmo, basta definir a hora atual. O sistema checa mensagens pendentes a cada minuto!</span>
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">A campanha entrará na fila imediatamente assim que você salvar (disparo inicia em ~1 minuto).</span>
                 </div>
             </div>
         </div>
 
         <!-- Botões -->
         <div style="display: flex; gap: 1rem; margin-top: 3rem;">
-            <a href="/status_campaigns" class="btn btn-ghost" style="flex: 1; text-align: center; border: 1px solid rgba(255,255,255,0.1); padding: 1rem;">Cancelar e Voltar</a>
+            <a href="/status_campaigns" class="btn btn-ghost" style="flex: 1; text-align: center; border: 1px solid rgba(255,255,255,0.1); padding: 1rem;">Cancelar</a>
             <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">
-                <span id="btn-text">{% if campaign %}✏️ Salvar Alterações{% else %}🚀 Agendar Status{% endif %}</span>
+                <span id="btn-text">{% if campaign %}✏️ Salvar Alterações{% else %}🚀 Iniciar Agendamento{% endif %}</span>
             </button>
         </div>
     </form>
 </div>
 
+<style>
+/* ── Clock Picker ── */
+.clock-picker {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+.clock-display {
+    font-size: 3.2rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.clock-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+}
+.clock-col { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 0.5rem; 
+}
+.clock-unit { 
+    font-size: 2rem; 
+    font-weight: 800; 
+    color: white; 
+    min-width: 3rem; 
+    text-align: center; 
+    font-variant-numeric: tabular-nums;
+    background: rgba(255,255,255,0.05);
+    padding: 6px;
+    border-radius: 10px;
+}
+.clock-btn { 
+    background: rgba(255,255,255,0.08); 
+    border: 1px solid var(--border); 
+    color: white; 
+    width: 48px; 
+    height: 38px; 
+    border-radius: 10px; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 1rem; 
+    transition: var(--transition);
+}
+.clock-btn:hover { 
+    background: var(--primary); 
+    border-color: var(--primary); 
+    transform: translateY(-2px);
+}
+.clock-sep { 
+    font-size: 2.2rem; 
+    font-weight: 900; 
+    color: var(--text-muted); 
+    line-height: 1;
+}
+.clock-label { 
+    font-size: 0.65rem; 
+    color: var(--text-muted); 
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+.time-chip {
+    background: rgba(99,102,241,0.1);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.time-chip button {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+    line-height: 1;
+}
+
+.day-chip:has(input:checked) {
+    background: rgba(99,102,241,0.15) !important;
+    border-color: var(--primary) !important;
+}
+.day-chip:has(input:checked) span { color: var(--primary) !important; }
+</style>
+
 <script>
-    // Se não tiver data preenchida (ex: Novo Status), preenche com a data/hora atual local.
+    const container = document.getElementById('editor-container');
+    let clockH = parseInt(container.dataset.clockH);
+    let clockM = parseInt(container.dataset.clockM);
+    let timeSet = new Set();
+    
+    // Load existing times correctly
+    const initialTimes = container.dataset.sendTime;
+    if (initialTimes) {
+        initialTimes.split(',').map(t => t.trim()).filter(Boolean).forEach(t => timeSet.add(t));
+    }
+
+    function pad(n) { return n < 10 ? '0'+n : n; }
+
+    function renderClock() {
+        const str = `${pad(clockH)}:${pad(clockM)}`;
+        document.getElementById('clock-display').textContent = str;
+        document.getElementById('disp-h').textContent = pad(clockH);
+        document.getElementById('disp-m').textContent = pad(clockM);
+    }
+
+    function adjustTime(part, delta) {
+        if (part === 'h') { clockH = (clockH + delta + 24) % 24; }
+        else { clockM = (clockM + delta * 5 + 60) % 60; }
+        renderClock();
+    }
+
+    function addTimeChip() {
+        const t = `${pad(clockH)}:${pad(clockM)}`;
+        if (timeSet.has(t)) return;
+        timeSet.add(t);
+        renderChips();
+    }
+
+    function removeChip(t) {
+        timeSet.delete(t);
+        renderChips();
+    }
+
+    function renderChips() {
+        const chipContainer = document.getElementById('time-chips');
+        chipContainer.innerHTML = '';
+        [...timeSet].sort().forEach(t => {
+            const chip = document.createElement('div');
+            chip.className = 'time-chip';
+            chip.innerHTML = `${t} <button type="button" onclick="removeChip('${t}')">✕</button>`;
+            chipContainer.appendChild(chip);
+        });
+        document.getElementById('send_time').value = [...timeSet].sort().join(', ');
+    }
+
+    function setScheduleType(type) {
+        const once = document.getElementById('section-once');
+        const rec  = document.getElementById('section-recurring');
+        const now  = document.getElementById('section-now');
+        const btnO = document.getElementById('btn-once');
+        const btnR = document.getElementById('btn-recurring');
+        const btnN = document.getElementById('btn-now');
+        const hid  = document.getElementById('is_recurring');
+
+        [btnO, btnR, btnN].forEach(b => {
+            b.classList.replace('btn-primary', 'btn-ghost');
+        });
+
+        if (type === 'once') {
+            once.style.display = 'block'; rec.style.display = 'none'; now.style.display = 'none';
+            btnO.classList.replace('btn-ghost','btn-primary');
+            hid.value = 'true'; // Note: the backend uses is_recurring field
+            hid.value = 'false';
+        } else if (type === 'recurring') {
+            once.style.display = 'none'; rec.style.display = 'block'; now.style.display = 'none';
+            btnR.classList.replace('btn-ghost','btn-primary');
+            hid.value = 'true';
+        } else if (type === 'now') {
+            once.style.display = 'none'; rec.style.display = 'none'; now.style.display = 'flex';
+            btnN.classList.replace('btn-ghost','btn-primary');
+            hid.value = 'false';
+            const schInput = document.querySelector('input[name="scheduled_at"]');
+            if(schInput) schInput.value = '';
+        }
+    }
+
+    async function improveCaptionWithAI() {
+        const title = document.querySelector('input[name="title"]').value;
+        const description = document.getElementById('caption_field').value;
+        const btn = document.getElementById('btn-improve-ai');
+
+        if (!title || !description) {
+            alert('Por favor, preencha o título e uma breve descrição para que a IA possa trabalhar.');
+            return;
+        }
+
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '🪄 <span style="font-size:0.75rem;">Melhorando...</span>';
+
+        try {
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+
+            const response = await fetch('/status_campaigns/improve-ai', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Falha na resposta da IA');
+
+            const data = await response.json();
+            if (data.improved_text) {
+                document.getElementById('caption_field').value = data.improved_text;
+            }
+        } catch (error) {
+            console.error('Erro IA:', error);
+            alert('Ocorreu um erro ao consultar a IA. Tente novamente.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
-        const input = document.querySelector('input[name="scheduled_at"]');
-        if (!input.value) {
-            const now = new Date();
-            // Compensar timezone local
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            input.value = now.toISOString().slice(0,16);
+        renderClock();
+        renderChips();
+        const isRec = container.dataset.isRecurring === 'true';
+        const hasSch = container.dataset.hasScheduledAt === 'true';
+
+        if (isRec) {
+            setScheduleType('recurring');
+        } else if (hasSch) {
+            setScheduleType('once');
+        } else {
+            setScheduleType('now');
         }
     });
 
     document.querySelector('form').addEventListener('submit', function(e) {
         const btn = this.querySelector('button[type="submit"]');
-        btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:10px;"></span> Carregando...';
+        btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:10px;"></span> Gravando...';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';
     });

@@ -13,6 +13,8 @@ from core.infrastructure.database.repositories import SQLStatusCampaignRepositor
 from core.infrastructure.database.session import get_db
 from core.presentation.web.dependencies import login_required, templates
 from core.presentation.web.routers.products import _save_uploaded_image
+from core.infrastructure.services.supabase_storage import SupabaseStorageService
+from core.infrastructure.ai.openai_service import OpenAIService
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,7 @@ async def new_status_campaign_form(
         name="status_editor.html",
         context={
             "user": current_user,
+            "campaign": None,
             "instances": instances,
             "targets": targets,
             "title": "Novo Status Automático",
@@ -62,12 +65,12 @@ async def new_status_campaign_form(
 async def create_status_campaign(
     title: str = Form(...),
     image_file: UploadFile = File(...),
-    caption: str = Form(""),
-    scheduled_at: str = Form(...),
+    caption: Optional[str] = Form(None),
+    scheduled_at: Optional[str] = Form(None),
     instance_id: int = Form(...),
     target_groups: str = Form("[]"),
     is_recurring: bool = Form(False),
-    recurrence_days: str = Form(None),
+    recurrence_days: Optional[list[str]] = Form(None),
     send_time: str = Form(None),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
@@ -75,9 +78,12 @@ async def create_status_campaign(
     repo = SQLStatusCampaignRepository(db)
     
     try:
-        scheduled_dt = datetime.fromisoformat(scheduled_at)
+        if scheduled_at:
+            scheduled_dt = datetime.fromisoformat(scheduled_at.replace("Z", ""))
+        else:
+            scheduled_dt = datetime.now()
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format")
+        scheduled_dt = datetime.now()
 
     try:
         targets = json.loads(target_groups)
@@ -98,7 +104,7 @@ async def create_status_campaign(
         status=CampaignStatus.SCHEDULED,
         target_contacts=targets,
         is_recurring=is_recurring,
-        recurrence_days=recurrence_days if is_recurring else None,
+        recurrence_days=",".join(recurrence_days) if is_recurring and recurrence_days else None,
         send_time=send_time if is_recurring else None,
     )
     repo.save(campaign)
@@ -140,12 +146,12 @@ async def edit_status_campaign_form(
 async def update_status_campaign(
     campaign_id: int,
     title: str = Form(...),
-    caption: str = Form(""),
-    scheduled_at: str = Form(...),
+    caption: Optional[str] = Form(None),
+    scheduled_at: Optional[str] = Form(None),
     instance_id: int = Form(...),
     target_groups: str = Form("[]"),
     is_recurring: bool = Form(False),
-    recurrence_days: str = Form(None),
+    recurrence_days: Optional[list[str]] = Form(None),
     send_time: str = Form(None),
     image_file: UploadFile = File(None),
     db: Session = Depends(get_db),
@@ -157,9 +163,12 @@ async def update_status_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     try:
-        scheduled_dt = datetime.fromisoformat(scheduled_at)
+        if scheduled_at:
+            scheduled_dt = datetime.fromisoformat(scheduled_at.replace("Z", ""))
+        else:
+            scheduled_dt = campaign.scheduled_at
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format")
+        scheduled_dt = campaign.scheduled_at
 
     try:
         targets = json.loads(target_groups)
@@ -167,6 +176,11 @@ async def update_status_campaign(
         targets = []
 
     if image_file and image_file.filename:
+        # If updating image, we should ideally delete the old one from storage
+        if campaign.image_url and campaign.image_url.startswith("supabase://"):
+            storage_svc = SupabaseStorageService(bucket_name="images")
+            storage_svc.delete_image(campaign.image_url)
+            
         image_url = await _save_uploaded_image(image_file, quality=90, max_size=(1080, 1920), bucket="images")
         if image_url:
             campaign.image_url = image_url
@@ -177,7 +191,7 @@ async def update_status_campaign(
     campaign.instance_id = instance_id
     campaign.target_contacts = targets
     campaign.is_recurring = is_recurring
-    campaign.recurrence_days = recurrence_days if is_recurring else None
+    campaign.recurrence_days = ",".join(recurrence_days) if is_recurring and recurrence_days else None
     campaign.send_time = send_time if is_recurring else None
     
     if campaign.status in [CampaignStatus.SENT, CampaignStatus.FAILED, CampaignStatus.SENDING]:
@@ -194,7 +208,43 @@ async def delete_status_campaign(
     current_user: UserModel = Depends(login_required),
 ):
     repo = SQLStatusCampaignRepository(db)
+    campaign = repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    # Delete from Supabase Storage first
+    if campaign.image_url and campaign.image_url.startswith("supabase://"):
+        storage_svc = SupabaseStorageService(bucket_name="images")
+        storage_svc.delete_image(campaign.image_url)
+        
     success = repo.delete(campaign_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
     return RedirectResponse(url="/status_campaigns", status_code=303)
+
+
+@router.post("/status_campaigns/improve-ai")
+async def improve_status_caption(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    current_user: UserModel = Depends(login_required),
+):
+    """
+    Leverages AI to improve a status caption based on user description and title.
+    """
+    ai_service = OpenAIService()
+    
+    prompt = (
+        f"Melhore esta legenda para um Status de WhatsApp.\n\n"
+        f"Título do Status: {title}\n"
+        f"Descrição/Ideia do usuário: {description}\n\n"
+        f"Instruções:\n"
+        f"1. Seja persuasivo e profissional.\n"
+        f"2. Use emojis de forma estratégica.\n"
+        f"3. O texto deve ser conciso (ideais para leitura rápida no Status).\n"
+        f"4. Foque em converter o interesse em uma ação (ex: 'Me chama no PV').\n"
+        f"5. Responda APENAS com a legenda sugerida, sem comentários extras."
+    )
+    
+    improved_text = await ai_service.chat(prompt)
+    return {"improved_text": improved_text}

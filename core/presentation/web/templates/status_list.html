@@ -1,76 +1,143 @@
 {% extends "base.html" %}
 
 {% block page_title %}Status Automático{% endblock %}
-{% block page_subtitle %}Crie e gerencie postagens profissionais no WhatsApp Status sem precisar cadastrar produtos.{% endblock %}
+{% block page_subtitle %}Gerencie suas postagens profissionais no WhatsApp Status de forma organizada.{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h2 style="font-size: 1.25rem;">Seus Status Agendados</h2>
-        <a href="/status_campaigns/new" class="btn btn-primary btn-sm">+ Novo Status</a>
+<div style="display: flex; justify-content: flex-end; margin-bottom: 2rem;">
+    <a href="/status_campaigns/new" class="btn btn-primary">+ Novo Status Automático</a>
+</div>
+
+{% macro status_card(campaign) %}
+<div class="card campaign-row animate-fade-in" style="background: rgba(255,255,255,0.02); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1.5rem; justify-content: space-between; padding: 1.25rem 1.5rem; transition: var(--transition);">
+    <!-- Thumbnail -->
+    <div style="width: 72px; height: 72px; border-radius: 12px; background: var(--bg-main); flex-shrink: 0; overflow: hidden; border: 1px solid var(--border);">
+        {% if campaign.image_url %}
+        <img src="{{ get_proxy_url(campaign.image_url) }}" alt="Status Image" style="width: 100%; height: 100%; object-fit: cover;">
+        {% else %}
+        <div style="display: flex; height: 100%; align-items: center; justify-content: center; font-size: 1.5rem;">📱</div>
+        {% endif %}
+    </div>
+    
+    <!-- Info -->
+    <div style="flex-grow: 1; min-width: 0;">
+        <div style="font-weight: 700; font-size: 1.15rem; color: #fff; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ campaign.title }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;">
+            {% if campaign.caption %}{{ campaign.caption }}{% else %}Sem legenda{% endif %}
+        </div>
     </div>
 
-    <div class="campaign-list">
-        {% for campaign in campaigns %}
-        <div class="card campaign-row" style="background: rgba(255,255,255,0.02); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1.5rem; justify-content: space-between; padding: 1rem 1.5rem;">
-            <!-- Thumbnail da Imagem do Status -->
-            <div style="width: 64px; height: 64px; border-radius: 8px; background: var(--bg-main); flex-shrink: 0; overflow: hidden; border: 1px solid var(--border);">
-                {% if campaign.image_url %}
-                <img src="{{ get_proxy_url(campaign.image_url) }}" alt="Status Image" style="width: 100%; height: 100%; object-fit: cover;">
-                {% else %}
-                <div style="display: flex; height: 100%; align-items: center; justify-content: center; font-size: 1.5rem;">📱</div>
-                {% endif %}
-            </div>
-            
-            <div style="flex-grow: 1; min-width: 0;">
-                <div style="font-weight: 600; font-size: 1.1rem; color: #fff; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ campaign.title }}</div>
-                <div style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    {% if campaign.caption %}{{ campaign.caption }}{% else %}Sem legenda{% endif %}
-                </div>
-            </div>
-
-            <div style="text-align: center; min-width: 80px;">
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Agendamento</div>
-                <div style="font-weight: 600; font-size: 0.9rem;">
-                    {% if campaign.scheduled_at %}
-                        {{ campaign.scheduled_at.strftime('%d/%m %H:%M') }}
-                    {% else %}
-                        Imediato
-                    {% endif %}
-                </div>
-            </div>
-
-            <div style="text-align: center; min-width: 80px;">
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Recorrência</div>
-                <div style="font-weight: 600; font-size: 0.9rem;">
-                    {% if campaign.is_recurring %}
-                        <span style="color: var(--primary);">{{ campaign.send_time }}</span>
-                    {% else %}
-                        Não
-                    {% endif %}
-                </div>
-            </div>
-
-            <div style="text-align: right; display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; min-width: 250px;">
-                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem;">
-                    {{ campaign.status.value.upper() }}
-                </span>
-                <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1);">Editar</a>
-                <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente?');" style="margin: 0;">
-                    <button type="submit" class="btn btn-ghost" style="padding: 6px 14px; font-size: 0.85rem; color: #ef4444; border: 1px solid rgba(239,68,68,0.2);">Excluir</button>
-                </form>
-            </div>
-        </div>
+    <!-- Schedule Info -->
+    <div style="text-align: center; min-width: 120px; border-left: 1px solid var(--border); padding-left: 1.5rem;">
+        {% if campaign.is_recurring %}
+            <div style="font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">⏰ Recorrente</div>
+            <div style="font-weight: 800; font-size: 1.1rem; color: #fff;">{{ campaign.send_time }}</div>
         {% else %}
-        <div style="text-align: center; padding: 4rem;">
-            <div style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.8;">📱</div>
-            <h3 style="color: white; font-size: 1.5rem; margin-bottom: 0.5rem;">Nenhum Status Agendado</h3>
-            <p style="color: var(--text-muted); margin-bottom: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
-                O Status Automático permite postar ofertas e novidades diretamente no seu WhatsApp sem precisar cadastrar produtos na plataforma.
-            </p>
-            <a href="/status_campaigns/new" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">Criar Meu Primeiro Status</a>
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">🗓️ Disparo em</div>
+            <div style="font-weight: 600; font-size: 0.95rem; color: #f3f4f6;">
+                {{ campaign.scheduled_at.strftime('%d/%m %H:%M') if campaign.scheduled_at else 'Imediato' }}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div style="text-align: right; display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; min-width: 250px;">
+        {% if campaign.status.value == 'sent' %}
+            <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2);">ENVIADO</span>
+        {% elif campaign.status.value == 'failed' %}
+            <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.2);">FALHOU</span>
+        {% elif campaign.status.value == 'processing' or campaign.status.value == 'sending' %}
+            <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.2);">ENVIANDO...</span>
+        {% else %}
+            <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border);">AGENDADO</span>
+        {% endif %}
+
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Editar">✏️</a>
+            <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente? A imagem também será removida do storage.');" style="margin: 0;">
+                <button type="submit" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; color: #ef4444; border-color: rgba(239,68,68,0.2); border-radius: 8px;" title="Excluir">🗑️</button>
+            </form>
         </div>
-        {% endfor %}
     </div>
 </div>
+{% endmacro %}
+
+<div class="campaign-list">
+    
+    <!-- 1. SEÇÃO: AGENDADOS -->
+    {% set scheduled_list = campaigns | selectattr("status.value", "in", ["scheduled", "pending"]) | list %}
+    {% if scheduled_list %}
+    <div style="margin-bottom: 3rem;">
+        <h3 style="font-size: 1rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🕒 Status Agendados</span>
+            <span style="background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{ scheduled_list|length }}</span>
+        </h3>
+        {% for campaign in scheduled_list | sort(attribute="scheduled_at") %}
+            {{ status_card(campaign) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 2. SEÇÃO: EM PROCESSAMENTO -->
+    {% set processing_list = campaigns | selectattr("status.value", "in", ["processing", "sending"]) | list %}
+    {% if processing_list %}
+    <div style="margin-bottom: 3rem;">
+        <h3 style="font-size: 1rem; color: var(--info); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🔄 Sendo Enviados</span>
+            <span class="spinner" style="width:14px; height:14px; border-width: 2px;"></span>
+        </h3>
+        {% for campaign in processing_list %}
+            {{ status_card(campaign) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 3. SEÇÃO: HISTÓRICO -->
+    {% set finished_list = campaigns | selectattr("status.value", "in", ["sent", "failed"]) | list %}
+    <div style="margin-bottom: 3rem;">
+        <h3 style="font-size: 1rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem;">
+            ✅ Histórico de Envios
+        </h3>
+        {% if finished_list %}
+            {% for campaign in finished_list | sort(attribute="created_at", reverse=True) %}
+                {{ status_card(campaign) }}
+            {% endfor %}
+        {% else %}
+            <div style="padding: 2rem; text-align: center; background: rgba(255,255,255,0.01); border: 1px dashed var(--border); border-radius: 12px; color: var(--text-muted); font-size: 0.9rem;">
+                Nenhum envio finalizado ainda.
+            </div>
+        {% endif %}
+    </div>
+
+    {% if not campaigns %}
+    <div style="text-align: center; padding: 4rem;">
+        <div style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.8;">📱</div>
+        <h3 style="color: white; font-size: 1.5rem; margin-bottom: 0.5rem;">Status Automático</h3>
+        <p style="color: var(--text-muted); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+            Poste ofertas, novidades e provas sociais diretamente no seu Status sem precisar cadastrar produtos na plataforma. O sistema gerencia tudo para você.
+        </p>
+        <a href="/status_campaigns/new" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">Criar Meu Primeiro Status</a>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+/* Responsive row adjustments */
+@media (max-width: 768px) {
+    .campaign-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 1.5rem !important;
+    }
+    .campaign-row > div {
+        width: 100% !important;
+        text-align: left !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        justify-content: flex-start !important;
+    }
+}
+</style>
 {% endblock %}
