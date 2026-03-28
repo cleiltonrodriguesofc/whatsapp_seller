@@ -24,8 +24,6 @@ def test_message_creation():
     from core.domain.entities import Conversation
 
     conversation = Conversation(contact=contact)
-    message = Message(
-        conversation=conversation, message_type=MessageType.SENT, content="Hello Test"
-    )
+    message = Message(conversation=conversation, message_type=MessageType.SENT, content="Hello Test")
     assert message.content == "Hello Test"
     assert message.message_type == MessageType.SENT

@@ -2,6 +2,7 @@
 Background scheduler and campaign execution tasks.
 Runs in the FastAPI lifespan, managing scheduled and recurring campaigns.
 """
+
 import asyncio
 import json
 import logging
@@ -42,9 +43,7 @@ async def execute_campaign_task(campaign_id: int) -> None:
         domain_campaign = campaign_repo._to_entity(model)
         await send_campaign(domain_campaign, db)
     except Exception as e:
-        logger.error(
-            "error in background campaign task for %s: %s", campaign_id, e, exc_info=True
-        )
+        logger.error("error in background campaign task for %s: %s", campaign_id, e, exc_info=True)
     finally:
         db.close()
 
@@ -58,11 +57,7 @@ async def send_campaign(campaign: Campaign, db) -> None:
     logger.info("sending campaign: %s", campaign.title)
     campaign_repo = SQLCampaignRepository(db)
 
-    instance_model = (
-        db.query(InstanceModel)
-        .filter(InstanceModel.user_id == campaign.user_id)
-        .first()
-    )
+    instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == campaign.user_id).first()
     instance_name = instance_model.name if instance_model else None
 
     whatsapp_service = EvolutionWhatsAppService(
@@ -90,18 +85,14 @@ async def send_campaign(campaign: Campaign, db) -> None:
             content=message,
             media_url=campaign.product.image_url,
         )
-        campaign.status = (
-            DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED
-        )
+        campaign.status = DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED
     except Exception as e:
         logger.error("error during humanized campaign send: %s", e, exc_info=True)
         campaign.status = DomainCampaignStatus.FAILED
 
     campaign.sent_at = datetime.utcnow()
     campaign_repo.save(campaign)
-    logger.info(
-        "campaign '%s' finished with status: %s", campaign.title, campaign.status.name
-    )
+    logger.info("campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
 
 
 async def execute_status_campaign_task(campaign_id: int) -> None:
@@ -151,17 +142,13 @@ async def send_status_campaign(campaign, db) -> None:
     try:
         # Resolve and Optimize Media
         from core.infrastructure.utils.image_utils import get_optimized_base64
-        
+
         media_content = None
         if campaign.image_url:
             try:
-                # Use standard optimization (1080x1920 is for stories/status, but 
+                # Use standard optimization (1080x1920 is for stories/status, but
                 # let's follow standard product optimization which already works)
-                media_content = await get_optimized_base64(
-                    campaign.image_url, 
-                    max_size=(1080, 1920), 
-                    quality=85
-                )
+                media_content = await get_optimized_base64(campaign.image_url, max_size=(1080, 1920), quality=85)
                 logger.info("Status media successfully optimized.")
             except Exception as e:
                 logger.error("Failed to optimize status media: %s", e)
@@ -223,9 +210,7 @@ async def campaign_scheduler_loop() -> None:
             )
 
             for campaign_model in one_off_campaigns:
-                logger.info(
-                    "scheduling one-off campaign task: %s", campaign_model.title
-                )
+                logger.info("scheduling one-off campaign task: %s", campaign_model.title)
                 campaign_model.status = ModelCampaignStatus.SENDING
                 campaign_model.last_run_at = now
                 db.add(campaign_model)
@@ -277,18 +262,12 @@ async def campaign_scheduler_loop() -> None:
                             exc,
                         )
 
-                send_times = [
-                    t.strip()
-                    for t in (campaign_model.send_time or "").split(",")
-                    if t.strip()
-                ]
+                send_times = [t.strip() for t in (campaign_model.send_time or "").split(",") if t.strip()]
 
                 if current_time_str in send_times:
-                    if (
-                        not campaign_model.last_run_at
-                        or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M")
-                        != now.strftime("%Y-%m-%d %H:%M")
-                    ):
+                    if not campaign_model.last_run_at or campaign_model.last_run_at.strftime(
+                        "%Y-%m-%d %H:%M"
+                    ) != now.strftime("%Y-%m-%d %H:%M"):
                         logger.info(
                             "executing recurring campaign: %s at %s",
                             campaign_model.title,
@@ -301,15 +280,11 @@ async def campaign_scheduler_loop() -> None:
                         asyncio.create_task(execute_campaign_task(campaign_model.id))
 
                 for target_type, t_schedule in target_config.items():
-                    scheduled_times = (
-                        [t_schedule] if isinstance(t_schedule, str) else t_schedule
-                    )
+                    scheduled_times = [t_schedule] if isinstance(t_schedule, str) else t_schedule
                     if current_time_str in scheduled_times:
-                        if (
-                            not campaign_model.last_run_at
-                            or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M")
-                            != now.strftime("%Y-%m-%d %H:%M")
-                        ):
+                        if not campaign_model.last_run_at or campaign_model.last_run_at.strftime(
+                            "%Y-%m-%d %H:%M"
+                        ) != now.strftime("%Y-%m-%d %H:%M"):
                             logger.info(
                                 "executing granular campaign (%s): %s at %s",
                                 target_type,
@@ -339,10 +314,9 @@ async def campaign_scheduler_loop() -> None:
 
                 send_times = [t.strip() for t in (status_model.send_time or "").split(",") if t.strip()]
                 if current_time_str in send_times:
-                    if (
-                        not status_model.last_run_at
-                        or status_model.last_run_at.strftime("%Y-%m-%d %H:%M") != now.strftime("%Y-%m-%d %H:%M")
-                    ):
+                    if not status_model.last_run_at or status_model.last_run_at.strftime(
+                        "%Y-%m-%d %H:%M"
+                    ) != now.strftime("%Y-%m-%d %H:%M"):
                         logger.info("executing recurring status: %s at %s", status_model.title, current_time_str)
                         status_model.status = ModelCampaignStatus.SENDING
                         status_model.last_run_at = now

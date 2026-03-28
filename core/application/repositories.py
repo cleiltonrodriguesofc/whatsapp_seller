@@ -9,9 +9,7 @@ class ProductRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(
-        self, product_id: int, user_id: Optional[int] = None
-    ) -> Optional[Product]:
+    def get_by_id(self, product_id: int, user_id: Optional[int] = None) -> Optional[Product]:
         pass
 
     @abstractmethod
@@ -25,9 +23,7 @@ class CampaignRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(
-        self, campaign_id: int, user_id: Optional[int] = None
-    ) -> Optional[Campaign]:
+    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[Campaign]:
         pass
 
     @abstractmethod
@@ -45,9 +41,7 @@ class StatusCampaignRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(
-        self, campaign_id: int, user_id: Optional[int] = None
-    ) -> Optional[StatusCampaign]:
+    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[StatusCampaign]:
         pass
 
     @abstractmethod

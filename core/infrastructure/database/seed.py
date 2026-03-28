@@ -7,9 +7,9 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 )
 
-from core.infrastructure.database.session import SessionLocal
-from core.infrastructure.database.repositories import SQLProductRepository
-from core.domain.entities import Product
+from core.infrastructure.database.session import SessionLocal  # noqa: E402
+from core.infrastructure.database.repositories import SQLProductRepository  # noqa: E402
+from core.domain.entities import Product  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +30,10 @@ def seed():
         ),
         price=3068.07,
         affiliate_link="https://divulgador.magalu.com/-GhxL_3w",
-        image_url="https://a-static.mlcdn.com.br/800x560/notebook-asus-vivobook-go-15-intel-core-i3-n305-8gb-256gb-ssd-156-full-hd-windows-11/magasul/237194600/6e7a5c5c0c6e8e8e8e8e8e8e8e8e8e8e.jpg",
+        image_url=(
+            "https://a-static.mlcdn.com.br/800x560/notebook-asus-vivobook-go-15-intel-core-i3-n305-8gb-256gb-ssd-156-full-hd-windows-11/"
+            "magasul/237194600/6e7a5c5c0c6e8e8e8e8e8e8e8e8e8e8e.jpg"
+        ),
         category="Informática",
     )
 

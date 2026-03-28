@@ -61,6 +61,21 @@
             </div>
         </div>
 
+        <div class="grid-2" style="margin-top: 1.5rem;">
+            <!-- Link Opcional -->
+            <div class="form-group">
+                <label class="form-label">Link (Opcional)</label>
+                <input type="url" name="link" id="link_field" class="form-input" value="{{ campaign.link if campaign and campaign.link else '' }}" placeholder="Ex: https://wa.me/..." style="padding: 0.75rem;">
+            </div>
+
+            <!-- Preço Opcional -->
+            <div class="form-group">
+                <label class="form-label">Preço (Opcional)</label>
+                <input type="text" name="price" id="price_field" class="form-input" value="{{ '{:,.2f}'.format(campaign.price).replace(',','v').replace('.',',').replace('v','.') if campaign and campaign.price else '' }}" placeholder="Ex: 97,90" oninput="formatBrazilianCurrency(this)" style="padding: 0.75rem;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Visualização interna, a IA ignora na legenda.</p>
+            </div>
+        </div>
+
         <!-- Legenda (Caption) -->
         <div class="form-group" style="margin-top: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
@@ -376,6 +391,16 @@
     function updateSelectedColor(input) {
         document.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = 'transparent');
         input.parentElement.style.borderColor = 'white';
+    }
+
+    function formatBrazilianCurrency(input) {
+        let v = input.value.replace(/\D/g,'');
+        if (!v) { input.value = ''; return; }
+        v = (v/100).toFixed(2) + '';
+        v = v.replace(".", ",");
+        v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+        v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+        input.value = v;
     }
 
     function validateBeforeSubmit() {
