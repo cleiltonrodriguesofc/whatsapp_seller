@@ -119,7 +119,6 @@ class EvolutionWhatsAppService(NotificationService):
             except Exception as e:
                 logger.error("sendMedia failed: %r", e)
                 return False
-
     async def send_status(
         self,
         content: str,

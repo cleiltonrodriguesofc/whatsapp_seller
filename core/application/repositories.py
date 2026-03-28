@@ -55,5 +55,9 @@ class StatusCampaignRepository(ABC):
         pass
 
     @abstractmethod
-    def delete(self, campaign_id: int, user_id: int) -> bool:
+    def list_pending(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
+        pass
+
+    @abstractmethod
+    def delete(self, campaign_id: int, user_id: Optional[int] = None) -> bool:
         pass
