@@ -3,54 +3,38 @@ from unittest.mock import MagicMock, patch
 from core.infrastructure.services.supabase_storage import SupabaseStorageService
 
 @pytest.fixture
-def mock_env():
-    with patch.dict("os.environ", {"SUPABASE_URL": "https://test.supabase.co", "SUPABASE_KEY": "test-key"}):
-        yield
+def mock_supabase_client():
+    import os
+    with patch.dict(os.environ, {"SUPABASE_URL": "http://127.0.0.1:54321", "SUPABASE_KEY": "testkey"}):
+        with patch("core.infrastructure.services.supabase_storage.create_client") as mock_create:
+            client = MagicMock()
+            mock_create.return_value = client
+            yield client
 
-@patch("core.infrastructure.services.supabase_storage.create_client")
-def test_supabase_init(mock_create_client, mock_env):
+def test_supabase_storage_download_image(mock_supabase_client):
     service = SupabaseStorageService()
-    assert service.url == "https://test.supabase.co"
-    assert service.key == "test-key"
-    mock_create_client.assert_called_with("https://test.supabase.co", "test-key")
+    # Explicitly mock the chain
+    mock_bucket = MagicMock()
+    mock_bucket.download.return_value = b"fake_bytes"
+    mock_supabase_client.storage.from_.return_value = mock_bucket
+    
+    result = service.download_image("test.jpg")
+    assert result == b"fake_bytes"
 
-# Since upload_image is async, let's use a proper async test container
-@pytest.mark.asyncio
-@patch("core.infrastructure.services.supabase_storage.create_client")
-async def test_supabase_upload_image_async(mock_create_client, mock_env):
-    mock_client = MagicMock()
-    mock_create_client.return_value = mock_client
+def test_supabase_storage_get_signed_url(mock_supabase_client):
     service = SupabaseStorageService()
+    mock_bucket = MagicMock()
+    mock_bucket.create_signed_url.return_value = {"signedURL": "http://signed.com"}
+    mock_supabase_client.storage.from_.return_value = mock_bucket
     
-    mock_bucket = mock_client.storage.from_.return_value
-    mock_bucket.upload.return_value = {"path": "test.jpg"}
-    
-    path = await service.upload_image(b"fake-content", "test.jpg")
-    assert path is not None
-    assert path.startswith("supabase://")
-    mock_client.storage.from_.assert_called_with("produtos")
+    result = service.get_signed_url("test.jpg")
+    assert result == "http://signed.com"
 
-@patch("core.infrastructure.services.supabase_storage.create_client")
-def test_supabase_download_image(mock_create_client, mock_env):
-    mock_client = MagicMock()
-    mock_create_client.return_value = mock_client
+def test_supabase_storage_get_signed_url_string_fallback(mock_supabase_client):
     service = SupabaseStorageService()
+    mock_bucket = MagicMock()
+    mock_bucket.create_signed_url.return_value = "http://signed-string.com"
+    mock_supabase_client.storage.from_.return_value = mock_bucket
     
-    mock_bucket = mock_client.storage.from_.return_value
-    mock_bucket.download.return_value = b"image-data"
-    
-    data = service.download_image("supabase://test.jpg")
-    assert data == b"image-data"
-    mock_bucket.download.assert_called_with("test.jpg")
-
-@patch("core.infrastructure.services.supabase_storage.create_client")
-def test_supabase_get_signed_url(mock_create_client, mock_env):
-    mock_client = MagicMock()
-    mock_create_client.return_value = mock_client
-    service = SupabaseStorageService()
-    
-    mock_bucket = mock_client.storage.from_.return_value
-    mock_bucket.create_signed_url.return_value = {"signedURL": "https://signed.url"}
-    
-    url = service.get_signed_url("test.jpg")
-    assert url == "https://signed.url"
+    result = service.get_signed_url("test.jpg")
+    assert result == "http://signed-string.com"

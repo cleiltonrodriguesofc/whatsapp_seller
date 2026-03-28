@@ -29,14 +29,8 @@
             <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
                 <span class="nav-item-icon">📊</span> Painel
             </a>
-            <a href="/products" class="nav-item {{ 'active' if request.url.path == '/products' else '' }}">
-                <span class="nav-item-icon">🛒</span> Produtos
-            </a>
-            <a href="/status" class="nav-item {{ 'active' if request.url.path == '/status' else '' }}">
-                <span class="nav-item-icon">⚡</span> Status Automático
-            </a>
-            <a href="/campaigns/new" class="nav-item {{ 'active' if request.url.path == '/campaigns/new' else '' }}">
-                <span class="nav-item-icon">📅</span> Campanhas
+            <a href="/status_campaigns" class="nav-item {{ 'active' if '/status_campaigns' in request.url.path else '' }}">
+                <span class="nav-item-icon">📱</span> Status Auto
             </a>
             <a href="/whatsapp/connect"
                 class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
