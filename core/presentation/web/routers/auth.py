@@ -1,6 +1,7 @@
 """
 Authentication routes: login, register, logout.
 """
+
 import logging
 import os
 
@@ -24,9 +25,7 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(
-        request=request, name="login.html", context={"title": "Login"}
-    )
+    return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login"})
 
 
 @router.post("/login")
@@ -60,9 +59,7 @@ async def login_action(
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse(
-        request=request, name="register.html", context={"title": "Register"}
-    )
+    return templates.TemplateResponse(request=request, name="register.html", context={"title": "Register"})
 
 
 @router.post("/register")
@@ -82,22 +79,16 @@ async def register_action(
             context={"error": "Email already registered", "title": "Register"},
         )
 
-    new_user = UserModel(
-        email=email, hashed_password=auth_service.hash_password(password)
-    )
+    new_user = UserModel(email=email, hashed_password=auth_service.hash_password(password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
     # provision whitatsapp instance
     try:
-        instance_name = (
-            business_name.lower().replace(" ", "_") + "_" + str(new_user.id)
-        )
+        instance_name = business_name.lower().replace(" ", "_") + "_" + str(new_user.id)
         whatsapp_service = EvolutionWhatsAppService()
-        instance_data = await whatsapp_service.create_instance(
-            instance_name, display_name=business_name
-        )
+        instance_data = await whatsapp_service.create_instance(instance_name, display_name=business_name)
 
         if instance_data and isinstance(instance_data, dict):
             hash_data = instance_data.get("hash")
@@ -123,9 +114,7 @@ async def register_action(
                 type(instance_data),
             )
     except Exception as e:
-        logger.error(
-            "post-registration instance provisioning failed: %s", e, exc_info=True
-        )
+        logger.error("post-registration instance provisioning failed: %s", e, exc_info=True)
 
     access_token = auth_service.create_access_token(data={"sub": new_user.email})
     response = RedirectResponse(url="/whatsapp/connect", status_code=HTTP_303_SEE_OTHER)

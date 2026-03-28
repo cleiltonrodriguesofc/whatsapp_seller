@@ -32,11 +32,7 @@ class SQLProductRepository(ProductRepository):
 
     def save(self, product: Product) -> Product:
         if product.id:
-            model = (
-                self.db.query(ProductModel)
-                .filter(ProductModel.id == product.id)
-                .first()
-            )
+            model = self.db.query(ProductModel).filter(ProductModel.id == product.id).first()
             if model:
                 model.name = product.name
                 model.description = product.description
@@ -80,9 +76,7 @@ class SQLProductRepository(ProductRepository):
 
     def delete(self, product_id: int, user_id: int) -> bool:
         model = (
-            self.db.query(ProductModel)
-            .filter(ProductModel.id == product_id, ProductModel.user_id == user_id)
-            .first()
+            self.db.query(ProductModel).filter(ProductModel.id == product_id, ProductModel.user_id == user_id).first()
         )
         if model:
             # Soft delete: mark as inactive to prevent FK violations in campaigns
@@ -91,12 +85,8 @@ class SQLProductRepository(ProductRepository):
             return True
         return False
 
-    def get_by_id(
-        self, product_id: int, user_id: Optional[int] = None
-    ) -> Optional[Product]:
-        query = self.db.query(ProductModel).filter(
-            ProductModel.id == product_id, ProductModel.is_active
-        )
+    def get_by_id(self, product_id: int, user_id: Optional[int] = None) -> Optional[Product]:
+        query = self.db.query(ProductModel).filter(ProductModel.id == product_id, ProductModel.is_active)
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
         model = query.first()
@@ -133,19 +123,13 @@ class SQLProductRepository(ProductRepository):
         )
 
 
-
-
 class SQLCampaignRepository(CampaignRepository):
     def __init__(self, db: Session):
         self.db = db
 
     def save(self, campaign: Campaign) -> Campaign:
         if campaign.id:
-            model = (
-                self.db.query(CampaignModel)
-                .filter(CampaignModel.id == campaign.id)
-                .first()
-            )
+            model = self.db.query(CampaignModel).filter(CampaignModel.id == campaign.id).first()
             if model:
                 model.title = campaign.title
                 model.product_id = campaign.product.id
@@ -158,26 +142,14 @@ class SQLCampaignRepository(CampaignRepository):
                 model.send_time = campaign.send_time
                 model.is_ai_generated = campaign.is_ai_generated
                 model.sent_at = campaign.sent_at
-                model.target_config = (
-                    json.dumps(campaign.target_config)
-                    if campaign.target_config
-                    else None
-                )
-                
+                model.target_config = json.dumps(campaign.target_config) if campaign.target_config else None
+
                 # Sync target groups (association table)
                 if campaign.target_groups is not None:
                     # Clear existing and add new
-                    self.db.execute(
-                        campaign_groups.delete().where(
-                            campaign_groups.c.campaign_id == model.id
-                        )
-                    )
+                    self.db.execute(campaign_groups.delete().where(campaign_groups.c.campaign_id == model.id))
                     for jid in campaign.target_groups:
-                        self.db.execute(
-                            campaign_groups.insert().values(
-                                campaign_id=model.id, group_jid=jid
-                            )
-                        )
+                        self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
             else:
                 model = CampaignModel(
                     title=campaign.title,
@@ -191,11 +163,7 @@ class SQLCampaignRepository(CampaignRepository):
                     recurrence_days=campaign.recurrence_days,
                     send_time=campaign.send_time,
                     is_ai_generated=campaign.is_ai_generated,
-                    target_config=(
-                        json.dumps(campaign.target_config)
-                        if campaign.target_config
-                        else None
-                    ),
+                    target_config=(json.dumps(campaign.target_config) if campaign.target_config else None),
                 )
                 self.db.add(model)
                 self.db.flush()  # Get ID
@@ -203,11 +171,7 @@ class SQLCampaignRepository(CampaignRepository):
                 # Sync target groups
                 if campaign.target_groups:
                     for jid in campaign.target_groups:
-                        self.db.execute(
-                            campaign_groups.insert().values(
-                                campaign_id=model.id, group_jid=jid
-                            )
-                        )
+                        self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
         else:
             model = CampaignModel(
                 title=campaign.title,
@@ -221,11 +185,7 @@ class SQLCampaignRepository(CampaignRepository):
                 recurrence_days=campaign.recurrence_days,
                 send_time=campaign.send_time,
                 is_ai_generated=campaign.is_ai_generated,
-                target_config=(
-                    json.dumps(campaign.target_config)
-                    if campaign.target_config
-                    else None
-                ),
+                target_config=(json.dumps(campaign.target_config) if campaign.target_config else None),
             )
             self.db.add(model)
             self.db.flush()
@@ -233,11 +193,7 @@ class SQLCampaignRepository(CampaignRepository):
             # Sync target groups
             if campaign.target_groups:
                 for jid in campaign.target_groups:
-                    self.db.execute(
-                        campaign_groups.insert().values(
-                            campaign_id=model.id, group_jid=jid
-                        )
-                    )
+                    self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
 
         self.db.commit()
         self.db.refresh(model)
@@ -252,19 +208,13 @@ class SQLCampaignRepository(CampaignRepository):
         )
         if model:
             # remove association table rows first to avoid fk violation
-            self.db.execute(
-                campaign_groups.delete().where(
-                    campaign_groups.c.campaign_id == model.id
-                )
-            )
+            self.db.execute(campaign_groups.delete().where(campaign_groups.c.campaign_id == model.id))
             self.db.delete(model)
             self.db.commit()
             return True
         return False
 
-    def get_by_id(
-        self, campaign_id: int, user_id: Optional[int] = None
-    ) -> Optional[Campaign]:
+    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[Campaign]:
         query = self.db.query(CampaignModel).filter(CampaignModel.id == campaign_id)
         if user_id:
             query = query.filter(CampaignModel.user_id == user_id)
@@ -281,9 +231,7 @@ class SQLCampaignRepository(CampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[Campaign]:
-        query = self.db.query(CampaignModel).filter(
-            CampaignModel.status == ModelCampaignStatus.SCHEDULED
-        )
+        query = self.db.query(CampaignModel).filter(CampaignModel.status == ModelCampaignStatus.SCHEDULED)
         if user_id:
             query = query.filter(CampaignModel.user_id == user_id)
         models = query.all()
@@ -299,9 +247,7 @@ class SQLCampaignRepository(CampaignRepository):
         # Load target groups from association table
         target_jids = [
             r[0]
-            for r in self.db.query(campaign_groups.c.group_jid)
-            .filter(campaign_groups.c.campaign_id == model.id)
-            .all()
+            for r in self.db.query(campaign_groups.c.group_jid).filter(campaign_groups.c.campaign_id == model.id).all()
         ]
 
         campaign_entity = Campaign(
@@ -402,9 +348,7 @@ class SQLInstanceRepository:
         self.db = db
 
     def list_by_user(self, user_id: int) -> List[InstanceModel]:
-        return (
-            self.db.query(InstanceModel).filter(InstanceModel.user_id == user_id).all()
-        )
+        return self.db.query(InstanceModel).filter(InstanceModel.user_id == user_id).all()
 
     def save(self, instance: InstanceModel) -> InstanceModel:
         if instance.id:
@@ -427,6 +371,8 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 model.title = campaign.title
                 model.image_url = campaign.image_url
                 model.caption = campaign.caption
+                model.link = campaign.link
+                model.price = campaign.price
                 model.scheduled_at = campaign.scheduled_at
                 model.status = ModelCampaignStatus[campaign.status.name]
                 model.instance_id = campaign.instance_id
@@ -442,6 +388,8 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 title=campaign.title,
                 image_url=campaign.image_url,
                 caption=campaign.caption,
+                link=campaign.link,
+                price=campaign.price,
                 scheduled_at=campaign.scheduled_at,
                 status=ModelCampaignStatus[campaign.status.name],
                 instance_id=campaign.instance_id,
@@ -451,7 +399,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 is_recurring=campaign.is_recurring,
                 recurrence_days=campaign.recurrence_days,
                 send_time=campaign.send_time,
-                last_run_at=campaign.last_run_at
+                last_run_at=campaign.last_run_at,
             )
             self.db.add(model)
             self.db.flush()
@@ -478,9 +426,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
-        query = self.db.query(StatusCampaignModel).filter(
-            StatusCampaignModel.status == ModelCampaignStatus.SCHEDULED
-        )
+        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.status == ModelCampaignStatus.SCHEDULED)
         if user_id:
             query = query.filter(StatusCampaignModel.user_id == user_id)
         models = query.all()
@@ -505,12 +451,14 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 target_contacts = json.loads(model.target_contacts)
             except Exception:
                 pass
-                
+
         entity = StatusCampaign(
             id=model.id,
             title=model.title,
             image_url=model.image_url,
             caption=model.caption,
+            link=model.link,
+            price=model.price,
             scheduled_at=model.scheduled_at,
             status=DomainCampaignStatus[model.status.name],
             instance_id=model.instance_id,

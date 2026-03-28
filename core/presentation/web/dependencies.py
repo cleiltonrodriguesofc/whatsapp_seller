@@ -1,6 +1,7 @@
 """
 Shared FastAPI dependencies for all routers.
 """
+
 import logging
 
 from fastapi import Depends, HTTPException, Request
@@ -36,9 +37,7 @@ def get_proxy_url(url: str) -> str:
 templates.env.globals["get_proxy_url"] = get_proxy_url
 
 
-async def get_current_user(
-    request: Request, db: Session = Depends(get_db)
-) -> UserModel | None:
+async def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserModel | None:
     token = request.cookies.get("access_token")
     if not token:
         return None

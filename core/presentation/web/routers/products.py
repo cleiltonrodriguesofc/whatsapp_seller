@@ -1,6 +1,7 @@
 """
 Product routes: list, create, edit, delete products.
 """
+
 import io
 import logging
 import os
@@ -27,10 +28,7 @@ _MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 async def _save_uploaded_image(
-    image_file: UploadFile,
-    quality: int = 85,
-    max_size: tuple = (1080, 1920),
-    bucket: str = "produtos"
+    image_file: UploadFile, quality: int = 85, max_size: tuple = (1080, 1920), bucket: str = "produtos"
 ) -> str:
     """
     Validates, resizes and uploads an image to Supabase Storage.
@@ -196,7 +194,11 @@ async def update_product(
     elif final_image_url and final_image_url.startswith("/static/uploads/"):
         # lazy-migrate legacy local images to supabase
         local_path = os.path.join(
-            "core", "presentation", "web", "static", "uploads",
+            "core",
+            "presentation",
+            "web",
+            "static",
+            "uploads",
             final_image_url.split("/")[-1],
         )
         if os.path.exists(local_path):
@@ -246,7 +248,5 @@ async def delete_product(
     product_repo = SQLProductRepository(db)
     success = product_repo.delete(product_id, user_id=current_user.id)
     if not success:
-        raise HTTPException(
-            status_code=404, detail="Product not found or not owned by user"
-        )
+        raise HTTPException(status_code=404, detail="Product not found or not owned by user")
     return RedirectResponse(url="/products", status_code=303)

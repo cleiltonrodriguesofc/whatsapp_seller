@@ -1,5 +1,4 @@
 from typing import List, Optional
-from datetime import datetime
 from core.application.repositories import StatusCampaignRepository
 from core.domain.entities import StatusCampaign, StatusItem, StatusCampaignStatus
 
@@ -37,7 +36,7 @@ class SaveStatusCampaignDraft:
             campaign = self.repository.get_by_id(campaign_id, user_id=user_id)
             if not campaign:
                 raise ValueError(f"Status Campaign {campaign_id} not found")
-            
+
             campaign.title = title
             campaign.items = items
             campaign.instance_id = instance_id

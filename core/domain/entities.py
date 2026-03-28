@@ -116,6 +116,8 @@ class StatusCampaign:
     image_url: Optional[str] = None
     background_color: Optional[str] = "#128C7E"
     caption: Optional[str] = None
+    link: Optional[str] = None
+    price: Optional[float] = None
     target_contacts: List[str] = field(default_factory=list)  # Empty means allContacts=True
     user_id: Optional[int] = None
     instance_id: Optional[int] = None
