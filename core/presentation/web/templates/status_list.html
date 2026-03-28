@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block page_title %}Status Automático{% endblock %}
+{% block page_subtitle %}Crie e gerencie postagens profissionais no WhatsApp Status sem precisar cadastrar produtos.{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.25rem;">Seus Status Agendados</h2>
+        <a href="/status_campaigns/new" class="btn btn-primary btn-sm">+ Novo Status</a>
+    </div>
+
+    <div class="campaign-list">
+        {% for campaign in campaigns %}
+        <div class="card campaign-row" style="background: rgba(255,255,255,0.02); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1.5rem; justify-content: space-between; padding: 1rem 1.5rem;">
+            <!-- Thumbnail da Imagem do Status -->
+            <div style="width: 64px; height: 64px; border-radius: 8px; background: var(--bg-main); flex-shrink: 0; overflow: hidden; border: 1px solid var(--border);">
+                {% if campaign.image_url %}
+                <img src="{{ get_proxy_url(campaign.image_url) }}" alt="Status Image" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <div style="display: flex; height: 100%; align-items: center; justify-content: center; font-size: 1.5rem;">📱</div>
+                {% endif %}
+            </div>
+            
+            <div style="flex-grow: 1; min-width: 0;">
+                <div style="font-weight: 600; font-size: 1.1rem; color: #fff; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ campaign.title }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {% if campaign.caption %}{{ campaign.caption }}{% else %}Sem legenda{% endif %}
+                </div>
+            </div>
+
+            <div style="text-align: center; min-width: 80px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Agendamento</div>
+                <div style="font-weight: 600; font-size: 0.9rem;">
+                    {% if campaign.scheduled_at %}
+                        {{ campaign.scheduled_at.strftime('%d/%m %H:%M') }}
+                    {% else %}
+                        Imediato
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="text-align: center; min-width: 80px;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Recorrência</div>
+                <div style="font-weight: 600; font-size: 0.9rem;">
+                    {% if campaign.is_recurring %}
+                        <span style="color: var(--primary);">{{ campaign.send_time }}</span>
+                    {% else %}
+                        Não
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="text-align: right; display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; min-width: 250px;">
+                <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem;">
+                    {{ campaign.status.value.upper() }}
+                </span>
+                <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1);">Editar</a>
+                <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente?');" style="margin: 0;">
+                    <button type="submit" class="btn btn-ghost" style="padding: 6px 14px; font-size: 0.85rem; color: #ef4444; border: 1px solid rgba(239,68,68,0.2);">Excluir</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem;">
+            <div style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.8;">📱</div>
+            <h3 style="color: white; font-size: 1.5rem; margin-bottom: 0.5rem;">Nenhum Status Agendado</h3>
+            <p style="color: var(--text-muted); margin-bottom: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
+                O Status Automático permite postar ofertas e novidades diretamente no seu WhatsApp sem precisar cadastrar produtos na plataforma.
+            </p>
+            <a href="/status_campaigns/new" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">Criar Meu Primeiro Status</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

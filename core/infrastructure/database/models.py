@@ -123,3 +123,26 @@ class CampaignModel(Base):
         secondaryjoin="WhatsAppTargetModel.jid == campaign_groups.c.group_jid",
         viewonly=True,
     )
+
+
+class StatusCampaignModel(Base):
+    __tablename__ = "status_campaigns"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    title = Column(String, nullable=False)
+    image_url = Column(String, nullable=False)
+    caption = Column(Text, nullable=True)
+    instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)
+    scheduled_at = Column(DateTime)
+    status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
+    target_contacts = Column(Text, nullable=True)  # JSON or comma-separated list of jids
+    created_at = Column(DateTime, default=datetime.utcnow)
+    sent_at = Column(DateTime, nullable=True)
+
+    # Recurring Scheduling
+    is_recurring = Column(Boolean, default=False, index=True)
+    recurrence_days = Column(String, nullable=True)
+    send_time = Column(String, nullable=True)
+    last_run_at = Column(DateTime, nullable=True)
+
+    instance = relationship("InstanceModel")

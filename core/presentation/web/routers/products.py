@@ -30,6 +30,7 @@ async def _save_uploaded_image(
     image_file: UploadFile,
     quality: int = 85,
     max_size: tuple = (1080, 1920),
+    bucket: str = "produtos"
 ) -> str:
     """
     Validates, resizes and uploads an image to Supabase Storage.
@@ -79,21 +80,13 @@ async def _save_uploaded_image(
 
         optimized_buffer = io.BytesIO()
         img.save(optimized_buffer, format="JPEG", quality=quality, optimize=True)
-        optimized_raw = optimized_buffer.getvalue()
+        raw = optimized_buffer.getvalue()
 
-        logger.info(
-            "image optimized: %d -> %d bytes (quality=%d, max=%s)",
-            len(raw),
-            len(optimized_raw),
-            quality,
-            max_size,
-        )
-        raw = optimized_raw
     except Exception as e:
         logger.warning("image optimization failed, using raw: %s", e)
 
     try:
-        storage_svc = SupabaseStorageService()
+        storage_svc = SupabaseStorageService(bucket_name=bucket)
         public_url = await storage_svc.upload_image(
             file_content=raw,
             filename=unique_filename,

@@ -110,6 +110,27 @@ class Campaign:
 
 
 @dataclass
+class StatusCampaign:
+    title: str
+    image_url: str
+    scheduled_at: datetime
+    caption: Optional[str] = None
+    target_contacts: List[str] = field(default_factory=list)  # Empty means allContacts=True
+    user_id: Optional[int] = None
+    instance_id: Optional[int] = None
+    status: CampaignStatus = CampaignStatus.PENDING
+    id: Optional[int] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    sent_at: Optional[datetime] = None
+
+    # Recurring Scheduling
+    is_recurring: bool = False
+    recurrence_days: Optional[str] = None
+    send_time: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+
+
+@dataclass
 class User:
     email: str
     hashed_password: str
