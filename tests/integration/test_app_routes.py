@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from core.presentation.web.app import app, get_db
+from core.presentation.web.app import app
+from core.infrastructure.database.session import get_db
 from core.application.services.auth_service import AuthService
 from core.infrastructure.database.models import UserModel
 
