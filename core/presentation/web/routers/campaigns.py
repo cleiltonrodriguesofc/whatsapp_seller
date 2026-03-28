@@ -18,6 +18,7 @@ from core.infrastructure.database.models import (
     ProductModel,
     UserModel,
     campaign_groups,
+    StatusCampaignModel,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
@@ -52,66 +53,22 @@ async def home(
             request=request, name="landing.html", context={"title": "Welcome"}
         )
 
-    campaign_repo = SQLCampaignRepository(db)
-    campaigns = campaign_repo.list_all(user_id=current_user.id)
-
-    total_campaigns = len(campaigns)
-
-    sent_count = (
-        db.query(campaign_groups.c.campaign_id)
-        .join(CampaignModel, CampaignModel.id == campaign_groups.c.campaign_id)
-        .filter(
-            CampaignModel.user_id == current_user.id,
-            CampaignModel.status == ModelCampaignStatus.SENT,
-        )
-        .count()
-    )
-
-    ai_count = (
-        db.query(CampaignModel)
-        .filter(
-            CampaignModel.user_id == current_user.id,
-            CampaignModel.is_ai_generated,
-        )
-        .count()
-    )
-
-    products = (
-        db.query(ProductModel)
-        .filter(ProductModel.user_id == current_user.id)
-        .all()
-    )
-    total_clicks = sum(p.click_count or 0 for p in products)
-
-    instances = (
-        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
-    )
-
-    wa_connected = False
-    wa_status = "not_found"
-    if instances:
-        whatsapp_service = EvolutionWhatsAppService(
-            instance=instances[0].name,
-            apikey=instances[0].apikey,
-        )
-        status_data = await whatsapp_service.get_status()
-        wa_connected = status_data.get("connected", False)
-        wa_status = status_data.get("status", "unknown")
+    # Estatísticas focadas em Status
+    status_campaigns = db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == current_user.id).all()
+    sent_count = db.query(StatusCampaignModel).filter(
+        StatusCampaignModel.user_id == current_user.id,
+        StatusCampaignModel.status == ModelCampaignStatus.SENT
+    ).count()
 
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
         context={
-            "campaigns": campaigns,
-            "user": current_user,
-            "total_campaigns": total_campaigns,
+            "campaigns": status_campaigns,
             "sent_count": sent_count,
-            "ai_count": ai_count,
-            "total_clicks": total_clicks,
-            "wa_connected": wa_connected,
-            "wa_status": wa_status,
-            "instances": instances,
-            "title": "Dashboard",
+            "ai_count": 0,
+            "total_clicks": 0,
+            "user": current_user,
         },
     )
 
