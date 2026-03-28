@@ -1,8 +1,6 @@
-import pytest
 from datetime import datetime
-from core.domain.entities import Product, Campaign, CampaignStatus
+from core.domain.entities import Product, Campaign
 from core.infrastructure.database.repositories import SQLCampaignRepository, SQLTargetRepository
-from core.infrastructure.database.models import CampaignModel, WhatsAppTargetModel
 
 def test_campaign_repository_save_and_get(db_session):
     repo = SQLCampaignRepository(db_session)
@@ -44,6 +42,6 @@ def test_target_repository_upsert_sync(db_session):
     assert any(t.jid == "123@g.us" for t in all_targets)
 
 def test_campaign_repository_list_pending(db_session):
-    repo = SQLCampaignRepository(db_session)
+    # repo = SQLCampaignRepository(db_session)
     # ... setup pending campaigns ...
     pass

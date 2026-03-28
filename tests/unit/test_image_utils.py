@@ -59,13 +59,6 @@ async def test_get_optimized_base64_supabase():
         assert isinstance(base64_res, str)
         assert len(base64_res) > 0
 
-def test_get_optimized_base64_alpha_channel():
-    # Test RGBA conversion
-    img = Image.new("RGBA", (10, 10), color=(255, 0, 0, 128))
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    img_data = buffer.getvalue()
-    
     # We can't easily call get_optimized_base64 for bytes directly without hitting the fs or network
     # but we can test the internal logic if we refactor or just use a local file
     pass # covered by standard use but good to note

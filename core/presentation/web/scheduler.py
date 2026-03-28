@@ -21,8 +21,6 @@ from core.infrastructure.database.models import (
 from core.infrastructure.database.repositories import SQLCampaignRepository, SQLStatusCampaignRepository
 from core.infrastructure.database.session import SessionLocal
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
-from core.infrastructure.services.supabase_storage import SupabaseStorageService
-import base64
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +118,13 @@ async def execute_status_campaign_task(campaign_id: int) -> None:
         await send_status_campaign(domain_campaign, db)
     except Exception as e:
         logger.error("error in background status task for %s: %s", campaign_id, e, exc_info=True)
+        try:
+            model = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id).first()
+            if model:
+                model.status = ModelCampaignStatus.FAILED
+                db.commit()
+        except Exception:
+            db.rollback()
     finally:
         db.close()
 
@@ -167,18 +172,22 @@ async def send_status_campaign(campaign, db) -> None:
                     campaign.status = DomainCampaignStatus.FAILED
                     repo.save(campaign)
                     return
+        else:
+            # For text-only statuses, the Evolution API expects the text directly in the 'content' field
+            media_content = campaign.caption or " "
 
         jid_list = campaign.target_contacts if campaign.target_contacts else []
-        if type(jid_list) == str:
+        if isinstance(jid_list, str):
             try:
                 jid_list = json.loads(jid_list)
-            except:
+            except Exception:
                 jid_list = []
 
         success = await whatsapp_service.send_status(
             content=media_content,
             type="image" if campaign.image_url else "text",
             jid_list=jid_list if jid_list else None,
+            backgroundColor=campaign.background_color or "#128C7E",
             caption=campaign.caption or "",
         )
         campaign.status = DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED

@@ -64,14 +64,16 @@ async def new_status_campaign_form(
 @router.post("/status_campaigns/new")
 async def create_status_campaign(
     title: str = Form(...),
-    image_file: UploadFile = File(...),
+    image_file: Optional[UploadFile] = File(None),
     caption: Optional[str] = Form(None),
+    background_color: Optional[str] = Form("#128C7E"),
     scheduled_at: Optional[str] = Form(None),
-    instance_id: int = Form(...),
+    instance_id: Optional[int] = Form(None),
     target_groups: str = Form("[]"),
     is_recurring: bool = Form(False),
     recurrence_days: Optional[list[str]] = Form(None),
-    send_time: str = Form(None),
+    send_time: Optional[str] = Form(None),
+    save_mode: str = Form("schedule"),  # "schedule" or "draft"
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
@@ -90,18 +92,21 @@ async def create_status_campaign(
     except Exception:
         targets = []
         
-    image_url = await _save_uploaded_image(image_file, quality=90, max_size=(1080, 1920), bucket="images")
-    if not image_url:
-        raise HTTPException(status_code=500, detail="Failed to upload image")
+    image_url = None
+    if image_file and image_file.filename:
+        image_url = await _save_uploaded_image(image_file, quality=90, max_size=(1080, 1920), bucket="images")
+        
+    status = CampaignStatus.DRAFT if save_mode == "draft" else CampaignStatus.SCHEDULED
 
     campaign = StatusCampaign(
         title=title,
         image_url=image_url,
+        background_color=background_color,
         caption=caption,
         scheduled_at=scheduled_dt,
         instance_id=instance_id,
         user_id=current_user.id,
-        status=CampaignStatus.SCHEDULED,
+        status=status,
         target_contacts=targets,
         is_recurring=is_recurring,
         recurrence_days=",".join(recurrence_days) if is_recurring and recurrence_days else None,
@@ -147,13 +152,15 @@ async def update_status_campaign(
     campaign_id: int,
     title: str = Form(...),
     caption: Optional[str] = Form(None),
+    background_color: Optional[str] = Form(None),
     scheduled_at: Optional[str] = Form(None),
-    instance_id: int = Form(...),
+    instance_id: Optional[int] = Form(None),
     target_groups: str = Form("[]"),
     is_recurring: bool = Form(False),
     recurrence_days: Optional[list[str]] = Form(None),
-    send_time: str = Form(None),
-    image_file: UploadFile = File(None),
+    send_time: Optional[str] = Form(None),
+    image_file: Optional[UploadFile] = File(None),
+    save_mode: str = Form("schedule"),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
@@ -187,6 +194,7 @@ async def update_status_campaign(
 
     campaign.title = title
     campaign.caption = caption
+    campaign.background_color = background_color or campaign.background_color
     campaign.scheduled_at = scheduled_dt
     campaign.instance_id = instance_id
     campaign.target_contacts = targets
@@ -194,7 +202,9 @@ async def update_status_campaign(
     campaign.recurrence_days = ",".join(recurrence_days) if is_recurring and recurrence_days else None
     campaign.send_time = send_time if is_recurring else None
     
-    if campaign.status in [CampaignStatus.SENT, CampaignStatus.FAILED, CampaignStatus.SENDING]:
+    if save_mode == "draft":
+        campaign.status = CampaignStatus.DRAFT
+    elif campaign.status in [CampaignStatus.SENT, CampaignStatus.FAILED, CampaignStatus.SENDING, CampaignStatus.DRAFT]:
         campaign.status = CampaignStatus.SCHEDULED
 
     repo.save(campaign)

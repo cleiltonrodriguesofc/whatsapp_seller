@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
-from core.domain.entities import CampaignStatus as DomainCampaignStatus
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.models import (
     CampaignModel,

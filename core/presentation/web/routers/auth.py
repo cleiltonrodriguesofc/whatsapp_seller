@@ -14,7 +14,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 from core.infrastructure.database.models import InstanceModel, UserModel
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
-from core.presentation.web.dependencies import auth_service, get_current_user, templates
+from core.presentation.web.dependencies import auth_service, templates
 
 logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)

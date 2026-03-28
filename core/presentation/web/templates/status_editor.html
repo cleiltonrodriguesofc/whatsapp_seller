@@ -35,14 +35,29 @@
             
             <!-- Imagem Upload -->
             <div class="form-group">
-                <label class="form-label">Imagem ou Vídeo (Obrigatório)</label>
-                <input type="file" name="image_file" class="form-input" accept="image/png, image/jpeg, image/webp" {% if not campaign %}required{% endif %} style="padding: 0.65rem;">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Resolução recomendada: 1080x1920 (Formato Stories/Status).</p>
+                <label class="form-label">Imagem ou Vídeo (Opcional)</label>
+                <div style="position: relative;">
+                    <input type="file" name="image_file" id="image_input" class="form-input" accept="image/png, image/jpeg, image/webp" onchange="handleImageSelection(this)" style="padding: 0.65rem;">
+                    <button type="button" id="btn-clear-image" onclick="clearImageSelection()" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer;">Remover</button>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Resolução recomendada: 1080x1920.</p>
                 {% if campaign and campaign.image_url %}
-                    <div style="margin-top: 1rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); width: fit-content; max-height: 150px;">
+                    <div id="image-preview-container" style="margin-top: 1rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); width: fit-content; max-height: 150px;">
                         <img src="{{ get_proxy_url(campaign.image_url) }}" style="height: 150px; display: block;">
                     </div>
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- Paleta de Cores (Apenas para Texto) -->
+        <div id="color-palette-section" style="margin-top: 1.5rem; {% if campaign and campaign.image_url %}display: none;{% endif %}">
+            <label class="form-label">Cor de Fundo (Apenas para Status de Texto)</label>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                {% for color in ["#128C7E", "#075E54", "#25D366", "#34B7F1", "#FC9775", "#FFCC00", "#766AF1", "#BD1515"] %}
+                <label style="cursor: pointer; width: 44px; height: 44px; border-radius: 50%; background-color: {{ color }}; border: 3px solid {% if (campaign and campaign.background_color == color) or (not campaign and color == '#128C7E') %}white{% else %}transparent{% endif %}; transition: var(--transition); display: block;" class="color-swatch">
+                    <input type="radio" name="background_color" value="{{ color }}" {% if (campaign and campaign.background_color == color) or (not campaign and color == '#128C7E') %}checked{% endif %} style="display: none;" onchange="updateSelectedColor(this)">
+                </label>
+                {% endfor %}
             </div>
         </div>
 
@@ -132,10 +147,12 @@
         </div>
 
         <!-- Botões -->
+        <input type="hidden" name="save_mode" id="save_mode" value="schedule">
         <div style="display: flex; gap: 1rem; margin-top: 3rem;">
             <a href="/status_campaigns" class="btn btn-ghost" style="flex: 1; text-align: center; border: 1px solid rgba(255,255,255,0.1); padding: 1rem;">Cancelar</a>
-            <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">
-                <span id="btn-text">{% if campaign %}✏️ Salvar Alterações{% else %}🚀 Iniciar Agendamento{% endif %}</span>
+            <button type="submit" onclick="document.getElementById('save_mode').value='draft'" class="btn btn-ghost" style="flex: 1.5; padding: 1rem; border: 1px solid var(--primary); color: var(--primary); font-weight: 700; border-radius: 12px;">💾 Salvar Rascunho</button>
+            <button type="submit" onclick="return validateBeforeSubmit()" class="btn btn-primary" style="flex: 2; padding: 1rem; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; border-radius: 12px;">
+                <span id="btn-text">{% if campaign %}✏️ Salvar Alterações{% else %}🚀 Agendar Status{% endif %}</span>
             </button>
         </div>
     </form>
@@ -330,6 +347,59 @@
         }
     }
 
+    function handleImageSelection(input) {
+        const palette = document.getElementById('color-palette-section');
+        const clearBtn = document.getElementById('btn-clear-image');
+        const preview = document.getElementById('image-preview-container');
+        
+        if (input.files && input.files[0]) {
+            palette.style.display = 'none';
+            clearBtn.style.display = 'block';
+            if (preview) preview.style.display = 'block';
+        } else {
+            palette.style.display = 'block';
+            clearBtn.style.display = 'none';
+        }
+    }
+
+    function clearImageSelection() {
+        const input = document.getElementById('image_input');
+        const palette = document.getElementById('color-palette-section');
+        const clearBtn = document.getElementById('btn-clear-image');
+        const preview = document.getElementById('image-preview-container');
+        
+        input.value = '';
+        palette.style.display = 'block';
+        clearBtn.style.display = 'none';
+        if (preview) preview.style.display = 'none';
+    }
+
+    function updateSelectedColor(input) {
+        document.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = 'transparent');
+        input.parentElement.style.borderColor = 'white';
+    }
+
+    function validateBeforeSubmit() {
+        document.getElementById('save_mode').value = 'schedule';
+        const instanceId = document.querySelector('select[name="instance_id"]').value;
+        const imageFile = document.getElementById('image_input').files.length;
+        const caption = document.getElementById('caption_field').value.trim();
+        
+        if (!instanceId) {
+            alert('⚠️ Por favor, escolha um "Time de Envio" (Instância) antes de agendar.');
+            document.querySelector('select[name="instance_id"]').focus();
+            document.querySelector('select[name="instance_id"]').style.borderColor = 'var(--danger)';
+            return false;
+        }
+
+        if (!imageFile && !caption) {
+            alert('⚠️ O status precisa ter pelo menos uma Imagem OU um Texto/Legenda.');
+            return false;
+        }
+
+        return true;
+    }
+
     async function improveCaptionWithAI() {
         const title = document.querySelector('input[name="title"]').value;
         const description = document.getElementById('caption_field').value;
@@ -385,7 +455,9 @@
     });
 
     document.querySelector('form').addEventListener('submit', function(e) {
-        const btn = this.querySelector('button[type="submit"]');
+        const mode = document.getElementById('save_mode').value;
+        const btn = mode === 'draft' ? this.querySelectorAll('button[type="submit"]')[0] : this.querySelectorAll('button[type="submit"]')[1];
+        
         btn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:10px;"></span> Gravando...';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.8';

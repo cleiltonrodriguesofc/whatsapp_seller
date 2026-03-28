@@ -112,8 +112,9 @@ class Campaign:
 @dataclass
 class StatusCampaign:
     title: str
-    image_url: str
     scheduled_at: datetime
+    image_url: Optional[str] = None
+    background_color: Optional[str] = "#128C7E"
     caption: Optional[str] = None
     target_contacts: List[str] = field(default_factory=list)  # Empty means allContacts=True
     user_id: Optional[int] = None

@@ -48,6 +48,8 @@
             <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.2);">FALHOU</span>
         {% elif campaign.status.value == 'processing' or campaign.status.value == 'sending' %}
             <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.2);">ENVIANDO...</span>
+        {% elif campaign.status.value == 'draft' %}
+            <span class="badge" style="background: rgba(255, 191, 0, 0.1); color: #ffbf00; border: 1px solid rgba(255, 191, 0, 0.2);">RASCUNHO</span>
         {% else %}
             <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border);">AGENDADO</span>
         {% endif %}
@@ -63,6 +65,21 @@
 {% endmacro %}
 
 <div class="campaign-list">
+    
+    <!-- 0. SEÇÃO: RASCUNHOS -->
+    {% set draft_list = campaigns | selectattr("status.value", "equalto", "draft") | list %}
+    {% if draft_list %}
+    <div style="margin-bottom: 3rem; background: rgba(255, 191, 0, 0.03); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255, 191, 0, 0.1);">
+        <h3 style="font-size: 1rem; color: #ffbf00; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📥 Meus Rascunhos</span>
+            <span style="background: #ffbf00; color: #000; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{ draft_list|length }}</span>
+        </h3>
+        {% for campaign in draft_list | sort(attribute="created_at", reverse=True) %}
+            {{ status_card(campaign) }}
+        {% endfor %}
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Estes status ainda não foram agendados e não serão enviados.</p>
+    </div>
+    {% endif %}
     
     <!-- 1. SEÇÃO: AGENDADOS -->
     {% set scheduled_list = campaigns | selectattr("status.value", "in", ["scheduled", "pending"]) | list %}

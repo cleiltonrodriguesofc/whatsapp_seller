@@ -4,7 +4,6 @@ from core.infrastructure.services.supabase_storage import SupabaseStorageService
 
 @pytest.fixture
 def mock_supabase_client():
-    from unittest.mock import patch
     import os
     with patch.dict(os.environ, {"SUPABASE_URL": "http://127.0.0.1:54321", "SUPABASE_KEY": "testkey"}):
         with patch("core.infrastructure.services.supabase_storage.create_client") as mock_create:

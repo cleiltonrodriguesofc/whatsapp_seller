@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
-from core.domain.entities import Product, Campaign, CampaignStatus
+from core.domain.entities import Product, CampaignStatus
 
 @pytest.mark.asyncio
 async def test_schedule_campaign_success():
