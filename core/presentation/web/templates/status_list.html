@@ -28,14 +28,29 @@
     </div>
 
     <!-- Schedule Info -->
-    <div style="text-align: center; min-width: 120px; border-left: 1px solid var(--border); padding-left: 1.5rem;">
+    <div style="text-align: center; min-width: 150px; border-left: 1px solid var(--border); padding-left: 1.5rem;">
         {% if campaign.is_recurring %}
-            <div style="font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">⏰ Recorrente</div>
-            <div style="font-weight: 800; font-size: 1.1rem; color: #fff;">{{ campaign.send_time }}</div>
+            <div style="font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem;">⏰ Recorrente</div>
+            
+            {% set day_labels = {"sun": "DOM", "mon": "SEG", "tue": "TER", "wed": "QUA", "thu": "QUI", "fri": "SEX", "sat": "SÁB"} %}
+            <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                {% for d in (campaign.recurrence_days or "").split(",") %}
+                    <span style="font-size: 0.65rem; background: rgba(99,102,241,0.1); color: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700;">{{ day_labels[d] or d|upper }}</span>
+                {% endfor %}
+            </div>
+
+            <div style="font-weight: 800; font-size: 1rem; color: #fff; letter-spacing: 0.5px;">
+                {% set times = (campaign.send_time or "").split(",") %}
+                {% if times|length > 2 %}
+                    {{ times[0] }}, {{ times[1] }} <span style="font-size: 0.7rem; color: var(--text-muted);">+{{ times|length - 2 }}</span>
+                {% else %}
+                    {{ campaign.send_time }}
+                {% endif %}
+            </div>
         {% else %}
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">🗓️ Disparo em</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">🗓️ Disparo Único</div>
             <div style="font-weight: 600; font-size: 0.95rem; color: #f3f4f6;">
-                {{ campaign.scheduled_at.strftime('%d/%m %H:%M') if campaign.scheduled_at else 'Imediato' }}
+                {{ campaign.scheduled_at.strftime('%d/%m às %H:%M') if campaign.scheduled_at else 'Imediato' }}
             </div>
         {% endif %}
     </div>

@@ -125,12 +125,12 @@
 
                 <label class="form-label" style="margin-top: 1.5rem;">Repetir nos dias</label>
                 <div class="grid-7" style="margin-top: 0.75rem;">
-                    {% set days = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"] %}
-                    {% set saved_days = (campaign.recurrence_days or "").split(",") if campaign else [] %}
-                    {% for day in days %}
+                    {% set days_map = [("sun", "DOM"), ("mon", "SEG"), ("tue", "TER"), ("wed", "QUA"), ("thu", "QUI"), ("fri", "SEX"), ("sat", "SÁB")] %}
+                    {% set saved_days = (campaign.recurrence_days or "").lower().split(",") if campaign else [] %}
+                    {% for day_val, day_label in days_map %}
                     <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.03); padding: 0.75rem 0.25rem; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: var(--transition);" class="day-chip">
-                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary);">{{ day }}</span>
-                        <input type="checkbox" name="recurrence_days" value="{{ loop.index0 }}" {% if loop.index0|string in saved_days %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary);">{{ day_label }}</span>
+                        <input type="checkbox" name="recurrence_days" value="{{ day_val }}" {% if day_val in saved_days %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--primary);">
                     </label>
                     {% endfor %}
                 </div>
@@ -332,7 +332,6 @@
         if (type === 'once') {
             once.style.display = 'block'; rec.style.display = 'none'; now.style.display = 'none';
             btnO.classList.replace('btn-ghost','btn-primary');
-            hid.value = 'true'; // Note: the backend uses is_recurring field
             hid.value = 'false';
         } else if (type === 'recurring') {
             once.style.display = 'none'; rec.style.display = 'block'; now.style.display = 'none';
