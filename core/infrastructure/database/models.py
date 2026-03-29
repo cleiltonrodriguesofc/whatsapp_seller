@@ -12,6 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 import enum
 
 Base = declarative_base()
@@ -42,7 +43,7 @@ class UserModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
 
     products = relationship("ProductModel", back_populates="user")
     instances = relationship("InstanceModel", back_populates="user")
@@ -56,7 +57,7 @@ class InstanceModel(Base):
     display_name = Column(String, nullable=True)  # User custom friendly name
     apikey = Column(String, nullable=True)  # Specific instance apikey if different
     status = Column(String, default="disconnected")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
 
     user = relationship("UserModel", back_populates="instances")
 
@@ -73,7 +74,7 @@ class ProductModel(Base):
     category = Column(String, nullable=True)
     click_count = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
 
     user = relationship("UserModel", back_populates="products")
 
@@ -87,7 +88,7 @@ class WhatsAppTargetModel(Base):
     phone = Column(String, nullable=True)
     type = Column(String)  # 'group' or 'chat'
     is_active = Column(Boolean, default=True)
-    last_synced_at = Column(DateTime, default=datetime.utcnow)
+    last_synced_at = Column(DateTime, default=now_sp)
 
 
 class CampaignModel(Base):
@@ -100,7 +101,7 @@ class CampaignModel(Base):
     scheduled_at = Column(DateTime)
     status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
     custom_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
     sent_at = Column(DateTime, nullable=True)
 
     # Recurring Scheduling (Alarm style)
@@ -138,7 +139,7 @@ class StatusCampaignModel(Base):
     scheduled_at = Column(DateTime)
     status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
     target_contacts = Column(Text, nullable=True)  # JSON or comma-separated list of jids
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
     sent_at = Column(DateTime, nullable=True)
 
     # Recurring Scheduling
@@ -156,7 +157,7 @@ class BroadcastListModel(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
 
     members = relationship(
         "BroadcastListMemberModel", back_populates="broadcast_list", cascade="all, delete-orphan"
@@ -170,7 +171,7 @@ class BroadcastListMemberModel(Base):
     target_jid = Column(String, nullable=False)
     target_name = Column(String, nullable=True)
     target_type = Column(String, nullable=False)  # 'chat' | 'group'
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_sp)
 
     broadcast_list = relationship("BroadcastListModel", back_populates="members")
 

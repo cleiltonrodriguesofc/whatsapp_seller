@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
 from enum import Enum
+from core.infrastructure.utils.timezone import now_sp
 
 
 class MessageType(Enum):
@@ -27,7 +28,7 @@ class Product:
     click_count: int = 0
     is_active: bool = True
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -36,7 +37,7 @@ class Contact:
     name: Optional[str] = None
     is_allowed: bool = True
     persona_prompt: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -44,14 +45,14 @@ class Group:
     group_id: str
     name: str
     is_allowed: bool = True
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
 class Conversation:
     contact: Contact
     status: str = "active"
-    started_at: datetime = field(default_factory=datetime.now)
+    started_at: datetime = field(default_factory=now_sp)
     closed_at: Optional[datetime] = None
 
 
@@ -61,7 +62,7 @@ class Message:
     message_type: MessageType
     content: str
     product: Optional[Product] = None
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -95,7 +96,7 @@ class Campaign:
     status: CampaignStatus = CampaignStatus.PENDING
     custom_message: Optional[str] = None
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
     sent_at: Optional[datetime] = None
 
     # Recurring Scheduling
@@ -124,7 +125,7 @@ class StatusCampaign:
     instance_id: Optional[int] = None
     status: CampaignStatus = CampaignStatus.PENDING
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
     sent_at: Optional[datetime] = None
 
     # Recurring Scheduling
@@ -140,7 +141,7 @@ class User:
     hashed_password: str
     id: Optional[int] = None
     is_active: bool = True
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -150,7 +151,7 @@ class Instance:
     apikey: Optional[str] = None
     status: str = "disconnected"
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -160,7 +161,7 @@ class BroadcastList:
     description: Optional[str] = None
     id: Optional[int] = None
     member_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -170,7 +171,7 @@ class BroadcastListMember:
     target_name: str
     target_type: str  # 'chat' | 'group'
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)
 
 
 @dataclass
@@ -194,4 +195,4 @@ class BroadcastCampaign:
     sent_count: int = 0
     failed_count: int = 0
     id: Optional[int] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=now_sp)

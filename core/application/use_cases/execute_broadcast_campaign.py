@@ -2,6 +2,7 @@ import asyncio
 import random
 import logging
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 
 from core.infrastructure.database.repositories import (
     SQLBroadcastCampaignRepository,
@@ -114,14 +115,14 @@ class ExecuteBroadcastCampaignUseCase:
                     await asyncio.sleep(typing_duration)
 
                 # Send message
-                t_start = datetime.utcnow()
+                t_start = now_sp()
                 success = False
                 if optimized_media:
                     success = await svc.send_image(jid, optimized_media, content)
                 else:
                     success = await svc.send_text(jid, content)
 
-                elapsed = (datetime.utcnow() - t_start).total_seconds()
+                elapsed = (now_sp() - t_start).total_seconds()
                 logger.info("[broadcast] send to %s: %s (took %.2fs)", jid, "ok" if success else "FAILED", elapsed)
 
                 if success:
@@ -146,6 +147,6 @@ class ExecuteBroadcastCampaignUseCase:
 
         # 6. Final Status
         campaign.status = "sent" if sent_count > 0 else "failed"
-        campaign.sent_at = datetime.utcnow()
+        campaign.sent_at = now_sp()
         self.broadcast_repo.save(campaign)
         logger.info("[broadcast] campaign %s finished: %d sent, %d failed", campaign_id, sent_count, failed_count)

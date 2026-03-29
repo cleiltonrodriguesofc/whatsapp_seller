@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp, to_sp
 from typing import Optional
 import json
 
@@ -87,11 +88,13 @@ async def create_status_campaign(
 
     try:
         if scheduled_at:
-            scheduled_dt = datetime.fromisoformat(scheduled_at.replace("Z", ""))
+            # Assume naive input from browser is local (SP) time or convert if Z present
+            dt = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+            scheduled_dt = to_sp(dt)
         else:
-            scheduled_dt = datetime.now()
+            scheduled_dt = now_sp()
     except ValueError:
-        scheduled_dt = datetime.now()
+        scheduled_dt = now_sp()
 
     try:
         targets = json.loads(target_groups)

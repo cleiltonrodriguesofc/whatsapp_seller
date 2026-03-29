@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 from core.application.repositories import StatusCampaignRepository
 from core.application.interfaces import AIService
 from core.domain.entities import StatusCampaign, StatusItem, StatusCampaignStatus
@@ -66,7 +67,7 @@ class ScheduleStatusCampaign:
 
             campaign.title = title
             campaign.items = items
-            campaign.scheduled_at = scheduled_at or datetime.utcnow()
+            campaign.scheduled_at = scheduled_at or now_sp()
             campaign.is_recurring = is_recurring
             campaign.recurrence_days = recurrence_days
             campaign.send_time = send_time

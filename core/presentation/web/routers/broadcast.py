@@ -17,6 +17,7 @@ from core.domain.entities import BroadcastList, BroadcastCampaign
 from core.presentation.web.dependencies import login_required, templates
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.infrastructure.ai.openai_service import OpenAIService
+from core.infrastructure.utils.timezone import now_sp, to_sp
 
 router = APIRouter(prefix="/broadcast", tags=["broadcast"])
 
@@ -468,16 +469,17 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     if target_type in ["contacts", "groups"]:
         target_jids = form_data.getlist("target_jids")
 
-    import datetime as dt_mod
     scheduled_at = None
     if scheduled_at_str:
         try:
-            scheduled_at = dt_mod.datetime.fromisoformat(scheduled_at_str)
+            # Assume browser input is local SP time or convert if Z present
+            dt_raw = datetime.fromisoformat(scheduled_at_str.replace("Z", "+00:00"))
+            scheduled_at = to_sp(dt_raw)
         except Exception:
             pass
     
     if is_now and not scheduled_at:
-        scheduled_at = dt_mod.datetime.now()
+        scheduled_at = now_sp()
 
     campaign_repo = SQLBroadcastCampaignRepository(db)
     
