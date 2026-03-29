@@ -210,7 +210,6 @@ async def create_broadcast_list(
     new_list = list_repo.save(new_list)
 
     # resolve target info from JIDs
-    target_repo = SQLTargetRepository(db)
     members = []
     for jid in jids:
         model = db.query(WhatsAppTargetModel).filter_by(user_id=current_user.id, jid=jid).first()
@@ -344,7 +343,6 @@ async def view_broadcast_campaign(
     if not campaign:
         return RedirectResponse(url="/broadcast/campaigns", status_code=303)
 
-    instance_repo = SQLInstanceRepository(db)
     instance = db.query(InstanceModel).filter_by(id=campaign.instance_id).first()
     instance_name = instance.name if instance else "Desconhecida"
 
@@ -475,7 +473,7 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     if scheduled_at_str:
         try:
             scheduled_at = dt_mod.datetime.fromisoformat(scheduled_at_str)
-        except:
+        except Exception:
             pass
     
     if is_now and not scheduled_at:

@@ -21,6 +21,8 @@ def test_status_campaign_entity_creation():
     assert campaign.status == CampaignStatus.PENDING
     assert campaign.background_color == "#128C7E"  # Default value
     assert campaign.target_contacts == []
+    assert campaign.link is None
+    assert campaign.price is None
     assert isinstance(campaign.created_at, datetime)
 
 
@@ -44,3 +46,17 @@ def test_status_campaign_recurring():
     assert campaign.is_recurring is True
     assert campaign.recurrence_days == "mon,wed,fri"
     assert campaign.send_time == "10:00"
+
+
+def test_status_campaign_with_link_and_price():
+    """Test status campaign creation with link and price."""
+    campaign = StatusCampaign(
+        title="Sale Status",
+        scheduled_at=datetime.utcnow(),
+        link="https://wa.me/message",
+        price=49.90,
+        background_color="#FF5733"
+    )
+    assert campaign.link == "https://wa.me/message"
+    assert campaign.price == 49.90
+    assert campaign.background_color == "#FF5733"
