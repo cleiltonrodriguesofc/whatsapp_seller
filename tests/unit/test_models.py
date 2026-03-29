@@ -4,6 +4,9 @@ from core.infrastructure.database.models import (
     ProductModel,
     WhatsAppTargetModel,
     CampaignModel,
+    StatusCampaignModel,
+    BroadcastListModel,
+    BroadcastCampaignModel,
 )
 
 
@@ -35,3 +38,28 @@ def test_campaign_model():
     campaign = CampaignModel(user_id=1, title="Camp", product_id=1)
     assert campaign.title == "Camp"
     assert campaign.product_id == 1
+
+
+def test_status_campaign_model_refinements():
+    model = StatusCampaignModel(
+        user_id=1,
+        title="Status",
+        link="http://link",
+        price=10.0,
+        background_color="#FFFFFF"
+    )
+    assert model.link == "http://link"
+    assert model.price == 10.0
+    assert model.background_color == "#FFFFFF"
+
+
+def test_broadcast_list_model():
+    model = BroadcastListModel(user_id=1, name="List")
+    assert model.name == "List"
+    assert model.user_id == 1
+
+
+def test_broadcast_campaign_model():
+    model = BroadcastCampaignModel(user_id=1, title="BCamp", status="sent")
+    assert model.title == "BCamp"
+    assert model.status == "sent"

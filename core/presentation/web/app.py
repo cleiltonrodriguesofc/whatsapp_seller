@@ -18,13 +18,6 @@ from slowapi.util import get_remote_address
 from sqlalchemy import text
 from core.infrastructure.database.models import (
     Base,
-    ProductModel,
-    CampaignModel,
-    StatusCampaignModel,
-    WhatsAppTargetModel,
-    BroadcastListModel,
-    BroadcastListMemberModel,
-    BroadcastCampaignModel,
 )
 from core.infrastructure.database.session import engine
 from core.presentation.web.dependencies import templates  # noqa: F401 — registers template helpers
