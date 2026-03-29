@@ -78,6 +78,7 @@ class CampaignStatus(Enum):
     DRAFT = "draft"
     PENDING = "pending"
     SCHEDULED = "scheduled"
+    PROCESSING = "processing"
     SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
@@ -148,5 +149,49 @@ class Instance:
     name: str
     apikey: Optional[str] = None
     status: str = "disconnected"
+    id: Optional[int] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class BroadcastList:
+    user_id: int
+    name: str
+    description: Optional[str] = None
+    id: Optional[int] = None
+    member_count: int = 0
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class BroadcastListMember:
+    list_id: int
+    target_jid: str
+    target_name: str
+    target_type: str  # 'chat' | 'group'
+    id: Optional[int] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class BroadcastCampaign:
+    user_id: int
+    instance_id: int
+    title: str
+    target_type: str  # 'contacts' | 'groups' | 'list'
+    message: str
+    target_jids: List[str] = field(default_factory=list)
+    list_id: Optional[int] = None
+    image_url: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    is_recurring: bool = False
+    recurrence_days: Optional[str] = None
+    send_time: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+    status: str = "draft"
+    sent_at: Optional[datetime] = None
+    total_targets: int = 0
+    sent_count: int = 0
+    failed_count: int = 0
     id: Optional[int] = None
     created_at: datetime = field(default_factory=datetime.utcnow)

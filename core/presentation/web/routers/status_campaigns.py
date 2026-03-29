@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.domain.entities import StatusCampaign, CampaignStatus
-from core.infrastructure.database.models import UserModel
+from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
 from core.infrastructure.database.repositories import (
     SQLStatusCampaignRepository,
     SQLInstanceRepository,
@@ -274,3 +274,41 @@ async def improve_status_caption(
 
     improved_text = await ai_service.chat(prompt)
     return {"improved_text": improved_text}
+
+
+
+@router.get("/status_campaigns/{campaign_id}", response_class=HTMLResponse)
+async def view_status_campaign(
+    campaign_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    repo = SQLStatusCampaignRepository(db)
+    campaign = repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not campaign:
+        return RedirectResponse(url="/status_campaigns", status_code=303)
+    instance = db.query(InstanceModel).filter_by(id=campaign.instance_id).first()
+    instance_name = instance.name if instance else "Padrão"
+
+    target_names = []
+    if campaign.target_contacts:
+
+        for jid in (campaign.target_contacts or []):
+            tm = db.query(WhatsAppTargetModel).filter_by(user_id=current_user.id, jid=jid).first()
+            if tm and tm.name:
+                target_names.append(tm.name)
+            else:
+                target_names.append(jid)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="status_campaign_detail.html",
+        context={
+            "user": current_user,
+            "title": f"Detalhes: {campaign.title}",
+            "campaign": campaign,
+            "instance_name": instance_name,
+            "target_names": target_names,
+        },
+    )

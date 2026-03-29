@@ -18,8 +18,10 @@ Base = declarative_base()
 
 
 class CampaignStatus(enum.Enum):
+    DRAFT = "draft"
     PENDING = "pending"
     SCHEDULED = "scheduled"
+    PROCESSING = "processing"
     SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
@@ -82,6 +84,7 @@ class WhatsAppTargetModel(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     jid = Column(String, unique=False, index=True, nullable=False)
     name = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
     type = Column(String)  # 'group' or 'chat'
     is_active = Column(Boolean, default=True)
     last_synced_at = Column(DateTime, default=datetime.utcnow)
@@ -145,3 +148,64 @@ class StatusCampaignModel(Base):
     last_run_at = Column(DateTime, nullable=True)
 
     instance = relationship("InstanceModel")
+
+
+class BroadcastListModel(Base):
+    __tablename__ = "broadcast_lists"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    members = relationship(
+        "BroadcastListMemberModel", back_populates="broadcast_list", cascade="all, delete-orphan"
+    )
+
+
+class BroadcastListMemberModel(Base):
+    __tablename__ = "broadcast_list_members"
+    id = Column(Integer, primary_key=True, index=True)
+    list_id = Column(Integer, ForeignKey("broadcast_lists.id", ondelete="CASCADE"), nullable=False)
+    target_jid = Column(String, nullable=False)
+    target_name = Column(String, nullable=True)
+    target_type = Column(String, nullable=False)  # 'chat' | 'group'
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    broadcast_list = relationship("BroadcastListModel", back_populates="members")
+
+
+class BroadcastCampaignModel(Base):
+    __tablename__ = "broadcast_campaigns"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    instance_id = Column(Integer, ForeignKey("instances.id"), nullable=False)
+    title = Column(String, nullable=False)
+
+    # target
+    target_type = Column(String, nullable=False)  # 'contacts' | 'groups' | 'list'
+    target_jids = Column(Text, nullable=True)  # JSON array
+    list_id = Column(Integer, ForeignKey("broadcast_lists.id", ondelete="SET NULL"), nullable=True)
+
+    # content
+    message = Column(Text, nullable=False)
+    image_url = Column(String, nullable=True)
+
+    # scheduling
+    scheduled_at = Column(DateTime, nullable=True)
+    is_recurring = Column(Boolean, default=False)
+    recurrence_days = Column(String, nullable=True)
+    send_time = Column(String, nullable=True)
+    last_run_at = Column(DateTime, nullable=True)
+
+    # state
+    status = Column(String, default="draft")
+    sent_at = Column(DateTime, nullable=True)
+    total_targets = Column(Integer, default=0)
+    sent_count = Column(Integer, default=0)
+    failed_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("UserModel")
+    instance = relationship("InstanceModel")
+    broadcast_list = relationship("BroadcastListModel")
