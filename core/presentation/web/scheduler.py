@@ -8,6 +8,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 
 from core.domain.entities import (
     Campaign,
@@ -97,7 +98,7 @@ async def send_campaign(campaign: Campaign, db) -> None:
         logger.error("error during humanized campaign send: %s", e, exc_info=True)
         campaign.status = DomainCampaignStatus.FAILED
 
-    campaign.sent_at = datetime.utcnow()
+    campaign.sent_at = now_sp()
     campaign_repo.save(campaign)
     logger.info("campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
 
@@ -143,8 +144,8 @@ async def send_status_campaign(campaign, db) -> None:
         apikey=instance_model.apikey,
     )
 
-    campaign.status = DomainCampaignStatus.SENDING
-    repo.save(campaign)
+    # status already set to SENDING by scheduler loop
+    # repo.save(campaign) 
 
     try:
         # Resolve and Optimize Media
@@ -189,8 +190,9 @@ async def send_status_campaign(campaign, db) -> None:
         logger.error("error during status campaign send: %s", e, exc_info=True)
         campaign.status = DomainCampaignStatus.FAILED
 
-    campaign.sent_at = datetime.utcnow()
+    campaign.sent_at = now_sp()
     repo.save(campaign)
+    logger.info("status campaign '%s' saved with status %s", campaign.title, campaign.status.name)
     logger.info("status campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
 
 
@@ -229,7 +231,7 @@ async def campaign_scheduler_loop() -> None:
     while True:
         db = SessionLocal()
         try:
-            now = datetime.now()
+            now = now_sp()
             current_time_str = now.strftime("%H:%M")
             current_day_str = now.strftime("%a").lower()
 
@@ -409,4 +411,4 @@ async def campaign_scheduler_loop() -> None:
         finally:
             db.close()
 
-        await asyncio.sleep(60)
+        await asyncio.sleep(15)

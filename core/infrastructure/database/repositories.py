@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -303,7 +304,7 @@ class SQLTargetRepository:
           - groups: { "id": "...", "subject": "Group Name" }
           - contacts (fetchAllChats): { "id": "...", "name": "Contact Name", "remoteJid": "..." }
         """
-        now = datetime.utcnow()
+        now = now_sp()
         for t in targets:
             # handle both group and contact formats from Evolution API
             jid = t.get("id") or t.get("remoteJid", "")
@@ -427,6 +428,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 model.link = campaign.link
                 model.price = campaign.price
                 model.scheduled_at = campaign.scheduled_at
+                logger.info("Updating StatusCampaign %s to status %s", campaign.id, campaign.status.name)
                 model.status = ModelCampaignStatus[campaign.status.name]
                 model.instance_id = campaign.instance_id
                 model.user_id = campaign.user_id
@@ -726,7 +728,7 @@ class SQLBroadcastCampaignRepository(BroadcastCampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_due(self) -> List[BroadcastCampaign]:
-        now = datetime.utcnow()
+        now = now_sp()
         models = (
             self.db.query(BroadcastCampaignModel)
             .filter(
