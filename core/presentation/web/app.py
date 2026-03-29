@@ -88,6 +88,7 @@ try:
             conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"))
             conn.commit()
             logger.info("auto-migration: added 'price' to status_campaigns table")
+
         # whatsapp_targets.phone
         res = conn.execute(
             text(
