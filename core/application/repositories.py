@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from core.domain.entities import Product, Campaign, StatusCampaign
+from core.domain.entities import Product, Campaign, StatusCampaign, BroadcastList, BroadcastCampaign
 
 
 class ProductRepository(ABC):
@@ -54,4 +54,52 @@ class StatusCampaignRepository(ABC):
 
     @abstractmethod
     def delete(self, campaign_id: int, user_id: Optional[int] = None) -> bool:
+        pass
+
+
+class BroadcastListRepository(ABC):
+    @abstractmethod
+    def save(self, broadcast_list: BroadcastList) -> BroadcastList:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, list_id: int, user_id: Optional[int] = None) -> Optional[BroadcastList]:
+        pass
+
+    @abstractmethod
+    def list_all(self, user_id: Optional[int] = None) -> List[BroadcastList]:
+        pass
+
+    @abstractmethod
+    def delete(self, list_id: int, user_id: int) -> bool:
+        pass
+
+    @abstractmethod
+    def set_members(self, list_id: int, members: List[dict]) -> None:
+        pass
+
+    @abstractmethod
+    def get_member_jids(self, list_id: int) -> List[str]:
+        pass
+
+
+class BroadcastCampaignRepository(ABC):
+    @abstractmethod
+    def save(self, campaign: BroadcastCampaign) -> BroadcastCampaign:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, campaign_id: int, user_id: int) -> Optional[BroadcastCampaign]:
+        pass
+
+    @abstractmethod
+    def list_all(self, user_id: int) -> List[BroadcastCampaign]:
+        pass
+
+    @abstractmethod
+    def list_due(self) -> List[BroadcastCampaign]:
+        pass
+
+    @abstractmethod
+    def delete(self, campaign_id: int, user_id: int) -> bool:
         pass

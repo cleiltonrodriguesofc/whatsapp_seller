@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block page_title %}Minhas Campanhas de Broadcast{% endblock %}
+{% block page_subtitle %}Acompanhe o progresso e o histórico de seus envios direcionados.{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="padding: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 700;">Histórico de Envios</h2>
+        <a href="/broadcast/campaigns/new" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 12px;">🚀 NOVA CAMPANHA</a>
+    </div>
+
+    <div class="table-container">
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 2px solid var(--border);">
+                    <th style="padding: 1rem;">Campanha</th>
+                    <th style="padding: 1rem;">Alvo</th>
+                    <th style="padding: 1rem;">Status</th>
+                    <th style="padding: 1rem;">Progresso</th>
+                    <th style="padding: 1rem;">Agendado / Enviado em</th>
+                    <th style="padding: 1rem;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for campaign in campaigns %}
+                <tr style="border-bottom: 1px solid var(--border); transition: var(--transition);" class="table-row">
+                    <td style="padding: 1rem;">
+                        <a href="/broadcast/campaigns/{{ campaign.id }}" style="font-weight: 700; color: #fff; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ campaign.message }}
+                        </div>
+                    </td>
+                    <td style="padding: 1rem;">
+                        {% if campaign.target_type == 'list' %}
+                        <span class="badge badge-list">📜 Lista</span>
+                        {% elif campaign.target_type == 'contacts' %}
+                        <span class="badge badge-contacts">👥 Contatos</span>
+                        {% else %}
+                        <span class="badge badge-groups">🏢 Grupos</span>
+                        {% endif %}
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                            {{ campaign.total_targets if campaign.total_targets > 0 else (campaign.target_jids|length if campaign.target_jids else '?') }} alvos
+                        </div>
+                    </td>
+                    <td style="padding: 1rem;">
+                        {% if campaign.status == 'sent' %}
+                        <span class="status-pill status-sent">Concluído</span>
+                        {% elif campaign.status == 'sending' %}
+                        <span class="status-pill status-sending">Enviando...</span>
+                        {% elif campaign.status == 'scheduled' %}
+                        <span class="status-pill status-scheduled">Agendado</span>
+                        {% elif campaign.status == 'failed' %}
+                        <span class="status-pill status-failed">Falhou</span>
+                        {% else %}
+                        <span class="status-pill status-draft">Rascunho</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem;">
+                        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 4px;">
+                            {% set percent = (campaign.sent_count / campaign.total_targets * 100) if campaign.total_targets > 0 else 0 %}
+                            <div style="width: {{ percent }}%; height: 100%; background: var(--primary); transition: width 0.5s ease;"></div>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                            <span>{{ campaign.sent_count }} de {{ campaign.total_targets }}</span>
+                            {% if campaign.failed_count > 0 %}
+                            <span style="color: #ef4444;">{{ campaign.failed_count }} erros</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+                        {% if campaign.status == 'sent' %}
+                            {{ campaign.sent_at.strftime('%d/%m/%Y %H:%M') if campaign.sent_at else '-' }}
+                        {% else %}
+                            {{ campaign.scheduled_at.strftime('%d/%m/%Y %H:%M') if campaign.scheduled_at else '-' }}
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem;">
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <a href="/broadcast/campaigns/{{ campaign.id }}" class="btn-icon" style="color: var(--text-secondary); text-decoration: none;" title="Ver Detalhes">👁️</a>
+                            {% if campaign.status in ['scheduled', 'draft'] %}
+                            <a href="/broadcast/campaigns/edit/{{ campaign.id }}" class="btn-icon" style="color: var(--primary); text-decoration: none;" title="Editar">✏️</a>
+                            {% endif %}
+                            <form action="/broadcast/campaigns/{{ campaign.id }}/delete" method="post" onsubmit="return confirm('Excluir esta campanha?');" style="margin: 0;">
+                                <button type="submit" class="btn-icon" style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0;" title="Excluir">🗑️</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📢</div>
+                        Nenhuma campanha de broadcast encontrada.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.table-container { overflow-x: auto; }
+.status-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
+}
+.status-sent { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.status-sending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; animation: pulse 2s infinite; }
+.status-scheduled { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.status-failed { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.status-draft { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+
+.badge {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.badge-list { background: #f59e0b; color: white; }
+.badge-contacts { background: var(--primary); color: white; }
+.badge-groups { background: var(--secondary); color: white; }
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+</style>
+{% endblock %}

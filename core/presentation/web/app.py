@@ -16,8 +16,16 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import text
-
-from core.infrastructure.database.models import Base
+from core.infrastructure.database.models import (
+    Base,
+    ProductModel,
+    CampaignModel,
+    StatusCampaignModel,
+    WhatsAppTargetModel,
+    BroadcastListModel,
+    BroadcastListMemberModel,
+    BroadcastCampaignModel,
+)
 from core.infrastructure.database.session import engine
 from core.presentation.web.dependencies import templates  # noqa: F401 — registers template helpers
 from core.presentation.web.routers import (
@@ -27,6 +35,7 @@ from core.presentation.web.routers import (
     status_campaigns,
     storage,
     whatsapp,
+    broadcast,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -79,6 +88,17 @@ try:
             conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"))
             conn.commit()
             logger.info("auto-migration: added 'price' to status_campaigns table")
+        # whatsapp_targets.phone
+        res = conn.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'whatsapp_targets' AND column_name = 'phone';"
+            )
+        )
+        if not res.fetchone():
+            conn.execute(text("ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;"))
+            conn.commit()
+            logger.info("auto-migration: added 'phone' to whatsapp_targets table")
 except Exception as e:
     logger.warning("auto-migration failed: %s", e)
 
@@ -147,3 +167,4 @@ app.include_router(products.router)
 app.include_router(status_campaigns.router)
 app.include_router(storage.router)
 app.include_router(whatsapp.router)
+app.include_router(broadcast.router)

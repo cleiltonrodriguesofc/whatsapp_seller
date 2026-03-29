@@ -18,8 +18,15 @@ from core.infrastructure.database.models import (
     StatusCampaignModel,
     CampaignStatus as ModelCampaignStatus,
     InstanceModel,
+    BroadcastCampaignModel,
 )
-from core.infrastructure.database.repositories import SQLCampaignRepository, SQLStatusCampaignRepository
+from core.infrastructure.database.repositories import (
+    SQLCampaignRepository,
+    SQLStatusCampaignRepository,
+    SQLBroadcastCampaignRepository,
+    SQLBroadcastListRepository,
+    SQLTargetRepository,
+)
 from core.infrastructure.database.session import SessionLocal
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 
@@ -187,6 +194,34 @@ async def send_status_campaign(campaign, db) -> None:
     logger.info("status campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
 
 
+async def execute_broadcast_campaign_task(campaign_id: int) -> None:
+    """
+    Executes a broadcast campaign using ExecuteBroadcastCampaignUseCase.
+    """
+    from core.application.use_cases.execute_broadcast_campaign import (
+        ExecuteBroadcastCampaignUseCase,
+    )
+
+    db = SessionLocal()
+    try:
+        logger.info("executing background broadcast campaign id %s", campaign_id)
+        broadcast_repo = SQLBroadcastCampaignRepository(db)
+        list_repo = SQLBroadcastListRepository(db)
+        target_repo = SQLTargetRepository(db)
+
+        use_case = ExecuteBroadcastCampaignUseCase(
+            db_session=db,
+            broadcast_repo=broadcast_repo,
+            list_repo=list_repo,
+            target_repo=target_repo,
+        )
+        await use_case.execute(campaign_id)
+    except Exception as e:
+        logger.error("error in background broadcast task for %s: %s", campaign_id, e, exc_info=True)
+    finally:
+        db.close()
+
+
 async def campaign_scheduler_loop() -> None:
     """
     Background task that checks and dispatches scheduled/recurring campaigns every minute.
@@ -234,6 +269,24 @@ async def campaign_scheduler_loop() -> None:
                 db.add(status_model)
                 db.commit()
                 asyncio.create_task(execute_status_campaign_task(status_model.id))
+
+            # one-off BROADCAST campaigns
+            one_off_broadcasts = (
+                db.query(BroadcastCampaignModel)
+                .filter(
+                    BroadcastCampaignModel.status == "scheduled",
+                    ~BroadcastCampaignModel.is_recurring,
+                    BroadcastCampaignModel.scheduled_at <= now,
+                )
+                .all()
+            )
+            for bc_model in one_off_broadcasts:
+                logger.info("scheduling one-off broadcast task: %s", bc_model.title)
+                bc_model.status = "sending"
+                bc_model.last_run_at = now
+                db.add(bc_model)
+                db.commit()
+                asyncio.create_task(execute_broadcast_campaign_task(bc_model.id))
 
             # recurring campaigns
             recurring_campaigns = (
@@ -323,6 +376,34 @@ async def campaign_scheduler_loop() -> None:
                         db.add(status_model)
                         db.commit()
                         asyncio.create_task(execute_status_campaign_task(status_model.id))
+
+            # recurring BROADCAST campaigns
+            recurring_broadcasts = (
+                db.query(BroadcastCampaignModel)
+                .filter(
+                    BroadcastCampaignModel.is_recurring,
+                    BroadcastCampaignModel.status != "failed",
+                )
+                .all()
+            )
+            for bc_model in recurring_broadcasts:
+                if not bc_model.recurrence_days:
+                    continue
+                if current_day_str not in bc_model.recurrence_days.lower():
+                    continue
+
+                send_times = [t.strip() for t in (bc_model.send_time or "").split(",") if t.strip()]
+                if current_time_str in send_times:
+                    if not bc_model.last_run_at or bc_model.last_run_at.strftime(
+                        "%Y-%m-%d %H:%M"
+                    ) != now.strftime("%Y-%m-%d %H:%M"):
+                        logger.info("executing recurring broadcast: %s at %s", bc_model.title, current_time_str)
+                        bc_model.status = "sending"
+                        bc_model.last_run_at = now
+                        db.add(bc_model)
+                        db.commit()
+                        asyncio.create_task(execute_broadcast_campaign_task(bc_model.id))
+
         except Exception as e:
             logger.error("error in scheduler loop: %s", e, exc_info=True)
         finally:
