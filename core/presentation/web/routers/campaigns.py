@@ -53,7 +53,7 @@ async def home(
     status_campaigns = db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == current_user.id).all()
     sent_count = (
         db.query(StatusCampaignModel)
-        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == ModelCampaignStatus.SENT)
+        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == ModelCampaignStatus.SENT.value)
         .count()
     )
 

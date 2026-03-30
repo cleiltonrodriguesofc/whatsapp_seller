@@ -99,7 +99,7 @@ class CampaignModel(Base):
     product_id = Column(Integer, ForeignKey("products.id"))
     instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)  # Link to specific instance
     scheduled_at = Column(DateTime)
-    status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
+    status = Column(String, default="pending", index=True)
     custom_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=now_sp)
     sent_at = Column(DateTime, nullable=True)
@@ -137,7 +137,7 @@ class StatusCampaignModel(Base):
     price = Column(Float, nullable=True)
     instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)
     scheduled_at = Column(DateTime)
-    status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.PENDING, index=True)
+    status = Column(String, default="pending", index=True)
     target_contacts = Column(Text, nullable=True)  # JSON or comma-separated list of jids
     created_at = Column(DateTime, default=now_sp)
     sent_at = Column(DateTime, nullable=True)

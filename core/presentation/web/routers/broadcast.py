@@ -378,6 +378,49 @@ async def view_broadcast_campaign(
     )
 
 
+@router.get("/campaigns/duplicate/{campaign_id}", response_class=HTMLResponse)
+async def duplicate_broadcast_campaign(
+    campaign_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    campaign_repo = SQLBroadcastCampaignRepository(db)
+    original = campaign_repo.get_by_id(campaign_id, current_user.id)
+    if not original:
+        return RedirectResponse(url="/broadcast/campaigns", status_code=303)
+
+    # Clear ID and reset status/date for a new entry
+    original.id = None
+    original.status = "draft"
+    original.scheduled_at = now_sp()
+
+    instance_repo = SQLInstanceRepository(db)
+    instances = instance_repo.list_by_user(current_user.id)
+    
+    list_repo = SQLBroadcastListRepository(db)
+    broadcast_lists = list_repo.list_all(current_user.id)
+    
+    target_repo = SQLTargetRepository(db)
+    contacts = target_repo.list_contacts(current_user.id)
+    groups = target_repo.list_groups(current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="broadcast_campaign_editor.html",
+        context={
+            "user": current_user,
+            "title": "Duplicar Campanha",
+            "campaign": original,
+            "instances": instances,
+            "lists": broadcast_lists,
+            "contacts": contacts,
+            "groups": groups,
+            "selected_list_id": original.list_id,
+        },
+    )
+
+
 @router.post("/improve-ai")
 async def improve_broadcast_caption(
     title: str = Form(...),

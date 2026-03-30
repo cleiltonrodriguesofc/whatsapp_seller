@@ -70,6 +70,7 @@
         {% endif %}
 
         <div style="display: flex; gap: 0.5rem;">
+            <a href="/status_campaigns/duplicate/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Duplicar (Reenviar)">📄</a>
             <a href="/status_campaigns/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Ver Detalhes">👁️</a>
             {% if campaign.status.value in ['draft', 'scheduled', 'pending'] %}
             <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Editar">✏️</a>
