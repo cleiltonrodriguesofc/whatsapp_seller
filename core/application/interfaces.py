@@ -26,15 +26,11 @@ class NotificationService(ABC):
         pass
 
     @abstractmethod
-    async def send_payment_reminder(
-        self, name: str, phone: str, month: int, amount: float
-    ) -> bool:
+    async def send_payment_reminder(self, name: str, phone: str, month: int, amount: float) -> bool:
         pass
 
     @abstractmethod
-    async def send_prize_notification(
-        self, name: str, phone: str, month: int, amount: float
-    ) -> bool:
+    async def send_prize_notification(self, name: str, phone: str, month: int, amount: float) -> bool:
         pass
 
     @abstractmethod

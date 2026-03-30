@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ title or "Nova Lista de Transmissão" }}{% endblock %}
+{% block page_subtitle %}Defina um nome e descrição para sua lista de contatos.{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="max-width: 800px; margin: 0 auto; padding: 2.5rem;">
+    <form action="/broadcast/lists/new" method="post" id="list-form">
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="name" style="display: block; font-weight: 700; margin-bottom: 0.75rem; font-size: 1.1rem;">Nome da Lista</label>
+            <input type="text" name="name" id="name" class="form-control" placeholder="Ex: Clientes VIP, Black Friday 2024..." required style="width: 100%; padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.1); border: 2px solid var(--border); font-size: 1rem;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="description" style="display: block; font-weight: 700; margin-bottom: 0.75rem;">Descrição (opcional)</label>
+            <textarea name="description" id="description" class="form-control" placeholder="Descreva o propósito desta lista." rows="3" style="width: 100%; padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.1); border: 2px solid var(--border); font-size: 1rem; resize: none;"></textarea>
+        </div>
+
+        <!-- Hidden input for JIDs -->
+        <input type="hidden" name="jids" id="jids-input" value="[]">
+
+        <div id="selection-preview" style="background: rgba(var(--primary-rgb), 0.05); border: 1px solid var(--primary); border-radius: 16px; padding: 1.5rem; margin-bottom: 2.5rem; display: none;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--primary); font-weight: 700; margin-bottom: 0.5rem;">
+                <span>👥</span> <span id="member-count-text">0 contatos selecionados</span>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">Estes contatos farão parte desta lista.</p>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+            <a href="/broadcast/contacts" class="btn btn-ghost" style="border-radius: 10px; padding: 0.75rem 2rem;">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2.5rem; font-weight: 700; border-radius: 12px;">✅ Salvar Lista</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if we have JIDs in localStorage or query params
+    const urlParams = new URLSearchParams(window.location.search);
+    let jids = [];
+    
+    // Try query param first
+    const jidsFromQuery = urlParams.get('jids');
+    if (jidsFromQuery) {
+        try {
+            jids = JSON.parse(jidsFromQuery);
+        } catch (e) {}
+    } else {
+        // Try localStorage (if coming from contacts/groups page)
+        const storedJids = localStorage.getItem('broadcast_selected_jids');
+        if (storedJids) {
+            try {
+                jids = JSON.parse(storedJids);
+                // Clear after read
+                localStorage.removeItem('broadcast_selected_jids');
+            } catch (e) {}
+        }
+    }
+
+    if (jids.length > 0) {
+        document.getElementById('jids-input').value = JSON.stringify(jids);
+        document.getElementById('selection-preview').style.display = 'block';
+        document.getElementById('member-count-text').innerText = `${jids.length} membros selecionados`;
+    } else {
+        // If no JIDs, maybe user came here directly, show warning/redirect?
+        // Actually, they can create an empty list and add later (future phase), but for now let's just warn.
+        alert('Nenhum contato selecionado. Por favor, selecione os contatos na lista primeiro.');
+        window.location.href = '/broadcast/contacts';
+    }
+});
+</script>
+{% endblock %}
