@@ -13,7 +13,7 @@
      style="max-width: 820px; margin: 0 auto; padding: 2.5rem;">
     <h2 style="font-size: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">{% if campaign %}Editar{% else %}Criar{% endif %} Status Automático</h2>
     
-    <form action="/status_campaigns/{{ 'edit/' ~ campaign.id if campaign else 'new' }}" method="post" enctype="multipart/form-data">
+    <form action="/status_campaigns/{{ 'edit/' ~ campaign.id if campaign and campaign.id else 'new' }}" method="post" enctype="multipart/form-data">
 
         <!-- Título Interno -->
         <div class="form-group">
@@ -45,6 +45,7 @@
                     <div id="image-preview-container" style="margin-top: 1rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); width: fit-content; max-height: 150px;">
                         <img src="{{ get_proxy_url(campaign.image_url) }}" style="height: 150px; display: block;">
                     </div>
+                    <input type="hidden" name="existing_image_url" value="{{ campaign.image_url }}">
                 {% endif %}
             </div>
         </div>
@@ -58,6 +59,21 @@
                     <input type="radio" name="background_color" value="{{ color }}" {% if (campaign and campaign.background_color == color) or (not campaign and color == '#128C7E') %}checked{% endif %} style="display: none;" onchange="updateSelectedColor(this)">
                 </label>
                 {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 1.5rem;">
+            <!-- Link Opcional -->
+            <div class="form-group">
+                <label class="form-label">Link (Opcional)</label>
+                <input type="url" name="link" id="link_field" class="form-input" value="{{ campaign.link if campaign and campaign.link else '' }}" placeholder="Ex: https://wa.me/..." style="padding: 0.75rem;">
+            </div>
+
+            <!-- Preço Opcional -->
+            <div class="form-group">
+                <label class="form-label">Preço (Opcional)</label>
+                <input type="text" name="price" id="price_field" class="form-input" value="{{ '{:,.2f}'.format(campaign.price).replace(',','v').replace('.',',').replace('v','.') if campaign and campaign.price else '' }}" placeholder="Ex: 97,90" oninput="formatBrazilianCurrency(this)" style="padding: 0.75rem;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Visualização interna, a IA ignora na legenda.</p>
             </div>
         </div>
 
@@ -376,6 +392,16 @@
     function updateSelectedColor(input) {
         document.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = 'transparent');
         input.parentElement.style.borderColor = 'white';
+    }
+
+    function formatBrazilianCurrency(input) {
+        let v = input.value.replace(/\D/g,'');
+        if (!v) { input.value = ''; return; }
+        v = (v/100).toFixed(2) + '';
+        v = v.replace(".", ",");
+        v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+        v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+        input.value = v;
     }
 
     function validateBeforeSubmit() {

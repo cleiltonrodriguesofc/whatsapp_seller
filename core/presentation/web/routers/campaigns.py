@@ -1,6 +1,7 @@
 """
 Campaign routes: dashboard, new/edit/delete campaigns, AI rewrite.
 """
+
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -12,12 +13,9 @@ from sqlalchemy.orm import Session
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.models import (
-    CampaignModel,
     CampaignStatus as ModelCampaignStatus,
     InstanceModel,
-    ProductModel,
     UserModel,
-    campaign_groups,
     StatusCampaignModel,
 )
 from core.infrastructure.database.repositories import (
@@ -49,16 +47,15 @@ async def home(
     current_user: Optional[UserModel] = Depends(get_current_user),
 ):
     if not current_user:
-        return templates.TemplateResponse(
-            request=request, name="landing.html", context={"title": "Welcome"}
-        )
+        return templates.TemplateResponse(request=request, name="landing.html", context={"title": "Welcome"})
 
     # Estatísticas focadas em Status
     status_campaigns = db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == current_user.id).all()
-    sent_count = db.query(StatusCampaignModel).filter(
-        StatusCampaignModel.user_id == current_user.id,
-        StatusCampaignModel.status == ModelCampaignStatus.SENT
-    ).count()
+    sent_count = (
+        db.query(StatusCampaignModel)
+        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == ModelCampaignStatus.SENT.value)
+        .count()
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -93,9 +90,7 @@ async def new_campaign_form(
     current_user: UserModel = Depends(login_required),
 ):
     product_repo = SQLProductRepository(db)
-    instances = (
-        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
-    )
+    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
     products = product_repo.list_all(user_id=current_user.id)
 
     return templates.TemplateResponse(
@@ -135,9 +130,7 @@ async def create_campaign(
     )
     ai_service = OpenAIService()
 
-    scheduler = ScheduleCampaign(
-        campaign_repo, product_repo, whatsapp_service, ai_service
-    )
+    scheduler = ScheduleCampaign(campaign_repo, product_repo, whatsapp_service, ai_service)
 
     dt_scheduled = None
     if scheduled_at:
@@ -184,9 +177,7 @@ async def edit_campaign_form(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     products = product_repo.list_all(user_id=current_user.id)
-    instances = (
-        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
-    )
+    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
 
     return templates.TemplateResponse(
         request=request,
@@ -238,9 +229,7 @@ async def update_campaign(
 
     if scheduled_at:
         try:
-            campaign.scheduled_at = datetime.fromisoformat(
-                scheduled_at.replace("Z", "")
-            )
+            campaign.scheduled_at = datetime.fromisoformat(scheduled_at.replace("Z", ""))
         except ValueError as exc:
             logger.warning(
                 "invalid scheduled_at value '%s': %s — keeping existing value",

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block page_title %}Minhas Listas{% endblock %}
+{% block page_subtitle %}Gerencie suas listas de transmissão personalizadas.{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="padding: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 700;">Listas de Transmissão</h2>
+        <a href="/broadcast/lists/new" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 12px;">➕ NOVA LISTA</a>
+    </div>
+
+    <div class="grid-3">
+        {% for list in lists %}
+        <div class="card" style="padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--border); transition: var(--transition);">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                        📜
+                    </div>
+                    <form action="/broadcast/lists/{{ list.id }}/delete" method="post" onsubmit="return confirm('Tem certeza que deseja excluir esta lista?');">
+                        <button type="submit" class="btn-icon" style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
+                    </form>
+                </div>
+                <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem; font-weight: 700;">{{ list.name }}</h3>
+                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5;">
+                    {{ list.description or "Sem descrição." }}
+                </p>
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 600; color: var(--primary);">
+                    <span>👥</span> {{ list.member_count }} membros
+                </div>
+            </div>
+            
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                <a href="/broadcast/campaigns/new?list_id={{ list.id }}" class="btn btn-primary" style="flex: 1; font-size: 0.85rem; padding: 0.6rem;">Enviar agora</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="card" style="grid-column: span 3; padding: 4rem; text-align: center; color: var(--text-secondary);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📜</div>
+            Nenhuma lista encontrada. Comece criando uma lista a partir de seus contatos ou grupos.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+.card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
+}
+</style>
+{% endblock %}

@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 from core.application.repositories import StatusCampaignRepository
 from core.application.interfaces import AIService
 from core.domain.entities import StatusCampaign, StatusItem, StatusCampaignStatus
@@ -32,12 +33,12 @@ class ScheduleStatusCampaign:
         campaign_id: Optional[int] = None,
         instance_id: Optional[int] = None,
     ) -> StatusCampaign:
-        
+
         # 1. Prepare items and optionally use AI for captions
         items = []
         for item_data in items_data:
             caption = item_data.get("caption")
-            
+
             if not caption and use_ai and self.ai_service:
                 # Generate simple AI caption if missing
                 prompt = f"Crie uma legenda curta e vendedora para um status de WhatsApp. O foco é: {title}."
@@ -58,15 +59,15 @@ class ScheduleStatusCampaign:
         # If scheduled_at is now or None, and it's not recurring, it might be "PENDING" for immediate pick up
         # or we just mark as SCHEDULED and let the worker pick it up.
         status = StatusCampaignStatus.SCHEDULED
-        
+
         if campaign_id:
             campaign = self.repository.get_by_id(campaign_id, user_id=user_id)
             if not campaign:
                 raise ValueError(f"Status Campaign {campaign_id} not found")
-            
+
             campaign.title = title
             campaign.items = items
-            campaign.scheduled_at = scheduled_at or datetime.utcnow()
+            campaign.scheduled_at = scheduled_at or now_sp()
             campaign.is_recurring = is_recurring
             campaign.recurrence_days = recurrence_days
             campaign.send_time = send_time

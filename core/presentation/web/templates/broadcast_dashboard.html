@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block page_title %}Módulo de Broadcast{% endblock %}
+{% block page_subtitle %}Envie mensagens personalizadas para seus contatos e grupos de forma humanizada.{% endblock %}
+
+{% block content %}
+<div class="grid-4 animate-fade-in" style="margin-bottom: 2.5rem;">
+    <!-- Card Contatos -->
+    <div class="card stat-card" style="border-bottom: 4px solid var(--primary);">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value">{{ contact_count }}</div>
+        <div class="stat-label">Contatos</div>
+        <a href="/broadcast/contacts" class="stat-link">Gerenciar</a>
+    </div>
+
+    <!-- Card Grupos -->
+    <div class="card stat-card" style="border-bottom: 4px solid var(--secondary);">
+        <div class="stat-icon">🏢</div>
+        <div class="stat-value">{{ group_count }}</div>
+        <div class="stat-label">Grupos</div>
+        <a href="/broadcast/groups" class="stat-link">Gerenciar</a>
+    </div>
+
+    <!-- Card Listas -->
+    <div class="card stat-card" style="border-bottom: 4px solid #f59e0b;">
+        <div class="stat-icon">📜</div>
+        <div class="stat-value">{{ list_count }}</div>
+        <div class="stat-label">Listas</div>
+        <a href="/broadcast/lists" class="stat-link">Gerenciar</a>
+    </div>
+
+    <!-- Card Campanhas -->
+    <div class="card stat-card" style="border-bottom: 4px solid #10b981;">
+        <div class="stat-icon">📢</div>
+        <div class="stat-value">{{ campaign_count }}</div>
+        <div class="stat-label">Campanhas</div>
+        <a href="/broadcast/campaigns" class="stat-link">Ver Histórico</a>
+    </div>
+</div>
+
+<div class="grid-2 animate-fade-in" style="gap: 2rem; animation-delay: 0.2s;">
+    <!-- Coluna 1: Acesso Rápido -->
+    <div class="card" style="padding: 2.5rem;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 1.5rem; font-weight: 700;">Acesso Rápido</h2>
+        <div style="display: grid; gap: 1rem;">
+            <a href="/broadcast/campaigns/new" class="quick-action-card">
+                <div class="action-icon" style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">🚀</div>
+                <div>
+                    <div style="font-weight: 700;">Nova Campanha</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Enviar texto + imagem agora</div>
+                </div>
+            </a>
+            <a href="/broadcast/sync" class="quick-action-card">
+                <div class="action-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">🔄</div>
+                <div>
+                    <div style="font-weight: 700;">Sincronizar Dados</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Atualizar contatos e grupos</div>
+                </div>
+            </a>
+            <a href="/broadcast/lists/new" class="quick-action-card">
+                <div class="action-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">➕</div>
+                <div>
+                    <div style="font-weight: 700;">Nova Lista</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Criar lista de transmissão</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Coluna 2: Últimas Campanhas -->
+    <div class="card" style="padding: 2.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 700;">Últimos Envios</h2>
+            <a href="/broadcast/campaigns" style="font-size: 0.85rem; color: var(--primary); font-weight: 600;">Ver todos</a>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% for campaign in latest_campaigns %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 1.5rem;">
+                        {% if campaign.status == 'sent' %}✅{% elif campaign.status == 'failed' %}❌{% else %}⌛{% endif %}
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.95rem;">{{ campaign.title }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ campaign.sent_count }}/{{ campaign.total_targets }} enviados</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    {{ campaign.created_at.strftime('%d/%m') }}
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Sem campanhas recentes.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+.stat-card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: var(--transition);
+}
+.stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3); }
+.stat-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.stat-value { font-size: 1.75rem; font-weight: 800; margin-bottom: 0.25rem; }
+.stat-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; }
+.stat-link { font-size: 0.85rem; color: var(--primary); font-weight: 600; text-decoration: none; }
+
+.quick-action-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+.quick-action-card:hover {
+    border-color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+.action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+</style>
+{% endblock %}

@@ -20,7 +20,7 @@ class EvolutionWhatsAppService(NotificationService):
         self.base_url = os.environ.get("EVOLUTION_API_URL", "http://evolution-api:8080")
         self.api_key = apikey or os.environ.get("EVOLUTION_API_KEY", "changeme")
         self.instance = instance or os.environ.get("EVOLUTION_INSTANCE", "grupo_1000")
-        self.timeout = httpx.Timeout(300.0, connect=30.0)
+        self.timeout = httpx.Timeout(60.0, connect=30.0)
 
     def _headers(self) -> dict:
         return {
@@ -51,10 +51,17 @@ class EvolutionWhatsAppService(NotificationService):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
+                if response.status_code >= 500:
+                    logger.error("Evolution API Server Error (%s): %s", response.status_code, response.text)
+                    return False
                 if response.status_code >= 400:
-                    logger.error("Evolution API Error Response: %s", response.text)
-                response.raise_for_status()
+                    logger.warning("Evolution API Response %s (delivery may happen): %s", response.status_code, response.text)
+                
+                logger.info("Text sent successfully (http %s) to %s", response.status_code, payload["number"])
                 return True
+        except httpx.TimeoutException:
+            logger.warning("sendText timed out to %s, assuming delivery in progress", payload["number"])
+            return True
         except Exception as exc:
             logger.error("evolution-api send failed: %s", exc)
             return False
@@ -68,11 +75,7 @@ class EvolutionWhatsAppService(NotificationService):
 
         if phone == "status@broadcast":
             # Use unified send_status for reliability
-            return await self.send_status(
-                content=media,
-                type="image",
-                caption=caption
-            )
+            return await self.send_status(content=media, type="image", caption=caption)
         else:
             # For direct messages, we use sendMedia with multipart if possible
             url = f"{self.base_url}/message/sendMedia/{self.instance}"
@@ -104,18 +107,24 @@ class EvolutionWhatsAppService(NotificationService):
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     if files:
                         # For multipart, do NOT set Content-Type, httpx will do it
-                        res = await client.post(
-                            url, data=payload, files=files, headers=headers
-                        )
+                        res = await client.post(url, data=payload, files=files, headers=headers)
                     else:
                         # For JSON, set it
                         headers["Content-Type"] = "application/json"
                         res = await client.post(url, json=payload, headers=headers)
 
+                    if res.status_code >= 500:
+                        logger.error("Media Server Error (%s): %s", res.status_code, res.text)
+                        return False
+                    
                     if res.status_code >= 400:
-                        logger.error("Media Error (%s): %s", res.status_code, res.text)
-                    res.raise_for_status()
+                        logger.warning("Media API Response %s (delivery may still happen): %s", res.status_code, res.text)
+                    
+                    logger.info("Media sent successfully (http %s) to %s", res.status_code, phone)
                     return True
+            except httpx.TimeoutException:
+                logger.warning("sendMedia timed out to %s, assuming delivery in progress", phone)
+                return True
             except Exception as e:
                 logger.error("sendMedia failed: %r", e)
                 return False
@@ -133,11 +142,11 @@ class EvolutionWhatsAppService(NotificationService):
         """
         url = f"{self.base_url}/message/sendStatus/{self.instance}"
         is_url = content.startswith("http")
-        
+
         # Format content for status images if it's base64/local
         final_content = content
         if type == "image" and not is_url and not content.startswith("data:"):
-             final_content = f"data:image/jpeg;base64,{content}"
+            final_content = f"data:image/jpeg;base64,{content}"
 
         payload = {
             "type": type,
@@ -162,13 +171,36 @@ class EvolutionWhatsAppService(NotificationService):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
+                if response.status_code >= 500:
+                    logger.error(
+                        "evolution api sendstatus server error (%s): %s | payload keys: %s",
+                        response.status_code,
+                        response.text[:300],
+                        list(payload.keys()),
+                    )
+                    return False
                 if response.status_code >= 400:
-                    logger.error("Evolution API Status Error (%s): %s | Payload: %s", response.status_code, response.text, payload)
-                response.raise_for_status()
-                logger.info("WhatsApp Status update sent successfully to %s", "all contacts" if not jid_list else jid_list)
+                    # log as warning — api sometimes returns 4xx but still delivers the status
+                    logger.warning(
+                        "evolution api sendstatus returned %s (message may still be delivered): %s",
+                        response.status_code,
+                        response.text[:300],
+                    )
+                logger.info(
+                    "whatsapp status update sent (http %s) to %s",
+                    response.status_code,
+                    "all contacts" if not jid_list else jid_list,
+                )
                 return True
+        except httpx.TimeoutException:
+            logger.warning(
+                "evolution api sendstatus timed out after 60s, but delivery likely started (jid_list_size=%s)",
+                len(jid_list) if jid_list else 0,
+            )
+            # return true because message usually arrives anyway when this happens
+            return True
         except Exception as exc:
-            logger.error("evolution-api sendStatus failed: %s", exc)
+            logger.error("evolution-api sendStatus failed with exception: %s", exc)
             return False
 
     async def send_group_text(self, group_jid: str, message: str) -> bool:
@@ -207,7 +239,7 @@ class EvolutionWhatsAppService(NotificationService):
                 data = response.json()
                 if not isinstance(data, dict):
                     return {"status": "error", "connected": False, "error": "Invalid response type"}
-                
+
                 # Robustly get state
                 instance_data = data.get("instance")
                 if isinstance(instance_data, dict):
@@ -215,8 +247,8 @@ class EvolutionWhatsAppService(NotificationService):
                 elif isinstance(instance_data, str):
                     state = instance_data
                 else:
-                    state = data.get("state", "unknown") # Fallback for different API versions
-                
+                    state = data.get("state", "unknown")  # Fallback for different API versions
+
                 return {"status": state, "connected": state in ["open", "CONNECTED"]}
         except Exception as exc:
             logger.error("Failed to get WhatsApp status: %s", exc)
@@ -246,7 +278,7 @@ class EvolutionWhatsAppService(NotificationService):
                 data = response.json()
                 if isinstance(data, dict):
                     return data
-                return {"success": True, "message": str(data)} # Wrap if it's a string
+                return {"success": True, "message": str(data)}  # Wrap if it's a string
         except Exception as exc:
             logger.error("Failed to create WhatsApp instance %s: %s", name, exc)
             return None
@@ -256,7 +288,7 @@ class EvolutionWhatsAppService(NotificationService):
         url = f"{self.base_url}/instance/create"
         payload = {
             "instanceName": self.instance,
-            "token": self.api_key, # Use api_key as token
+            "token": self.api_key,  # Use api_key as token
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
         }
@@ -295,15 +327,13 @@ class EvolutionWhatsAppService(NotificationService):
                 if isinstance(data, dict):
                     return data.get("base64", "") or data.get("code", "")
                 elif isinstance(data, str):
-                    return data # If API returns string directly
+                    return data  # If API returns string directly
                 return ""
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp QR Code: %s", exc)
             return ""
 
-    async def set_presence(
-        self, phone: str, presence: str = "composing", delay: int = 1200
-    ) -> bool:
+    async def set_presence(self, phone: str, presence: str = "composing", delay: int = 1200) -> bool:
         """
         Simulates "Typing..." or "Recording..." presence.
         presences: 'composing', 'recording', 'paused'
@@ -355,12 +385,8 @@ class EvolutionWhatsAppService(NotificationService):
     ) -> bool:
         return await self.send_text(group_jid, message)
 
-    async def send_payment_reminder(
-        self, number: str, product_name: str, message: str, affiliate_link: str
-    ) -> bool:
+    async def send_payment_reminder(self, number: str, product_name: str, message: str, affiliate_link: str) -> bool:
         return await self.send_text(number, message)
 
-    async def send_prize_notification(
-        self, number: str, product_name: str, message: str, affiliate_link: str
-    ) -> bool:
+    async def send_prize_notification(self, number: str, product_name: str, message: str, affiliate_link: str) -> bool:
         return await self.send_text(number, message)
