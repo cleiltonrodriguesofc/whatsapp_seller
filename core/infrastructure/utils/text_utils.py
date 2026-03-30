@@ -1,21 +1,23 @@
 import re
 import random
 
+
 def parse_spintax(text: str) -> str:
     """
     Parses spintax in the format {option1|option2|option3}.
     Nested spintax is NOT supported in this implementation for simplicity.
     """
     pattern = re.compile(r"\{([^{}]+)\}")
-    
+
     def replace(match):
         options = match.group(1).split("|")
         return random.choice(options).strip()
 
     while pattern.search(text):
         text = pattern.sub(replace, text)
-    
+
     return text
+
 
 def humanize_greeting(text: str) -> str:
     """

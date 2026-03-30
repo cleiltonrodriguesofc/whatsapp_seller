@@ -1,16 +1,24 @@
 import json
 import logging
-from datetime import datetime
+from core.infrastructure.utils.timezone import now_sp
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from core.application.repositories import ProductRepository, CampaignRepository, StatusCampaignRepository
 from core.domain.entities import (
     Product,
     Campaign,
     StatusCampaign,
     CampaignStatus as DomainCampaignStatus,
+    BroadcastList,
+    BroadcastCampaign,
+)
+from core.application.repositories import (
+    ProductRepository,
+    CampaignRepository,
+    StatusCampaignRepository,
+    BroadcastListRepository,
+    BroadcastCampaignRepository,
 )
 from core.infrastructure.database.models import (
     ProductModel,
@@ -18,9 +26,11 @@ from core.infrastructure.database.models import (
     WhatsAppTargetModel,
     UserModel,
     InstanceModel,
-    CampaignStatus as ModelCampaignStatus,
     campaign_groups,
     StatusCampaignModel,
+    BroadcastListModel,
+    BroadcastListMemberModel,
+    BroadcastCampaignModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,11 +42,7 @@ class SQLProductRepository(ProductRepository):
 
     def save(self, product: Product) -> Product:
         if product.id:
-            model = (
-                self.db.query(ProductModel)
-                .filter(ProductModel.id == product.id)
-                .first()
-            )
+            model = self.db.query(ProductModel).filter(ProductModel.id == product.id).first()
             if model:
                 model.name = product.name
                 model.description = product.description
@@ -80,9 +86,7 @@ class SQLProductRepository(ProductRepository):
 
     def delete(self, product_id: int, user_id: int) -> bool:
         model = (
-            self.db.query(ProductModel)
-            .filter(ProductModel.id == product_id, ProductModel.user_id == user_id)
-            .first()
+            self.db.query(ProductModel).filter(ProductModel.id == product_id, ProductModel.user_id == user_id).first()
         )
         if model:
             # Soft delete: mark as inactive to prevent FK violations in campaigns
@@ -91,12 +95,8 @@ class SQLProductRepository(ProductRepository):
             return True
         return False
 
-    def get_by_id(
-        self, product_id: int, user_id: Optional[int] = None
-    ) -> Optional[Product]:
-        query = self.db.query(ProductModel).filter(
-            ProductModel.id == product_id, ProductModel.is_active
-        )
+    def get_by_id(self, product_id: int, user_id: Optional[int] = None) -> Optional[Product]:
+        query = self.db.query(ProductModel).filter(ProductModel.id == product_id, ProductModel.is_active)
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
         model = query.first()
@@ -133,51 +133,33 @@ class SQLProductRepository(ProductRepository):
         )
 
 
-
-
 class SQLCampaignRepository(CampaignRepository):
     def __init__(self, db: Session):
         self.db = db
 
     def save(self, campaign: Campaign) -> Campaign:
         if campaign.id:
-            model = (
-                self.db.query(CampaignModel)
-                .filter(CampaignModel.id == campaign.id)
-                .first()
-            )
+            model = self.db.query(CampaignModel).filter(CampaignModel.id == campaign.id).first()
             if model:
                 model.title = campaign.title
                 model.product_id = campaign.product.id
                 model.instance_id = campaign.instance_id
                 model.scheduled_at = campaign.scheduled_at
-                model.status = ModelCampaignStatus[campaign.status.name]
+                model.status = campaign.status.value
                 model.custom_message = campaign.custom_message
                 model.is_recurring = campaign.is_recurring
                 model.recurrence_days = campaign.recurrence_days
                 model.send_time = campaign.send_time
                 model.is_ai_generated = campaign.is_ai_generated
                 model.sent_at = campaign.sent_at
-                model.target_config = (
-                    json.dumps(campaign.target_config)
-                    if campaign.target_config
-                    else None
-                )
-                
+                model.target_config = json.dumps(campaign.target_config) if campaign.target_config else None
+
                 # Sync target groups (association table)
                 if campaign.target_groups is not None:
                     # Clear existing and add new
-                    self.db.execute(
-                        campaign_groups.delete().where(
-                            campaign_groups.c.campaign_id == model.id
-                        )
-                    )
+                    self.db.execute(campaign_groups.delete().where(campaign_groups.c.campaign_id == model.id))
                     for jid in campaign.target_groups:
-                        self.db.execute(
-                            campaign_groups.insert().values(
-                                campaign_id=model.id, group_jid=jid
-                            )
-                        )
+                        self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
             else:
                 model = CampaignModel(
                     title=campaign.title,
@@ -185,17 +167,13 @@ class SQLCampaignRepository(CampaignRepository):
                     product_id=campaign.product.id,
                     instance_id=campaign.instance_id,
                     scheduled_at=campaign.scheduled_at,
-                    status=ModelCampaignStatus[campaign.status.name],
+                    status=campaign.status.value,
                     custom_message=campaign.custom_message,
                     is_recurring=campaign.is_recurring,
                     recurrence_days=campaign.recurrence_days,
                     send_time=campaign.send_time,
                     is_ai_generated=campaign.is_ai_generated,
-                    target_config=(
-                        json.dumps(campaign.target_config)
-                        if campaign.target_config
-                        else None
-                    ),
+                    target_config=(json.dumps(campaign.target_config) if campaign.target_config else None),
                 )
                 self.db.add(model)
                 self.db.flush()  # Get ID
@@ -203,11 +181,7 @@ class SQLCampaignRepository(CampaignRepository):
                 # Sync target groups
                 if campaign.target_groups:
                     for jid in campaign.target_groups:
-                        self.db.execute(
-                            campaign_groups.insert().values(
-                                campaign_id=model.id, group_jid=jid
-                            )
-                        )
+                        self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
         else:
             model = CampaignModel(
                 title=campaign.title,
@@ -215,17 +189,13 @@ class SQLCampaignRepository(CampaignRepository):
                 product_id=campaign.product.id,
                 instance_id=campaign.instance_id,
                 scheduled_at=campaign.scheduled_at,
-                status=ModelCampaignStatus[campaign.status.name],
+                status=campaign.status.value,
                 custom_message=campaign.custom_message,
                 is_recurring=campaign.is_recurring,
                 recurrence_days=campaign.recurrence_days,
                 send_time=campaign.send_time,
                 is_ai_generated=campaign.is_ai_generated,
-                target_config=(
-                    json.dumps(campaign.target_config)
-                    if campaign.target_config
-                    else None
-                ),
+                target_config=(json.dumps(campaign.target_config) if campaign.target_config else None),
             )
             self.db.add(model)
             self.db.flush()
@@ -233,11 +203,7 @@ class SQLCampaignRepository(CampaignRepository):
             # Sync target groups
             if campaign.target_groups:
                 for jid in campaign.target_groups:
-                    self.db.execute(
-                        campaign_groups.insert().values(
-                            campaign_id=model.id, group_jid=jid
-                        )
-                    )
+                    self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
 
         self.db.commit()
         self.db.refresh(model)
@@ -252,19 +218,13 @@ class SQLCampaignRepository(CampaignRepository):
         )
         if model:
             # remove association table rows first to avoid fk violation
-            self.db.execute(
-                campaign_groups.delete().where(
-                    campaign_groups.c.campaign_id == model.id
-                )
-            )
+            self.db.execute(campaign_groups.delete().where(campaign_groups.c.campaign_id == model.id))
             self.db.delete(model)
             self.db.commit()
             return True
         return False
 
-    def get_by_id(
-        self, campaign_id: int, user_id: Optional[int] = None
-    ) -> Optional[Campaign]:
+    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[Campaign]:
         query = self.db.query(CampaignModel).filter(CampaignModel.id == campaign_id)
         if user_id:
             query = query.filter(CampaignModel.user_id == user_id)
@@ -281,9 +241,7 @@ class SQLCampaignRepository(CampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[Campaign]:
-        query = self.db.query(CampaignModel).filter(
-            CampaignModel.status == ModelCampaignStatus.SCHEDULED
-        )
+        query = self.db.query(CampaignModel).filter(CampaignModel.status == "scheduled")
         if user_id:
             query = query.filter(CampaignModel.user_id == user_id)
         models = query.all()
@@ -299,9 +257,7 @@ class SQLCampaignRepository(CampaignRepository):
         # Load target groups from association table
         target_jids = [
             r[0]
-            for r in self.db.query(campaign_groups.c.group_jid)
-            .filter(campaign_groups.c.campaign_id == model.id)
-            .all()
+            for r in self.db.query(campaign_groups.c.group_jid).filter(campaign_groups.c.campaign_id == model.id).all()
         ]
 
         campaign_entity = Campaign(
@@ -312,7 +268,7 @@ class SQLCampaignRepository(CampaignRepository):
             product=product,
             target_groups=target_jids,
             scheduled_at=model.scheduled_at,
-            status=DomainCampaignStatus[model.status.name],
+            status=DomainCampaignStatus[model.status.upper()],
             custom_message=model.custom_message,
             created_at=model.created_at,
             sent_at=model.sent_at,
@@ -342,32 +298,74 @@ class SQLTargetRepository:
     def upsert_sync(self, targets: List[dict], user_id: int):
         """
         Syncs a list of targets from the API, preventing duplicates for a specific user.
+        Evolution API returns different formats:
+          - groups: { "id": "...", "subject": "Group Name" }
+          - contacts (fetchAllChats): { "id": "...", "name": "Contact Name", "remoteJid": "..." }
         """
-        now = datetime.utcnow()
+        now = now_sp()
         for t in targets:
+            # handle both group and contact formats from Evolution API
+            jid = t.get("id") or t.get("remoteJid", "")
+            if not jid:
+                continue
+
+            # groups use 'subject', contacts use 'name' or 'pushName'
+            name = t.get("subject") or t.get("name") or t.get("pushName") or jid.split("@")[0]
+            phone = jid.split("@")[0] if "@s.whatsapp.net" in jid else None
+            target_type = "group" if "@g.us" in jid else "chat"
+
+            # skip broadcast/status jids
+            if "broadcast" in jid or "status" in jid:
+                continue
+
             existing = (
                 self.db.query(WhatsAppTargetModel)
                 .filter(
-                    WhatsAppTargetModel.jid == t["id"],
+                    WhatsAppTargetModel.jid == jid,
                     WhatsAppTargetModel.user_id == user_id,
                 )
                 .first()
             )
             if existing:
-                existing.name = t["subject"]
-                existing.type = "group" if "@g.us" in t["id"] else "chat"
+                existing.name = name
+                existing.type = target_type
+                existing.phone = phone
                 existing.last_synced_at = now
                 existing.is_active = True
             else:
                 new_target = WhatsAppTargetModel(
                     user_id=user_id,
-                    jid=t["id"],
-                    name=t["subject"],
-                    type="group" if "@g.us" in t["id"] else "chat",
+                    jid=jid,
+                    name=name,
+                    phone=phone,
+                    type=target_type,
                     last_synced_at=now,
                 )
                 self.db.add(new_target)
         self.db.commit()
+
+
+    def list_contacts(self, user_id: int) -> List[WhatsAppTargetModel]:
+        return (
+            self.db.query(WhatsAppTargetModel)
+            .filter(
+                WhatsAppTargetModel.user_id == user_id,
+                WhatsAppTargetModel.type == "chat",
+                WhatsAppTargetModel.is_active,
+            )
+            .all()
+        )
+
+    def list_groups(self, user_id: int) -> List[WhatsAppTargetModel]:
+        return (
+            self.db.query(WhatsAppTargetModel)
+            .filter(
+                WhatsAppTargetModel.user_id == user_id,
+                WhatsAppTargetModel.type == "group",
+                WhatsAppTargetModel.is_active,
+            )
+            .all()
+        )
 
     def list_all(self, user_id: int):
         return (
@@ -402,9 +400,7 @@ class SQLInstanceRepository:
         self.db = db
 
     def list_by_user(self, user_id: int) -> List[InstanceModel]:
-        return (
-            self.db.query(InstanceModel).filter(InstanceModel.user_id == user_id).all()
-        )
+        return self.db.query(InstanceModel).filter(InstanceModel.user_id == user_id).all()
 
     def save(self, instance: InstanceModel) -> InstanceModel:
         if instance.id:
@@ -427,8 +423,11 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 model.title = campaign.title
                 model.image_url = campaign.image_url
                 model.caption = campaign.caption
+                model.link = campaign.link
+                model.price = campaign.price
                 model.scheduled_at = campaign.scheduled_at
-                model.status = ModelCampaignStatus[campaign.status.name]
+                logger.info("Updating StatusCampaign %s to status %s", campaign.id, campaign.status.value)
+                model.status = campaign.status.value
                 model.instance_id = campaign.instance_id
                 model.user_id = campaign.user_id
                 model.target_contacts = json.dumps(campaign.target_contacts) if campaign.target_contacts else None
@@ -436,14 +435,17 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 model.is_recurring = campaign.is_recurring
                 model.recurrence_days = campaign.recurrence_days
                 model.send_time = campaign.send_time
+                model.background_color = campaign.background_color
                 model.last_run_at = campaign.last_run_at
         else:
             model = StatusCampaignModel(
                 title=campaign.title,
                 image_url=campaign.image_url,
                 caption=campaign.caption,
+                link=campaign.link,
+                price=campaign.price,
                 scheduled_at=campaign.scheduled_at,
-                status=ModelCampaignStatus[campaign.status.name],
+                status=campaign.status.value,
                 instance_id=campaign.instance_id,
                 user_id=campaign.user_id,
                 target_contacts=json.dumps(campaign.target_contacts) if campaign.target_contacts else None,
@@ -451,7 +453,8 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 is_recurring=campaign.is_recurring,
                 recurrence_days=campaign.recurrence_days,
                 send_time=campaign.send_time,
-                last_run_at=campaign.last_run_at
+                background_color=campaign.background_color,
+                last_run_at=campaign.last_run_at,
             )
             self.db.add(model)
             self.db.flush()
@@ -478,9 +481,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
-        query = self.db.query(StatusCampaignModel).filter(
-            StatusCampaignModel.status == ModelCampaignStatus.SCHEDULED
-        )
+        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.status == "scheduled")
         if user_id:
             query = query.filter(StatusCampaignModel.user_id == user_id)
         models = query.all()
@@ -505,22 +506,281 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 target_contacts = json.loads(model.target_contacts)
             except Exception:
                 pass
-                
+
         entity = StatusCampaign(
             id=model.id,
             title=model.title,
             image_url=model.image_url,
             caption=model.caption,
+            link=model.link,
+            price=model.price,
             scheduled_at=model.scheduled_at,
-            status=DomainCampaignStatus[model.status.name],
+            status=DomainCampaignStatus[model.status.upper()],
             instance_id=model.instance_id,
             user_id=model.user_id,
             target_contacts=target_contacts,
             created_at=model.created_at,
             sent_at=model.sent_at,
+            background_color=model.background_color,
         )
         entity.is_recurring = model.is_recurring
         entity.recurrence_days = model.recurrence_days
         entity.send_time = model.send_time
         entity.last_run_at = model.last_run_at
         return entity
+
+
+class SQLBroadcastListRepository(BroadcastListRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, broadcast_list: BroadcastList) -> BroadcastList:
+        if broadcast_list.id:
+            model = (
+                self.db.query(BroadcastListModel)
+                .filter(BroadcastListModel.id == broadcast_list.id)
+                .first()
+            )
+            if model:
+                model.name = broadcast_list.name
+                model.description = broadcast_list.description
+        else:
+            model = BroadcastListModel(
+                user_id=broadcast_list.user_id,
+                name=broadcast_list.name,
+                description=broadcast_list.description,
+            )
+            self.db.add(model)
+
+        self.db.commit()
+        self.db.refresh(model)
+        broadcast_list.id = model.id
+        broadcast_list.created_at = model.created_at
+        return broadcast_list
+
+    def get_by_id(
+        self, list_id: int, user_id: Optional[int] = None
+    ) -> Optional[BroadcastList]:
+        query = self.db.query(BroadcastListModel).filter(BroadcastListModel.id == list_id)
+        if user_id:
+            query = query.filter(BroadcastListModel.user_id == user_id)
+        model = query.first()
+        if not model:
+            return None
+
+        # count members
+        member_count = (
+            self.db.query(BroadcastListMemberModel)
+            .filter(BroadcastListMemberModel.list_id == list_id)
+            .count()
+        )
+
+        return BroadcastList(
+            id=model.id,
+            user_id=model.user_id,
+            name=model.name,
+            description=model.description,
+            member_count=member_count,
+            created_at=model.created_at,
+        )
+
+    def list_all(self, user_id: Optional[int] = None) -> List[BroadcastList]:
+        query = self.db.query(BroadcastListModel)
+        if user_id:
+            query = query.filter(BroadcastListModel.user_id == user_id)
+        models = query.all()
+
+        results = []
+        for m in models:
+            member_count = (
+                self.db.query(BroadcastListMemberModel)
+                .filter(BroadcastListMemberModel.list_id == m.id)
+                .count()
+            )
+            results.append(
+                BroadcastList(
+                    id=m.id,
+                    user_id=m.user_id,
+                    name=m.name,
+                    description=m.description,
+                    member_count=member_count,
+                    created_at=m.created_at,
+                )
+            )
+        return results
+
+    def delete(self, list_id: int, user_id: int) -> bool:
+        model = (
+            self.db.query(BroadcastListModel)
+            .filter(BroadcastListModel.id == list_id, BroadcastListModel.user_id == user_id)
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.commit()
+            return True
+        return False
+
+    def set_members(self, list_id: int, members: List[dict]) -> None:
+        """
+        Expects members as a list of dicts: [{'jid': '...', 'name': '...', 'type': '...'}]
+        Replaces all existing members.
+        """
+        # remove existing
+        self.db.query(BroadcastListMemberModel).filter(
+            BroadcastListMemberModel.list_id == list_id
+        ).delete()
+
+        # add new
+        for m in members:
+            new_member = BroadcastListMemberModel(
+                list_id=list_id,
+                target_jid=m["jid"],
+                target_name=m["name"],
+                target_type=m["type"],
+            )
+            self.db.add(new_member)
+        self.db.commit()
+
+    def get_member_jids(self, list_id: int) -> List[str]:
+        members = (
+            self.db.query(BroadcastListMemberModel)
+            .filter(BroadcastListMemberModel.list_id == list_id)
+            .all()
+        )
+        return [m.target_jid for m in members]
+
+
+class SQLBroadcastCampaignRepository(BroadcastCampaignRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, campaign: BroadcastCampaign) -> BroadcastCampaign:
+        import json
+
+        target_jids_json = json.dumps(campaign.target_jids)
+
+        if campaign.id:
+            model = (
+                self.db.query(BroadcastCampaignModel)
+                .filter(BroadcastCampaignModel.id == campaign.id)
+                .first()
+            )
+            if model:
+                model.title = campaign.title
+                model.instance_id = campaign.instance_id
+                model.target_type = campaign.target_type
+                model.target_jids = target_jids_json
+                model.list_id = campaign.list_id
+                model.message = campaign.message
+                model.image_url = campaign.image_url
+                model.scheduled_at = campaign.scheduled_at
+                model.is_recurring = campaign.is_recurring
+                model.recurrence_days = campaign.recurrence_days
+                model.send_time = campaign.send_time
+                model.status = campaign.status
+                model.sent_at = campaign.sent_at
+                model.total_targets = campaign.total_targets
+                model.sent_count = campaign.sent_count
+                model.failed_count = campaign.failed_count
+        else:
+            model = BroadcastCampaignModel(
+                user_id=campaign.user_id,
+                instance_id=campaign.instance_id,
+                title=campaign.title,
+                target_type=campaign.target_type,
+                target_jids=target_jids_json,
+                list_id=campaign.list_id,
+                message=campaign.message,
+                image_url=campaign.image_url,
+                scheduled_at=campaign.scheduled_at,
+                is_recurring=campaign.is_recurring,
+                recurrence_days=campaign.recurrence_days,
+                send_time=campaign.send_time,
+                status=campaign.status,
+            )
+            self.db.add(model)
+
+        self.db.commit()
+        self.db.refresh(model)
+        campaign.id = model.id
+        campaign.created_at = model.created_at
+        return campaign
+
+    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[BroadcastCampaign]:
+        query = self.db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id)
+        if user_id is not None:
+            query = query.filter(BroadcastCampaignModel.user_id == user_id)
+        model = query.first()
+        if not model:
+            return None
+        return self._to_entity(model)
+
+    def list_all(self, user_id: int) -> List[BroadcastCampaign]:
+        models = (
+            self.db.query(BroadcastCampaignModel)
+            .filter(BroadcastCampaignModel.user_id == user_id)
+            .order_by(BroadcastCampaignModel.created_at.desc())
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
+
+    def list_due(self) -> List[BroadcastCampaign]:
+        now = now_sp()
+        models = (
+            self.db.query(BroadcastCampaignModel)
+            .filter(
+                BroadcastCampaignModel.status == "scheduled",
+                BroadcastCampaignModel.scheduled_at <= now,
+            )
+            .all()
+        )
+        return [self._to_entity(m) for m in models]
+
+    def delete(self, campaign_id: int, user_id: int) -> bool:
+        model = (
+            self.db.query(BroadcastCampaignModel)
+            .filter(
+                BroadcastCampaignModel.id == campaign_id,
+                BroadcastCampaignModel.user_id == user_id,
+            )
+            .first()
+        )
+        if model:
+            self.db.delete(model)
+            self.db.commit()
+            return True
+        return False
+
+    def _to_entity(self, model: BroadcastCampaignModel) -> BroadcastCampaign:
+        import json
+
+        target_jids = []
+        if model.target_jids:
+            try:
+                target_jids = json.loads(model.target_jids)
+            except Exception:
+                pass
+
+        return BroadcastCampaign(
+            id=model.id,
+            user_id=model.user_id,
+            instance_id=model.instance_id,
+            title=model.title,
+            target_type=model.target_type,
+            target_jids=target_jids,
+            list_id=model.list_id,
+            message=model.message,
+            image_url=model.image_url,
+            scheduled_at=model.scheduled_at,
+            is_recurring=model.is_recurring,
+            recurrence_days=model.recurrence_days,
+            send_time=model.send_time,
+            last_run_at=model.last_run_at,
+            status=model.status,
+            sent_at=model.sent_at,
+            total_targets=model.total_targets,
+            sent_count=model.sent_count,
+            failed_count=model.failed_count,
+            created_at=model.created_at,
+        )

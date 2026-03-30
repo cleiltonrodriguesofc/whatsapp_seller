@@ -1,6 +1,7 @@
 """
 Storage routes: serve private images and affiliate link cloaking.
 """
+
 import logging
 import os
 

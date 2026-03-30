@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block page_title %}Detalhes do Status: {{ campaign.title }}{% endblock %}
+{% block page_subtitle %}Informações completas e métricas do seu Status Automático.{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in" style="padding: 2.5rem; max-width: 900px; margin: 0 auto;">
+    
+    <!-- Status Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem;">
+        <div>
+            <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">{{ campaign.title }}</h2>
+            <div style="display: flex; gap: 0.75rem; align-items: center; font-size: 0.85rem; color: var(--text-secondary);">
+                <span>🗓️ Criado em {{ campaign.created_at.strftime('%d/%m/%Y às %H:%M') }}</span>
+                <span>•</span>
+                <span>🤖 Instância: <strong>{{ instance_name or 'Padrão' }}</strong></span>
+            </div>
+        </div>
+        <div>
+            {% if campaign.status.value == 'sent' %}
+                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(16, 185, 129, 0.2);">✅ Concluído</span>
+            {% elif campaign.status.value in ['processing', 'sending'] %}
+                <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(59, 130, 246, 0.2);">🔄 Enviando...</span>
+            {% elif campaign.status.value == 'failed' %}
+                <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(239, 68, 68, 0.2);">❌ Falhou</span>
+            {% elif campaign.status.value == 'draft' %}
+                <span class="badge" style="background: rgba(255, 191, 0, 0.1); color: #ffbf00; font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(255, 191, 0, 0.2);">Rascunho</span>
+            {% else %}
+                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); font-size: 0.9rem; padding: 6px 16px; border: 1px solid var(--border);">Agendado</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content Split -->
+    <div style="display: flex; gap: 2.5rem; flex-wrap: wrap;">
+        
+        <!-- Left Column: Visual Preview -->
+        <div style="flex: 0 0 320px; text-align: center;">
+            <div style="border-radius: 20px; overflow: hidden; background: {{ campaign.background_color or '#128C7E' }}; width: 100%; aspect-ratio: 9/16; position: relative; border: 8px solid rgba(255,255,255,0.05); box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;">
+                {% if campaign.image_url %}
+                    <img src="{{ get_proxy_url(campaign.image_url) }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                    <!-- Text-only preview -->
+                    <div style="padding: 2rem; color: #fff; font-size: 1.25rem; font-weight: 600; text-align: center; white-space: pre-wrap;">{{ campaign.caption or 'Seu texto de status.' }}</div>
+                {% endif %}
+
+                <!-- Caption Overlay if it's an image with caption -->
+                {% if campaign.image_url and campaign.caption %}
+                <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); padding: 1.5rem 1rem; color: white; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 0.9rem; line-height: 1.4;">{{ campaign.caption }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column: Details -->
+        <div style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <!-- Metadata Cards -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Link Info -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">🔗 Link Direcionado</div>
+                    {% if campaign.link %}
+                        <a href="{{ campaign.link }}" target="_blank" style="color: var(--primary); font-size: 0.9rem; word-break: break-all;">{{ campaign.link }}</a>
+                    {% else %}
+                        <span style="color: var(--text-secondary); font-size: 0.9rem;">Nenhum link.</span>
+                    {% endif %}
+                </div>
+                
+                <!-- Price Info -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem;">💰 Preço (Produto)</div>
+                    {% if campaign.price %}
+                        <div style="color: #fff; font-size: 1.25rem; font-weight: 800;">R$ {{ "%.2f"|format(campaign.price) }}</div>
+                    {% else %}
+                        <span style="color: var(--text-secondary); font-size: 0.9rem;">Não especificado.</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Agendamento -->
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">⏱️ Configuração de Envio</h3>
+                
+                {% if campaign.is_recurring %}
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Modalidade:</span>
+                            <strong style="color: var(--primary);">Recorrente</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Dias Ativos:</span>
+                            <strong>{{ campaign.recurrence_days | upper }}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Horários de Disparo:</span>
+                            <strong>{{ campaign.send_time }}</strong>
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Modalidade:</span>
+                            <strong>Única vez</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary);">Programado ou Enviado em:</span>
+                            <strong>{{ campaign.scheduled_at.strftime('%d/%m/%Y às %H:%M') if campaign.scheduled_at else 'Imediato' }}</strong>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Target Audience -->
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">👥 Públicos Selecionados (Extra)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">O status é sempre postado globalmente. Se listado abaixo, o conteúdo também é disparado no PV / Grupos específicos como mensagem normal.</p>
+                
+                {% if target_names %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    {% for name in target_names %}
+                        <span style="font-size: 0.8rem; padding: 4px 10px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #3b82f6; border-radius: 6px;">{{ name }}</span>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem; text-align: center; background: rgba(255,255,255,0.03); border-radius: 8px;">Nenhum disparo PV/Grupo extra configurado.</div>
+                {% endif %}
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Actions Footer -->
+    <div style="margin-top: 3rem; display: flex; gap: 1rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 2rem;">
+        <a href="/status_campaigns" class="btn btn-ghost">← Voltar para Status</a>
+        {% if campaign.status.value in ['draft', 'scheduled', 'pending'] %}
+        <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">✏️ Editar</a>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
