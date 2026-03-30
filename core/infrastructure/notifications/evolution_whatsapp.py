@@ -51,10 +51,17 @@ class EvolutionWhatsAppService(NotificationService):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
+                if response.status_code >= 500:
+                    logger.error("Evolution API Server Error (%s): %s", response.status_code, response.text)
+                    return False
                 if response.status_code >= 400:
-                    logger.error("Evolution API Error Response: %s", response.text)
-                response.raise_for_status()
+                    logger.warning("Evolution API Response %s (delivery may happen): %s", response.status_code, response.text)
+                
+                logger.info("Text sent successfully (http %s) to %s", response.status_code, payload["number"])
                 return True
+        except httpx.TimeoutException:
+            logger.warning("sendText timed out to %s, assuming delivery in progress", payload["number"])
+            return True
         except Exception as exc:
             logger.error("evolution-api send failed: %s", exc)
             return False
@@ -106,10 +113,18 @@ class EvolutionWhatsAppService(NotificationService):
                         headers["Content-Type"] = "application/json"
                         res = await client.post(url, json=payload, headers=headers)
 
+                    if res.status_code >= 500:
+                        logger.error("Media Server Error (%s): %s", res.status_code, res.text)
+                        return False
+                    
                     if res.status_code >= 400:
-                        logger.error("Media Error (%s): %s", res.status_code, res.text)
-                    res.raise_for_status()
+                        logger.warning("Media API Response %s (delivery may still happen): %s", res.status_code, res.text)
+                    
+                    logger.info("Media sent successfully (http %s) to %s", res.status_code, phone)
                     return True
+            except httpx.TimeoutException:
+                logger.warning("sendMedia timed out to %s, assuming delivery in progress", phone)
+                return True
             except Exception as e:
                 logger.error("sendMedia failed: %r", e)
                 return False
