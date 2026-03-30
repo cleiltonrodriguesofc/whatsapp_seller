@@ -46,55 +46,49 @@ Base.metadata.create_all(bind=engine)
 # run auto-migrations on startup
 try:
     with engine.connect() as conn:
-        # products.click_count
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'products' AND column_name = 'click_count';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"))
-            conn.commit()
-            logger.info("auto-migration: added 'click_count' to products table")
-        
-        # status_campaigns.link
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'status_campaigns' AND column_name = 'link';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN link TEXT;"))
-            conn.commit()
-            logger.info("auto-migration: added 'link' to status_campaigns table")
+        migrations = [
+            ("products", "click_count", "ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"),
+            ("status_campaigns", "link", "ALTER TABLE status_campaigns ADD COLUMN link TEXT;"),
+            ("status_campaigns", "price", "ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"),
+            ("status_campaigns", "target_contacts", "ALTER TABLE status_campaigns ADD COLUMN target_contacts TEXT;"),
+            ("whatsapp_targets", "phone", "ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;"),
+            ("broadcast_campaigns", "target_type", "ALTER TABLE broadcast_campaigns ADD COLUMN target_type TEXT DEFAULT 'contacts';"),
+            ("broadcast_campaigns", "target_jids", "ALTER TABLE broadcast_campaigns ADD COLUMN target_jids TEXT;"),
+            ("broadcast_campaigns", "list_id", "ALTER TABLE broadcast_campaigns ADD COLUMN list_id INTEGER;"),
+        ]
 
-        # status_campaigns.price
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'status_campaigns' AND column_name = 'price';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"))
-            conn.commit()
-            logger.info("auto-migration: added 'price' to status_campaigns table")
+        for table, column, stmt in migrations:
+            try:
+                res = conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        f"WHERE table_name = '{table}' AND column_name = '{column}';"
+                    )
+                )
+                if not res.fetchone():
+                    conn.execute(text(stmt))
+                    conn.commit()
+                    logger.info(f"auto-migration: added '{column}' to {table} table")
+            except Exception as e:
+                logger.warning(f"auto-migration failed for {table}.{column}: {e}")
 
-        # whatsapp_targets.phone
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'whatsapp_targets' AND column_name = 'phone';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;"))
-            conn.commit()
-            logger.info("auto-migration: added 'phone' to whatsapp_targets table")
+        # postgres-only enum-to-varchar casts
+        postgres_casts = [
+            "ALTER TABLE campaigns ALTER COLUMN status TYPE VARCHAR(50) USING status::varchar;",
+            "ALTER TABLE status_campaigns ALTER COLUMN status TYPE VARCHAR(50) USING status::varchar;",
+            "ALTER TABLE broadcast_campaigns ALTER COLUMN status TYPE VARCHAR(50) USING status::varchar;",
+        ]
+        for cast_stmt in postgres_casts:
+            try:
+                conn.execute(text(cast_stmt))
+                conn.commit()
+                logger.debug("auto-migration: executed postgres type cast successfully")
+            except Exception:
+                # Expected to fail silently on SQLite or if already casted in Postgres
+                pass
+
 except Exception as e:
-    logger.warning("auto-migration failed: %s", e)
+    logger.warning("auto-migration base loop failed: %s", e)
 
 # rate limiter
 limiter = Limiter(key_func=get_remote_address)
