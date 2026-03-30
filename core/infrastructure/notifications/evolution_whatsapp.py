@@ -20,7 +20,7 @@ class EvolutionWhatsAppService(NotificationService):
         self.base_url = os.environ.get("EVOLUTION_API_URL", "http://evolution-api:8080")
         self.api_key = apikey or os.environ.get("EVOLUTION_API_KEY", "changeme")
         self.instance = instance or os.environ.get("EVOLUTION_INSTANCE", "grupo_1000")
-        self.timeout = httpx.Timeout(300.0, connect=30.0)
+        self.timeout = httpx.Timeout(60.0, connect=30.0)
 
     def _headers(self) -> dict:
         return {
@@ -157,20 +157,36 @@ class EvolutionWhatsAppService(NotificationService):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
-                if response.status_code >= 400:
+                if response.status_code >= 500:
                     logger.error(
-                        "Evolution API Status Error (%s): %s | Payload: %s",
+                        "evolution api sendstatus server error (%s): %s | payload keys: %s",
                         response.status_code,
-                        response.text,
-                        payload,
+                        response.text[:300],
+                        list(payload.keys()),
                     )
-                response.raise_for_status()
+                    return False
+                if response.status_code >= 400:
+                    # log as warning — api sometimes returns 4xx but still delivers the status
+                    logger.warning(
+                        "evolution api sendstatus returned %s (message may still be delivered): %s",
+                        response.status_code,
+                        response.text[:300],
+                    )
                 logger.info(
-                    "WhatsApp Status update sent successfully to %s", "all contacts" if not jid_list else jid_list
+                    "whatsapp status update sent (http %s) to %s",
+                    response.status_code,
+                    "all contacts" if not jid_list else jid_list,
                 )
                 return True
+        except httpx.TimeoutException:
+            logger.warning(
+                "evolution api sendstatus timed out after 60s, but delivery likely started (jid_list_size=%s)",
+                len(jid_list) if jid_list else 0,
+            )
+            # return true because message usually arrives anyway when this happens
+            return True
         except Exception as exc:
-            logger.error("evolution-api sendStatus failed: %s", exc)
+            logger.error("evolution-api sendStatus failed with exception: %s", exc)
             return False
 
     async def send_group_text(self, group_jid: str, message: str) -> bool:

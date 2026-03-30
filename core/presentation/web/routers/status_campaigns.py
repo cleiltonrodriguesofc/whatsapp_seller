@@ -80,6 +80,7 @@ async def create_status_campaign(
     is_recurring: bool = Form(False),
     recurrence_days: Optional[list[str]] = Form(None),
     send_time: Optional[str] = Form(None),
+    existing_image_url: Optional[str] = Form(None),
     save_mode: str = Form("schedule"),  # "schedule" or "draft"
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
@@ -104,6 +105,8 @@ async def create_status_campaign(
     image_url = None
     if image_file and image_file.filename:
         image_url = await _save_uploaded_image(image_file, quality=90, max_size=(1080, 1920), bucket="images")
+    elif existing_image_url:
+        image_url = existing_image_url
 
     status = CampaignStatus.DRAFT if save_mode == "draft" else CampaignStatus.SCHEDULED
 
@@ -224,6 +227,41 @@ async def update_status_campaign(
 
     repo.save(campaign)
     return RedirectResponse(url="/status_campaigns", status_code=303)
+
+
+@router.get("/status_campaigns/duplicate/{campaign_id}", response_class=HTMLResponse)
+async def duplicate_status_campaign(
+    campaign_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    repo = SQLStatusCampaignRepository(db)
+    original = repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not original:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Clear ID to treat as NEW and reset status/date
+    original.id = None
+    original.status = CampaignStatus.DRAFT
+    original.scheduled_at = now_sp()
+
+    instance_repo = SQLInstanceRepository(db)
+    instances = instance_repo.list_by_user(current_user.id)
+    target_repo = SQLTargetRepository(db)
+    targets = target_repo.list_all(current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="status_editor.html",
+        context={
+            "user": current_user,
+            "campaign": original,
+            "instances": instances,
+            "targets": targets,
+            "title": "Duplicar Status Automático",
+        },
+    )
 
 
 @router.post("/status_campaigns/delete/{campaign_id}")

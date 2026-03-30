@@ -147,7 +147,7 @@ class SQLCampaignRepository(CampaignRepository):
                 model.product_id = campaign.product.id
                 model.instance_id = campaign.instance_id
                 model.scheduled_at = campaign.scheduled_at
-                model.status = ModelCampaignStatus[campaign.status.name]
+                model.status = campaign.status.value
                 model.custom_message = campaign.custom_message
                 model.is_recurring = campaign.is_recurring
                 model.recurrence_days = campaign.recurrence_days
@@ -169,7 +169,7 @@ class SQLCampaignRepository(CampaignRepository):
                     product_id=campaign.product.id,
                     instance_id=campaign.instance_id,
                     scheduled_at=campaign.scheduled_at,
-                    status=ModelCampaignStatus[campaign.status.name],
+                    status=campaign.status.value,
                     custom_message=campaign.custom_message,
                     is_recurring=campaign.is_recurring,
                     recurrence_days=campaign.recurrence_days,
@@ -191,7 +191,7 @@ class SQLCampaignRepository(CampaignRepository):
                 product_id=campaign.product.id,
                 instance_id=campaign.instance_id,
                 scheduled_at=campaign.scheduled_at,
-                status=ModelCampaignStatus[campaign.status.name],
+                status=campaign.status.value,
                 custom_message=campaign.custom_message,
                 is_recurring=campaign.is_recurring,
                 recurrence_days=campaign.recurrence_days,
@@ -243,7 +243,7 @@ class SQLCampaignRepository(CampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[Campaign]:
-        query = self.db.query(CampaignModel).filter(CampaignModel.status == ModelCampaignStatus.SCHEDULED)
+        query = self.db.query(CampaignModel).filter(CampaignModel.status == "scheduled")
         if user_id:
             query = query.filter(CampaignModel.user_id == user_id)
         models = query.all()
@@ -270,7 +270,7 @@ class SQLCampaignRepository(CampaignRepository):
             product=product,
             target_groups=target_jids,
             scheduled_at=model.scheduled_at,
-            status=DomainCampaignStatus[model.status.name],
+            status=DomainCampaignStatus[model.status.upper()],
             custom_message=model.custom_message,
             created_at=model.created_at,
             sent_at=model.sent_at,
@@ -428,8 +428,8 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 model.link = campaign.link
                 model.price = campaign.price
                 model.scheduled_at = campaign.scheduled_at
-                logger.info("Updating StatusCampaign %s to status %s", campaign.id, campaign.status.name)
-                model.status = ModelCampaignStatus[campaign.status.name]
+                logger.info("Updating StatusCampaign %s to status %s", campaign.id, campaign.status.value)
+                model.status = campaign.status.value
                 model.instance_id = campaign.instance_id
                 model.user_id = campaign.user_id
                 model.target_contacts = json.dumps(campaign.target_contacts) if campaign.target_contacts else None
@@ -447,7 +447,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 link=campaign.link,
                 price=campaign.price,
                 scheduled_at=campaign.scheduled_at,
-                status=ModelCampaignStatus[campaign.status.name],
+                status=campaign.status.value,
                 instance_id=campaign.instance_id,
                 user_id=campaign.user_id,
                 target_contacts=json.dumps(campaign.target_contacts) if campaign.target_contacts else None,
@@ -483,7 +483,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
-        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.status == ModelCampaignStatus.SCHEDULED)
+        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.status == "scheduled")
         if user_id:
             query = query.filter(StatusCampaignModel.user_id == user_id)
         models = query.all()
@@ -517,7 +517,7 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
             link=model.link,
             price=model.price,
             scheduled_at=model.scheduled_at,
-            status=DomainCampaignStatus[model.status.name],
+            status=DomainCampaignStatus[model.status.upper()],
             instance_id=model.instance_id,
             user_id=model.user_id,
             target_contacts=target_contacts,
