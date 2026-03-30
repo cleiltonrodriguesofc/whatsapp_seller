@@ -12,7 +12,7 @@ class SupabaseStorageService:
         self.url: str = os.getenv("SUPABASE_URL", "")
         self.key: str = os.getenv("SUPABASE_KEY", "")
         self.bucket_name: str = bucket_name
-        
+
         if not self.url or not self.key:
             logger.warning("Supabase credentials not fully configured.")
             self.client: Optional[Client] = None
@@ -31,25 +31,27 @@ class SupabaseStorageService:
         try:
             ext = os.path.splitext(filename)[1] or ".jpg"
             unique_name = f"{uuid.uuid4()}{ext}"
-            
+
             # Suapbase python client storage is sync
             res = self.client.storage.from_(self.bucket_name).upload(
-                path=unique_name,
-                file=file_content,
-                file_options={"content-type": content_type}
+                path=unique_name, file=file_content, file_options={"content-type": content_type}
             )
-            
+
             # If storage service returns an error dict/response
-            if hasattr(res, 'get') and res.get('error'):
-                logger.error("Supabase Storage Error: %s", res['error'])
+            if hasattr(res, "get") and res.get("error"):
+                logger.error("Supabase Storage Error: %s", res["error"])
                 return None
 
             logger.info("Image uploaded to Supabase (internal path): %s", unique_name)
             # Prefix with supabase:// to identify it in the DB later
             return f"supabase://{unique_name}"
-            
+
         except Exception as e:
-            logger.error("Exception during Supabase upload: %s. Check if bucket '%s' exists and has RLS policies.", e, self.bucket_name)
+            logger.error(
+                "Exception during Supabase upload: %s. Check if bucket '%s' exists and has RLS policies.",
+                e,
+                self.bucket_name,
+            )
             return None
 
     def download_image(self, path: str) -> Optional[bytes]:
@@ -60,7 +62,7 @@ class SupabaseStorageService:
         """
         if not self.client:
             return None
-            
+
         clean_path = path.replace("supabase://", "")
         buckets_to_try = [self.bucket_name]
         other_bucket = "images" if self.bucket_name == "produtos" else "produtos"
@@ -73,7 +75,7 @@ class SupabaseStorageService:
                     return res
             except Exception:
                 continue
-                
+
         logger.error("Failed to download image from Supabase path '%s' via multiple buckets", path)
         return None
 
@@ -93,6 +95,7 @@ class SupabaseStorageService:
         except Exception as e:
             logger.error("Failed to create signed URL for '%s': %s", path, e)
             return None
+
     def delete_image(self, path: str) -> bool:
         """
         Deletes an image from the private bucket.
@@ -105,18 +108,18 @@ class SupabaseStorageService:
         try:
             # Clean protocol prefix if present
             clean_path = path.replace("supabase://", "")
-            
+
             # Remove from the current bucket
             res = self.client.storage.from_(self.bucket_name).remove([clean_path])
-            
+
             # Supabase remove returns a list of deleted objects
             if res and len(res) > 0:
                 logger.info("Image deleted from Supabase: %s", clean_path)
                 return True
-            
+
             logger.warning("Image not found or not deleted: %s", clean_path)
             return False
-            
+
         except Exception as e:
             logger.error("Exception during Supabase delete: %s", e)
             return False

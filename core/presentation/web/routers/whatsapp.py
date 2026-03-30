@@ -1,6 +1,7 @@
 """
 WhatsApp instance management routes.
 """
+
 import asyncio
 import logging
 import uuid
@@ -28,9 +29,7 @@ async def connect_whatsapp_page(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
-    instances = (
-        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
-    )
+    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
     return templates.TemplateResponse(
         request=request,
         name="connect_whatsapp.html",
@@ -84,9 +83,7 @@ async def get_whatsapp_qr(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(
-            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
-        )
+        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
         .first()
     )
     if not instance_model:
@@ -107,11 +104,7 @@ async def get_global_whatsapp_status(
     current_user: UserModel = Depends(login_required),
     db: Session = Depends(get_db),
 ):
-    instances = (
-        db.query(InstanceModel)
-        .filter(InstanceModel.user_id == current_user.id)
-        .all()
-    )
+    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
     if not instances:
         return {"connected": False}
 
@@ -135,9 +128,7 @@ async def get_whatsapp_status(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(
-            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
-        )
+        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
         .first()
     )
     if not instance_model:
@@ -161,9 +152,7 @@ async def delete_whatsapp(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(
-            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
-        )
+        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
         .first()
     )
     if not instance_model:
@@ -188,9 +177,7 @@ async def rename_whatsapp(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(
-            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
-        )
+        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
         .first()
     )
     if not instance_model:
@@ -209,9 +196,7 @@ async def logout_whatsapp(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(
-            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
-        )
+        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
         .first()
     )
     if not instance_model:
@@ -244,9 +229,7 @@ async def get_whatsapp_groups(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(
-            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
-        )
+        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
         .first()
     )
     if not instance_model:
@@ -275,9 +258,7 @@ async def sync_whatsapp_targets(
     current_user: UserModel = Depends(login_required),
 ):
     """Force a sync from Evolution API to the local database."""
-    instance_model = (
-        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
-    )
+    instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
     if not instance_model:
         return {"success": False, "error": "No instance provisioned"}
 
@@ -309,9 +290,7 @@ async def send_test_message(
     current_user: UserModel = Depends(login_required),
     db: Session = Depends(get_db),
 ):
-    instance_model = (
-        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
-    )
+    instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
     whatsapp_service = EvolutionWhatsAppService(
         instance=instance_model.name if instance_model else None,
         apikey=instance_model.apikey if instance_model else None,
@@ -334,6 +313,7 @@ async def whatsapp_webhook_trigger(
     Protected by X-Trigger-Token header.
     """
     import os as _os
+
     token = _os.environ.get("TRIGGER_TOKEN")
     header_token = request.headers.get("X-Trigger-Token")
 
@@ -344,9 +324,7 @@ async def whatsapp_webhook_trigger(
 
     if action == "campaign":
         use_case = SalesAgentCampaignUseCase(whatsapp_service)
-        success = await use_case.execute(
-            jid, message or "Olá! Esta é uma mensagem automática."
-        )
+        success = await use_case.execute(jid, message or "Olá! Esta é uma mensagem automática.")
         return {"status": "success" if success else "failed", "action": action}
 
     if action == "pulse":
