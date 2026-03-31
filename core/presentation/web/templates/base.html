@@ -42,6 +42,11 @@
                 <span id="sidebar-status-dot"
                     style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; margin-left: auto;"></span>
             </a>
+            {% if user and user.is_admin %}
+            <a href="/admin" class="nav-item {{ 'active' if '/admin' in request.url.path else '' }}" style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <span class="nav-item-icon">⚙️</span> Admin Panel
+            </a>
+            {% endif %}
         </nav>
     </aside>
 
