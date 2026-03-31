@@ -29,6 +29,7 @@ from core.presentation.web.routers import (
     storage,
     whatsapp,
     broadcast,
+    admin,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -57,6 +58,7 @@ try:
             ("broadcast_campaigns", "list_id", "ALTER TABLE broadcast_campaigns ADD COLUMN list_id INTEGER;"),
             ("whatsapp_targets", "instance_id", "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
             ("broadcast_lists", "instance_id", "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
+            ("users", "is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;"),
         ]
 
         for table, column, stmt in migrations:
@@ -159,3 +161,4 @@ app.include_router(status_campaigns.router)
 app.include_router(storage.router)
 app.include_router(whatsapp.router)
 app.include_router(broadcast.router)
+app.include_router(admin.router)

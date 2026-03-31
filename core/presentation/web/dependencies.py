@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from core.application.services.auth_service import AuthService
 from core.infrastructure.database.models import UserModel
 from core.infrastructure.database.session import get_db
+from core.infrastructure.database.repositories import SQLActivityRepository
 
 logger = logging.getLogger(__name__)
 
@@ -61,3 +62,16 @@ def login_required(user: UserModel = Depends(get_current_user)) -> UserModel:
             headers={"Location": "/login"},
         )
     return user
+
+
+def admin_required(user: UserModel = Depends(login_required)) -> UserModel:
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Admin privileges required",
+        )
+    return user
+
+
+def get_activity_repo(db: Session = Depends(get_db)) -> SQLActivityRepository:
+    return SQLActivityRepository(db)

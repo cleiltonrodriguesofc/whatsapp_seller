@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block page_title %}Atividades da Plataforma{% endblock %}
+{% block page_subtitle %}
+    {% if filter_user_id %}
+        Filtrando por Usuário #{{ filter_user_id }}
+    {% else %}
+        Logs completos de todos os eventos da plataforma.
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card card-modern">
+    <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Filtrar:</span>
+        <a href="/admin/activities" class="badge {{ 'active' if not filter_user_id else '' }}" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">Todos</a>
+        {% if filter_user_id %}
+        <span class="badge" style="background: var(--primary); color: white;">User #{{ filter_user_id }}</span>
+        {% endif %}
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuário ID</th>
+                    <th>Evento</th>
+                    <th>Descrição</th>
+                    <th>Data/Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for act in activities %}
+                <tr>
+                    <td>
+                        <a href="/admin/activities?user_id={{ act.user_id }}" style="text-decoration: none; color: var(--primary); font-weight: 600;">
+                            #{{ act.user_id }}
+                        </a>
+                    </td>
+                    <td><span class="badge" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; text-transform: uppercase;">{{ act.event_type }}</span></td>
+                    <td style="max-width: 400px; font-size: 0.9rem;">{{ act.description or '-' }}</td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ act.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 5rem; color: var(--text-muted);">Nenhuma atividade encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="margin-top: 2rem; text-align: center;">
+        <p style="font-size: 0.85rem; color: var(--text-muted);">Exibindo as últimas {{ activities|length }} atividades.</p>
+    </div>
+</div>
+{% endblock %}

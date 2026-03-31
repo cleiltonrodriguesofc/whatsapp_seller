@@ -15,6 +15,8 @@ from starlette.status import HTTP_303_SEE_OTHER
 from core.infrastructure.database.models import InstanceModel, UserModel
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.database.repositories import SQLActivityRepository
+from core.domain.entities import ActivityLog
 from core.presentation.web.dependencies import auth_service, templates
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,11 @@ async def login_action(
         )
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(user_id=user.id, event_type="login", description=f"User logged in from {request.client.host if request.client else 'unknown'}"))
+
     response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
     is_prod = os.environ.get("RENDER") == "true"
     response.set_cookie(
@@ -79,10 +86,21 @@ async def register_action(
             context={"error": "Email already registered", "title": "Register"},
         )
 
-    new_user = UserModel(email=email, hashed_password=auth_service.hash_password(password))
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    is_admin = (email == admin_email)
+    
+    new_user = UserModel(
+        email=email, 
+        hashed_password=auth_service.hash_password(password),
+        is_admin=is_admin
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(user_id=new_user.id, event_type="register", description=f"User registered (Admin: {is_admin})"))
 
     # provision whitatsapp instance
     try:
