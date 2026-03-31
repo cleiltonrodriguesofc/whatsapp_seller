@@ -55,6 +55,8 @@ try:
             ("broadcast_campaigns", "target_type", "ALTER TABLE broadcast_campaigns ADD COLUMN target_type TEXT DEFAULT 'contacts';"),
             ("broadcast_campaigns", "target_jids", "ALTER TABLE broadcast_campaigns ADD COLUMN target_jids TEXT;"),
             ("broadcast_campaigns", "list_id", "ALTER TABLE broadcast_campaigns ADD COLUMN list_id INTEGER;"),
+            ("whatsapp_targets", "instance_id", "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
+            ("broadcast_lists", "instance_id", "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
         ]
 
         for table, column, stmt in migrations:
