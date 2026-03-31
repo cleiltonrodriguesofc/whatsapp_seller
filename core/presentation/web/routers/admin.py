@@ -56,9 +56,16 @@ async def manage_users(
 async def toggle_user(
     user_id: int,
     current_admin: UserModel = Depends(admin_required),
-    admin_service: AdminService = Depends(get_admin_service)
+    admin_service: AdminService = Depends(get_admin_service),
+    db: Session = Depends(get_db)
 ):
-    admin_service.toggle_user_active(user_id)
+    user = admin_service.toggle_user_active(user_id)
+    if user:
+        admin_service.log_activity(
+            user_id=current_admin.id,
+            event_type="admin_user_toggle",
+            description=f"Admin {current_admin.email} toggled status for user {user.email} (Active: {user.is_active})"
+        )
     return RedirectResponse(url="/admin/users", status_code=303)
 
 @router.get("/activities", response_class=HTMLResponse)

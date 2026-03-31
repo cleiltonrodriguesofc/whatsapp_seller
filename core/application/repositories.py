@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from core.domain.entities import Product, Campaign, StatusCampaign, BroadcastList, BroadcastCampaign, ActivityLog
+from core.domain.entities import User, Product, Campaign, StatusCampaign, BroadcastList, BroadcastCampaign, ActivityLog
 
 
 class ProductRepository(ABC):

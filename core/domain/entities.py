@@ -147,9 +147,10 @@ class User:
 
 @dataclass
 class ActivityLog:
-    user_id: int
-    event_type: str  # 'login', 'instance_connect', 'campaign_sent', etc.
-    description: str
+    user_id: Optional[int] = None
+    event_type: str = ""  # 'login', 'instance_connect', 'campaign_sent', etc.
+    description: str = ""
+    user_email: Optional[str] = None  # Helper for display
     id: Optional[int] = None
     timestamp: datetime = field(default_factory=now_sp)
 

@@ -51,7 +51,7 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)) -> U
     if not email:
         return None
 
-    return db.query(UserModel).filter(UserModel.email == email).first()
+    return db.query(UserModel).filter(UserModel.email == email, UserModel.is_active == True).first()
 
 
 def login_required(user: UserModel = Depends(get_current_user)) -> UserModel:

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
 from core.infrastructure.database.repositories import SQLTargetRepository, SQLActivityRepository
+from core.infrastructure.database.models import UserModel, InstanceModel
 from core.domain.entities import ActivityLog
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
@@ -203,6 +204,15 @@ async def rename_whatsapp(
 
     instance_model.display_name = new_name
     db.commit()
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="instance_rename", 
+        description=f"Renamed WhatsApp instance to: {new_name}"
+    ))
+    
     return {"success": True}
 
 
@@ -323,6 +333,16 @@ async def send_test_message(
         apikey=instance_model.apikey if instance_model else None,
     )
     success = await whatsapp_service.send_text(phone, message)
+    
+    if success:
+        # Log activity
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(ActivityLog(
+            user_id=current_user.id, 
+            event_type="whatsapp_test", 
+            description=f"Sent test message to: {phone}"
+        ))
+        
     return {"success": success}
 
 
