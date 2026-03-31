@@ -114,7 +114,7 @@ def test_api_targets_endpoint_auth(client, db_session):
     db_session.commit()
 
     # Login
-    response = client.post("/login", data={"username": "api_test@test.com", "password": "pass"})
+    client.post("/login", data={"username": "api_test@test.com", "password": "pass"})
     
     # Test contacts
     res_chat = client.get(f"/broadcast/api/targets?instance_id={instance.id}&target_type=chat")
