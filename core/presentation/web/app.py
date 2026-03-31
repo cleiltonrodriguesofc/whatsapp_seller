@@ -64,8 +64,9 @@ try:
                 res = conn.execute(
                     text(
                         "SELECT column_name FROM information_schema.columns "
-                        f"WHERE table_name = '{table}' AND column_name = '{column}';"
-                    )
+                        "WHERE table_name = :table_name AND column_name = :column_name;"
+                    ),
+                    {"table_name": table, "column_name": column}
                 )
                 if not res.fetchone():
                     conn.execute(text(stmt))
