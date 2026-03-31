@@ -141,7 +141,17 @@ class User:
     hashed_password: str
     id: Optional[int] = None
     is_active: bool = True
+    is_admin: bool = False
     created_at: datetime = field(default_factory=now_sp)
+
+
+@dataclass
+class ActivityLog:
+    user_id: int
+    event_type: str  # 'login', 'instance_connect', 'campaign_sent', etc.
+    description: str
+    id: Optional[int] = None
+    timestamp: datetime = field(default_factory=now_sp)
 
 
 @dataclass

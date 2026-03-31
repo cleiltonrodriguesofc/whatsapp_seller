@@ -28,7 +28,9 @@ from core.presentation.web.dependencies import (
     get_current_user,
     login_required,
     templates,
+    get_activity_repo,
 )
+from core.domain.entities import ActivityLog
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +79,23 @@ async def delete_campaign(
     current_user: UserModel = Depends(login_required),
 ):
     campaign_repo = SQLCampaignRepository(db)
+    campaign = campaign_repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    title = campaign.title
     success = campaign_repo.delete(campaign_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="campaign_delete", 
+        description=f"Deleted campaign: {title}"
+    ))
+    
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -158,6 +174,14 @@ async def create_campaign(
         user_id=current_user.id,
         save_as_draft=save_as_draft,
     )
+
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="campaign_create", 
+        description=f"Created campaign: {title} (Draft: {save_as_draft})"
+    ))
 
     return RedirectResponse(url="/", status_code=303)
 

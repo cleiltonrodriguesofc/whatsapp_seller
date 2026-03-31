@@ -13,8 +13,9 @@ from core.infrastructure.database.repositories import (
     SQLInstanceRepository,
     SQLBroadcastListRepository,
     SQLBroadcastCampaignRepository,
+    SQLActivityRepository,
 )
-from core.domain.entities import BroadcastList, BroadcastCampaign
+from core.domain.entities import BroadcastList, BroadcastCampaign, ActivityLog
 from core.presentation.web.dependencies import login_required, templates
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.infrastructure.ai.openai_service import OpenAIService
@@ -279,6 +280,14 @@ async def create_broadcast_list(
     )
     new_list = list_repo.save(new_list)
     list_repo.set_members(new_list.id, members)
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="broadcast_list_create", 
+        description=f"Created broadcast list: {name}"
+    ))
 
     return RedirectResponse(url="/broadcast/lists", status_code=303)
 
@@ -291,6 +300,15 @@ async def delete_broadcast_list(
 ):
     list_repo = SQLBroadcastListRepository(db)
     list_repo.delete(list_id, current_user.id)
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="broadcast_list_delete", 
+        description=f"Deleted broadcast list ID: {list_id}"
+    ))
+    
     return RedirectResponse(url="/broadcast/lists", status_code=303)
 
 
@@ -620,6 +638,15 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
         )
     
     campaign_repo.save(campaign)
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="broadcast_campaign_save", 
+        description=f"Saved broadcast campaign: {campaign.title} (Status: {campaign.status})"
+    ))
+    
     return RedirectResponse(url="/broadcast/campaigns", status_code=303)
 
 
@@ -631,4 +658,13 @@ async def delete_broadcast_campaign(
 ):
     campaign_repo = SQLBroadcastCampaignRepository(db)
     campaign_repo.delete(campaign_id, current_user.id)
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="broadcast_campaign_delete", 
+        description=f"Deleted broadcast campaign ID: {campaign_id}"
+    ))
+    
     return RedirectResponse(url="/broadcast/campaigns", status_code=303)

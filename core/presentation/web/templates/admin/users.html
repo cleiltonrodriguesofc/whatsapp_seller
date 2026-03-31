@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block page_title %}Gerenciar Usuários{% endblock %}
+{% block page_subtitle %}Monitore e controle o acesso dos usuários à plataforma.{% endblock %}
+
+{% block content %}
+<div class="card card-modern">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Tipo</th>
+                    <th>Criado em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td style="font-weight: 600;">{{ u.email }}</td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="status-badge status-sent">Ativo</span>
+                        {% else %}
+                        <span class="status-badge status-failed">Desativado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_admin %}
+                        <span class="status-badge status-sent" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">Admin</span>
+                        {% else %}
+                        <span class="status-badge" style="background: rgba(148, 163, 184, 0.1); color: #94a3b8;">User</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ u.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <form action="/admin/users/{{ u.id }}/toggle" method="POST" style="margin: 0;">
+                                <button type="submit" class="btn-secondary" style="font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                    {{ 'Desativar' if u.is_active else 'Ativar' }}
+                                </button>
+                            </form>
+                            <a href="/admin/activities?user_id={{ u.id }}" class="btn-secondary" style="font-size: 0.75rem; padding: 0.4rem 0.8rem;">Atividades</a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-muted);">Nenhum usuário cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -42,6 +42,7 @@ class UserModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=now_sp)
 
     products = relationship("ProductModel", back_populates="user")
@@ -211,3 +212,14 @@ class BroadcastCampaignModel(Base):
     user = relationship("UserModel")
     instance = relationship("InstanceModel")
     broadcast_list = relationship("BroadcastListModel")
+
+
+class ActivityLogModel(Base):
+    __tablename__ = "activity_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    event_type = Column(String, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel")
