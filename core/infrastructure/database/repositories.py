@@ -295,9 +295,9 @@ class SQLTargetRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def upsert_sync(self, targets: List[dict], user_id: int):
+    def upsert_sync(self, targets: List[dict], user_id: int, instance_id: int = None):
         """
-        Syncs a list of targets from the API, preventing duplicates for a specific user.
+        Syncs a list of targets from the API, preventing duplicates for a specific user and instance.
         Evolution API returns different formats:
           - groups: { "id": "...", "subject": "Group Name" }
           - contacts (fetchAllChats): { "id": "...", "name": "Contact Name", "remoteJid": "..." }
@@ -318,23 +318,34 @@ class SQLTargetRepository:
             if "broadcast" in jid or "status" in jid:
                 continue
 
-            existing = (
-                self.db.query(WhatsAppTargetModel)
-                .filter(
-                    WhatsAppTargetModel.jid == jid,
-                    WhatsAppTargetModel.user_id == user_id,
-                )
-                .first()
+            query = self.db.query(WhatsAppTargetModel).filter(
+                WhatsAppTargetModel.jid == jid,
+                WhatsAppTargetModel.user_id == user_id,
             )
+            
+            # Buscando se já temos esse JID para a Instância solicitada OU se é um registro legado sem instância
+            existing = None
+            if instance_id is not None:
+                # Tenta achar exato
+                existing = query.filter(WhatsAppTargetModel.instance_id == instance_id).first()
+                if not existing:
+                    # Tenta achar legado sem instancia para reaproveitar e fixar
+                    existing = query.filter(WhatsAppTargetModel.instance_id.is_(None)).first()
+            else:
+                existing = query.first()
+            
             if existing:
                 existing.name = name
                 existing.type = target_type
                 existing.phone = phone
                 existing.last_synced_at = now
                 existing.is_active = True
+                if instance_id is not None:
+                    existing.instance_id = instance_id
             else:
                 new_target = WhatsAppTargetModel(
                     user_id=user_id,
+                    instance_id=instance_id,
                     jid=jid,
                     name=name,
                     phone=phone,
@@ -345,27 +356,45 @@ class SQLTargetRepository:
         self.db.commit()
 
 
-    def list_contacts(self, user_id: int) -> List[WhatsAppTargetModel]:
-        return (
-            self.db.query(WhatsAppTargetModel)
-            .filter(
-                WhatsAppTargetModel.user_id == user_id,
-                WhatsAppTargetModel.type == "chat",
-                WhatsAppTargetModel.is_active,
-            )
-            .all()
+    def list_contacts(self, user_id: int, instance_id: Optional[int] = None) -> List[WhatsAppTargetModel]:
+        query = self.db.query(WhatsAppTargetModel).filter(
+            WhatsAppTargetModel.user_id == user_id,
+            WhatsAppTargetModel.type == "chat",
+            WhatsAppTargetModel.is_active,
         )
+        if instance_id is not None:
+            query = query.filter(WhatsAppTargetModel.instance_id == instance_id)
+            return query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+            
+        # Deduplication for 'All Instances' View
+        results = query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+        seen = set()
+        unique_results = []
+        for r in results:
+            if r.jid not in seen:
+                seen.add(r.jid)
+                unique_results.append(r)
+        return unique_results
 
-    def list_groups(self, user_id: int) -> List[WhatsAppTargetModel]:
-        return (
-            self.db.query(WhatsAppTargetModel)
-            .filter(
-                WhatsAppTargetModel.user_id == user_id,
-                WhatsAppTargetModel.type == "group",
-                WhatsAppTargetModel.is_active,
-            )
-            .all()
+    def list_groups(self, user_id: int, instance_id: Optional[int] = None) -> List[WhatsAppTargetModel]:
+        query = self.db.query(WhatsAppTargetModel).filter(
+            WhatsAppTargetModel.user_id == user_id,
+            WhatsAppTargetModel.type == "group",
+            WhatsAppTargetModel.is_active,
         )
+        if instance_id is not None:
+            query = query.filter(WhatsAppTargetModel.instance_id == instance_id)
+            return query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+            
+        # Deduplication for 'All Instances' View
+        results = query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+        seen = set()
+        unique_results = []
+        for r in results:
+            if r.jid not in seen:
+                seen.add(r.jid)
+                unique_results.append(r)
+        return unique_results
 
     def list_all(self, user_id: int):
         return (
@@ -543,10 +572,12 @@ class SQLBroadcastListRepository(BroadcastListRepository):
             )
             if model:
                 model.name = broadcast_list.name
+                model.instance_id = broadcast_list.instance_id
                 model.description = broadcast_list.description
         else:
             model = BroadcastListModel(
                 user_id=broadcast_list.user_id,
+                instance_id=broadcast_list.instance_id,
                 name=broadcast_list.name,
                 description=broadcast_list.description,
             )
@@ -578,6 +609,7 @@ class SQLBroadcastListRepository(BroadcastListRepository):
         return BroadcastList(
             id=model.id,
             user_id=model.user_id,
+            instance_id=model.instance_id,
             name=model.name,
             description=model.description,
             member_count=member_count,
@@ -601,6 +633,7 @@ class SQLBroadcastListRepository(BroadcastListRepository):
                 BroadcastList(
                     id=m.id,
                     user_id=m.user_id,
+                    instance_id=m.instance_id,
                     name=m.name,
                     description=m.description,
                     member_count=member_count,

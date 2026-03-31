@@ -16,14 +16,45 @@
             <textarea name="description" id="description" class="form-control" placeholder="Descreva o propósito desta lista." rows="3" style="width: 100%; padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.1); border: 2px solid var(--border); font-size: 1rem; resize: none;"></textarea>
         </div>
 
-        <!-- Hidden input for JIDs -->
+        <!-- Picker de Contatos Dinâmico -->
+        <div style="margin-bottom: 2rem; background: rgba(0,0,0,0.15); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+            <h3 style="margin-top: 0; font-size: 1.1rem; margin-bottom: 1rem;">Selecione os Membros</h3>
+            
+            <div id="picker-controls" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Recuperar da Conta:</label>
+                    <select id="instance-select" class="form-select" style="width: 100%; border-radius: 8px;">
+                        <option value="">-- Escolha a Conta Base --</option>
+                        {% for inst in instances %}
+                        <option value="{{ inst.id }}">{{ inst.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);">Destinatários::</label>
+                    <select id="type-select" class="form-select" style="width: 100%; border-radius: 8px;">
+                        <option value="chat">Contatos (Conversas 1x1)</option>
+                        <option value="group">Grupos (Salas coletivas)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="loading-targets" style="display: none; text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+                Carregando membros do banco de dados...
+            </div>
+
+            <!-- Area onde os checkboxes dinamicos serão buildados -->
+            <div id="targets-container" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem; display: none;"></div>
+        </div>
+
+        <!-- Hidden input for Form POST -->
         <input type="hidden" name="jids" id="jids-input" value="[]">
 
-        <div id="selection-preview" style="background: rgba(var(--primary-rgb), 0.05); border: 1px solid var(--primary); border-radius: 16px; padding: 1.5rem; margin-bottom: 2.5rem; display: none;">
-            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--primary); font-weight: 700; margin-bottom: 0.5rem;">
-                <span>👥</span> <span id="member-count-text">0 contatos selecionados</span>
+        <div id="selection-preview" style="background: rgba(var(--primary-rgb), 0.05); border: 1px solid var(--primary); border-radius: 12px; padding: 1rem; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; color: var(--primary); font-weight: 700;">
+                <span>👥</span> <span id="member-count-text">0 selecionados</span>
             </div>
-            <p style="color: var(--text-secondary); font-size: 0.85rem;">Estes contatos farão parte desta lista.</p>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.5rem 0 0 0;">Certifique-se de salvar a lista após marcar os checkboxes desejados acima.</p>
         </div>
 
         <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1.5rem; border-top: 1px solid var(--border);">
@@ -35,38 +66,127 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we have JIDs in localStorage or query params
-    const urlParams = new URLSearchParams(window.location.search);
-    let jids = [];
+    const instanceSelect = document.getElementById('instance-select');
+    const typeSelect = document.getElementById('type-select');
+    const targetsContainer = document.getElementById('targets-container');
+    const loadingTargets = document.getElementById('loading-targets');
+    const jidsInput = document.getElementById('jids-input');
+    const memberCountText = document.getElementById('member-count-text');
+    const listForm = document.getElementById('list-form');
+    let selectedSet = new Set();
     
-    // Try query param first
-    const jidsFromQuery = urlParams.get('jids');
-    if (jidsFromQuery) {
+    // Suporte ao fluxo antigo (via localStorage da Tabela de Contatos/Grupos)
+    const storedJids = localStorage.getItem('broadcast_selected_jids');
+    if (storedJids) {
         try {
-            jids = JSON.parse(jidsFromQuery);
+            const arr = JSON.parse(storedJids);
+            if (arr.length > 0) {
+                arr.forEach(jid => selectedSet.add(jid));
+                document.getElementById('picker-controls').style.display = 'none';
+                targetsContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">Contatos importados com sucesso a partir da aba de listagem rápida.</div>';
+                targetsContainer.style.display = 'block';
+            }
         } catch (e) {}
-    } else {
-        // Try localStorage (if coming from contacts/groups page)
-        const storedJids = localStorage.getItem('broadcast_selected_jids');
-        if (storedJids) {
-            try {
-                jids = JSON.parse(storedJids);
-                // Clear after read
-                localStorage.removeItem('broadcast_selected_jids');
-            } catch (e) {}
+        localStorage.removeItem('broadcast_selected_jids');
+    }
+
+    async function loadTargets() {
+        const instanceId = instanceSelect.value;
+        const targetType = typeSelect.value;
+        
+        if (!instanceId) {
+            targetsContainer.style.display = 'none';
+            return;
+        }
+
+        loadingTargets.style.display = 'block';
+        targetsContainer.style.display = 'none';
+        
+        try {
+            const res = await fetch(`/broadcast/api/targets?instance_id=${instanceId}&target_type=${targetType}`);
+            const data = await res.json();
+            targetsContainer.innerHTML = '';
+            
+            if (data.length === 0) {
+                targetsContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">Nenhum item sincronizado encontrado nesta conta.</div>';
+            } else {
+                const headerDiv = document.createElement('div');
+                headerDiv.style = "padding: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;";
+                headerDiv.innerHTML = `<input type="checkbox" id="dynamic-select-all" style="width: 16px; height: 16px; cursor: pointer;"> <label for="dynamic-select-all" style="font-size: 0.85rem; cursor: pointer; color: var(--text-secondary); margin:0;">Selecionar Todos</label>`;
+                targetsContainer.appendChild(headerDiv);
+
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.style = "padding: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 6px; cursor: pointer;";
+                    div.className = "target-item-hover";
+                    const isChecked = selectedSet.has(item.jid) ? 'checked' : '';
+                    div.innerHTML = `
+                        <input type="checkbox" value="${item.jid}" class="target-cb" id="cb_${item.jid}" ${isChecked} style="width: 16px; height: 16px; pointer-events: none;">
+                        <label style="flex: 1; margin: 0; pointer-events: none; font-size: 0.9rem;">${item.name} <span style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem;">${item.jid}</span></label>
+                    `;
+                    div.addEventListener('click', () => {
+                        const cb = div.querySelector('input');
+                        cb.checked = !cb.checked;
+                        if (cb.checked) {
+                            selectedSet.add(item.jid);
+                        } else {
+                            selectedSet.delete(item.jid);
+                            const selectAllCb = document.getElementById('dynamic-select-all');
+                            if (selectAllCb) selectAllCb.checked = false;
+                        }
+                        updateCount();
+                    });
+                    targetsContainer.appendChild(div);
+                });
+
+                document.getElementById('dynamic-select-all').addEventListener('change', (e) => {
+                    const cbs = targetsContainer.querySelectorAll('.target-cb');
+                    cbs.forEach(cb => {
+                        cb.checked = e.target.checked;
+                        if (e.target.checked) selectedSet.add(cb.value);
+                        else selectedSet.delete(cb.value);
+                    });
+                    updateCount();
+                });
+            }
+            loadingTargets.style.display = 'none';
+            targetsContainer.style.display = 'block';
+        } catch (err) {
+            console.error(err);
+            loadingTargets.style.display = 'none';
         }
     }
 
-    if (jids.length > 0) {
-        document.getElementById('jids-input').value = JSON.stringify(jids);
-        document.getElementById('selection-preview').style.display = 'block';
-        document.getElementById('member-count-text').innerText = `${jids.length} membros selecionados`;
-    } else {
-        // If no JIDs, maybe user came here directly, show warning/redirect?
-        // Actually, they can create an empty list and add later (future phase), but for now let's just warn.
-        alert('Nenhum contato selecionado. Por favor, selecione os contatos na lista primeiro.');
-        window.location.href = '/broadcast/contacts';
+    function updateCount() {
+        memberCountText.innerText = `${selectedSet.size} selecionados`;
+        jidsInput.value = JSON.stringify(Array.from(selectedSet));
     }
+    
+    updateCount();
+
+    instanceSelect.addEventListener('change', () => {
+        selectedSet.clear(); // Reset selections when switching instance
+        updateCount();
+        loadTargets();
+    });
+    
+    typeSelect.addEventListener('change', () => {
+        selectedSet.clear(); // Reset selections when switching types
+        updateCount();
+        loadTargets();
+    });
+
+    listForm.addEventListener('submit', (e) => {
+        if (selectedSet.size === 0) {
+            e.preventDefault();
+            alert('Por favor, selecione ao menos um alvo para criar essa Lista.');
+        }
+    });
 });
 </script>
+<style>
+.target-item-hover:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+</style>
 {% endblock %}

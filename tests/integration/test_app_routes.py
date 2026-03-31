@@ -91,3 +91,41 @@ def test_unauthenticated_access_to_status_redirects(client):
     response = client.get("/status_campaigns", follow_redirects=False)
     # either a redirect or a login page response is acceptable
     assert response.status_code in (302, 303, 200)
+def test_api_targets_endpoint_auth(client, db_session):
+    from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
+    from datetime import datetime
+
+    from core.application.services.auth_service import AuthService
+    auth = AuthService()
+    user = UserModel(email="api_test@test.com", hashed_password=auth.hash_password("pass"))
+    db_session.add(user)
+    db_session.commit()
+
+    instance = InstanceModel(user_id=user.id, name="Test Inst")
+    db_session.add(instance)
+    db_session.commit()
+
+    db_session.add(WhatsAppTargetModel(
+        user_id=user.id, instance_id=instance.id, jid="api1@s.whatsapp.net", name="Contact 1", type="chat", last_synced_at=datetime.utcnow(), is_active=True
+    ))
+    db_session.add(WhatsAppTargetModel(
+        user_id=user.id, instance_id=instance.id, jid="api2@g.us", name="Group 1", type="group", last_synced_at=datetime.utcnow(), is_active=True
+    ))
+    db_session.commit()
+
+    # Login
+    response = client.post("/login", data={"username": "api_test@test.com", "password": "pass"})
+    
+    # Test contacts
+    res_chat = client.get(f"/broadcast/api/targets?instance_id={instance.id}&target_type=chat")
+    assert res_chat.status_code == 200
+    json_chat = res_chat.json()
+    assert len(json_chat) == 1
+    assert json_chat[0]["jid"] == "api1@s.whatsapp.net"
+
+    # Test groups
+    res_grp = client.get(f"/broadcast/api/targets?instance_id={instance.id}&target_type=group")
+    assert res_grp.status_code == 200
+    json_grp = res_grp.json()
+    assert len(json_grp) == 1
+    assert json_grp[0]["jid"] == "api2@g.us"
