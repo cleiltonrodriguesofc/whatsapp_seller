@@ -8,6 +8,7 @@ def test_broadcast_list_entity_creation():
     blist = BroadcastList(
         id=1,
         user_id=1,
+        instance_id=2,
         name="Test List",
         description="A test description",
         member_count=10,
@@ -16,6 +17,7 @@ def test_broadcast_list_entity_creation():
 
     assert blist.id == 1
     assert blist.user_id == 1
+    assert blist.instance_id == 2
     assert blist.name == "Test List"
     assert blist.description == "A test description"
     assert blist.member_count == 10
