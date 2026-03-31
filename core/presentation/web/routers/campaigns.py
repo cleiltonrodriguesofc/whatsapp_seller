@@ -262,6 +262,17 @@ async def update_campaign(
             )
 
     campaign_repo.save(campaign)
+    
+    # Log activity
+    from core.infrastructure.database.repositories import SQLActivityRepository
+    from core.domain.entities import ActivityLog
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="campaign_edit", 
+        description=f"Updated campaign: {title}"
+    ))
+    
     return RedirectResponse(url="/", status_code=303)
 
 

@@ -167,7 +167,15 @@ async def sync_broadcast_targets(
         "sync complete: %d groups, %d contacts synced for user %s",
         total_groups, total_contacts, current_user.id
     )
-
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="broadcast_sync", 
+        description=f"Synced targets from active instances: {total_contacts} contacts and {total_groups} groups found"
+    ))
+    
     return RedirectResponse(url=redirect_to, status_code=303)
 
 

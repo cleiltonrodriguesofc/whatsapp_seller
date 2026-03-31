@@ -16,6 +16,7 @@ from core.infrastructure.database.repositories import (
     SQLTargetRepository,
     SQLActivityRepository,
 )
+from core.infrastructure.database.session import get_db
 from core.presentation.web.dependencies import login_required, templates
 from core.presentation.web.routers.products import _save_uploaded_image
 from core.infrastructure.services.supabase_storage import SupabaseStorageService

@@ -17,7 +17,7 @@ from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.infrastructure.database.repositories import SQLActivityRepository
 from core.domain.entities import ActivityLog
-from core.presentation.web.dependencies import auth_service, templates
+from core.presentation.web.dependencies import auth_service, templates, get_current_user
 
 logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -148,7 +148,20 @@ async def register_action(
 
 
 @router.get("/logout")
-async def logout():
+async def logout(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    if current_user:
+        # Log activity
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(ActivityLog(
+            user_id=current_user.id, 
+            event_type="logout", 
+            description="User logged out"
+        ))
+
     response = RedirectResponse(url="/login")
     response.delete_cookie("access_token")
     return response
