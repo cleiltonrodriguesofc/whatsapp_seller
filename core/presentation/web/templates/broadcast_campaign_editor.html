@@ -26,7 +26,7 @@
             <!-- Conta de Envio -->
             <div class="form-group">
                 <label class="form-label">Conta de Envio</label>
-                <select name="instance_id" class="form-select" required style="font-size: 1.1rem; padding: 0.75rem;">
+                <select name="instance_id" id="instance_select" class="form-select" required style="font-size: 1.1rem; padding: 0.75rem;" onchange="filterTargetsByInstance()">
                     {% for inst in instances %}
                     <option value="{{ inst.id }}" {% if campaign and campaign.instance_id == inst.id %}selected{% endif %}>{{ inst.name }}</option>
                     {% endfor %}
@@ -73,7 +73,7 @@
             <div id="ui-contacts" class="target-picker" style="display: none;">
                 <div class="target-chip-grid">
                     {% for c in contacts %}
-                    <label class="target-chip">
+                    <label class="target-chip" data-instance-id="{{ c.instance_id }}">
                         <input type="checkbox" name="target_jids" value="{{ c.jid }}" {% if campaign and c.jid in campaign.target_jids %}checked{% endif %}>
                         <span>👤 {{ c.name or c.jid }}</span>
                     </label>
@@ -87,7 +87,7 @@
             <div id="ui-groups" class="target-picker" style="display: none;">
                 <div class="target-chip-grid">
                     {% for g in groups %}
-                    <label class="target-chip">
+                    <label class="target-chip" data-instance-id="{{ g.instance_id }}">
                         <input type="checkbox" name="target_jids" value="{{ g.jid }}" {% if campaign and g.jid in campaign.target_jids %}checked{% endif %}>
                         <span>🏢 {{ g.name or g.jid }}</span>
                     </label>
@@ -99,10 +99,10 @@
 
             <!-- Lista de Transmissão -->
             <div id="ui-list" class="target-picker" style="display: none;">
-                <select name="list_id" class="form-select" style="font-size: 1.1rem; padding: 0.75rem;">
+                <select name="list_id" id="list_select" class="form-select" style="font-size: 1.1rem; padding: 0.75rem;">
                     <option value="">-- Escolha uma lista --</option>
                     {% for lst in lists %}
-                    <option value="{{ lst.id }}" {% if (selected_list_id and selected_list_id|int == lst.id|int) or (campaign and campaign.list_id == lst.id) %}selected{% endif %}>{{ lst.name }}</option>
+                    <option class="list-option" data-instance-id="{{ lst.instance_id }}" value="{{ lst.id }}" {% if (selected_list_id and selected_list_id|int == lst.id|int) or (campaign and campaign.list_id == lst.id) %}selected{% endif %}>{{ lst.name }} ({{ lst.member_count }} contatos)</option>
                     {% endfor %}
                 </select>
             </div>
@@ -306,6 +306,31 @@
     const initialTimes = container.dataset.sendTime;
     if (initialTimes) initialTimes.split(',').map(t => t.trim()).filter(Boolean).forEach(t => timeSet.add(t));
 
+    function filterTargetsByInstance() {
+        const instanceId = document.getElementById('instance_select').value;
+        const chips = document.querySelectorAll('.target-chip');
+        chips.forEach(chip => {
+            if (chip.dataset.instanceId === instanceId) {
+                chip.style.display = 'flex';
+            } else {
+                chip.style.display = 'none';
+                // Uncheck if hiding to avoid sending to wrong target accidentally
+                const input = chip.querySelector('input');
+                if (input) input.checked = false;
+            }
+        });
+
+        const listOptions = document.querySelectorAll('.list-option');
+        listOptions.forEach(opt => {
+            if (!opt.dataset.instanceId || opt.dataset.instanceId === instanceId) {
+                opt.style.display = '';
+            } else {
+                opt.style.display = 'none';
+                if (opt.selected) document.getElementById('list_select').value = ""; // reset
+            }
+        });
+    }
+
     function pad(n) { return n < 10 ? '0'+n : n; }
     function renderClock() {
         const str = `${pad(clockH)}:${pad(clockM)}`;
@@ -453,6 +478,8 @@
         renderClock();
         renderChips();
         onTargetTypeChange();
+        filterTargetsByInstance(); // Hide targets from different instances on load
+        
         const isRec = container.dataset.isRecurring === 'true';
         const hasSch = container.dataset.hasScheduledAt === 'true';
         if (isRec) setScheduleType('recurring');

@@ -1,7 +1,7 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Request, Form, Query
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
@@ -54,12 +54,20 @@ async def broadcast_dashboard(
 @router.get("/contacts", response_class=HTMLResponse)
 async def broadcast_contacts(
     request: Request,
+    instance_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
+    valid_instance_id = None
+    if instance_id and instance_id.isdigit():
+        valid_instance_id = int(instance_id)
+
     target_repo = SQLTargetRepository(db)
-    contacts = target_repo.list_contacts(current_user.id)
+    contacts = target_repo.list_contacts(current_user.id, valid_instance_id)
     
+    instance_repo = SQLInstanceRepository(db)
+    instances = instance_repo.list_by_user(current_user.id)
+
     return templates.TemplateResponse(
         request=request,
         name="broadcast_contacts.html",
@@ -67,18 +75,28 @@ async def broadcast_contacts(
             "user": current_user,
             "title": "Meus Contatos",
             "contacts": contacts,
+            "instances": instances,
+            "selected_instance_id": valid_instance_id,
         },
     )
 
 @router.get("/groups", response_class=HTMLResponse)
 async def broadcast_groups(
     request: Request,
+    instance_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
+    valid_instance_id = None
+    if instance_id and instance_id.isdigit():
+        valid_instance_id = int(instance_id)
+
     target_repo = SQLTargetRepository(db)
-    groups = target_repo.list_groups(current_user.id)
+    groups = target_repo.list_groups(current_user.id, valid_instance_id)
     
+    instance_repo = SQLInstanceRepository(db)
+    instances = instance_repo.list_by_user(current_user.id)
+
     return templates.TemplateResponse(
         request=request,
         name="broadcast_groups.html",
@@ -86,6 +104,8 @@ async def broadcast_groups(
             "user": current_user,
             "title": "Meus Grupos",
             "groups": groups,
+            "instances": instances,
+            "selected_instance_id": valid_instance_id,
         },
     )
 
@@ -123,7 +143,7 @@ async def sync_broadcast_targets(
             groups = await whatsapp_service.get_groups()
             sync_logger.info("fetched %d groups from instance %s", len(groups or []), inst.name)
             if groups:
-                target_repo.upsert_sync(groups, current_user.id)
+                target_repo.upsert_sync(groups, current_user.id, instance_id=inst.id)
                 total_groups += len(groups)
         except Exception as e:
             msg = f"groups sync error for {inst.name}: {e}"
@@ -135,7 +155,7 @@ async def sync_broadcast_targets(
             contacts = await whatsapp_service.get_contacts()
             sync_logger.info("fetched %d contacts from instance %s", len(contacts or []), inst.name)
             if contacts:
-                target_repo.upsert_sync(contacts, current_user.id)
+                target_repo.upsert_sync(contacts, current_user.id, instance_id=inst.id)
                 total_contacts += len(contacts)
         except Exception as e:
             msg = f"contacts sync error for {inst.name}: {e}"
@@ -177,8 +197,11 @@ async def list_broadcast_lists(
 @router.get("/lists/new", response_class=HTMLResponse)
 async def new_broadcast_list(
     request: Request,
+    db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
+    instance_repo = SQLInstanceRepository(db)
+    instances = instance_repo.list_by_user(current_user.id)
     return templates.TemplateResponse(
         request=request,
         name="broadcast_list_editor.html",
@@ -186,8 +209,26 @@ async def new_broadcast_list(
             "user": current_user,
             "title": "Nova Lista",
             "broadcast_list": None,
+            "instances": instances,
         },
     )
+
+@router.get("/api/targets")
+async def api_targets(
+    instance_id: int,
+    target_type: str = Query("chat", regex="^(chat|group)$"),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    target_repo = SQLTargetRepository(db)
+    if target_type == "chat":
+        items = target_repo.list_contacts(current_user.id, instance_id)
+    else:
+        items = target_repo.list_groups(current_user.id, instance_id)
+    return JSONResponse([
+        {"jid": item.jid, "name": item.name or "Sem Nome"}
+        for item in items
+    ])
 
 
 @router.post("/lists/new")
@@ -205,23 +246,38 @@ async def create_broadcast_list(
 
     jids = json.loads(jids_raw)  # expected from frontend UI selection
 
-    list_repo = SQLBroadcastListRepository(db)
-    new_list = BroadcastList(
-        user_id=current_user.id, name=name, description=description
-    )
-    new_list = list_repo.save(new_list)
-
     # resolve target info from JIDs
     members = []
+    instance_ids_found = set()
     for jid in jids:
         model = db.query(WhatsAppTargetModel).filter_by(user_id=current_user.id, jid=jid).first()
         if model:
+            if model.instance_id:
+                instance_ids_found.add(model.instance_id)
             members.append({
                 "jid": jid,
                 "name": model.name,
                 "type": model.type
             })
 
+    if len(instance_ids_found) > 1:
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(
+            "<b>Erro de Segurança Anti-Ban:</b> Você selecionou contatos pertencentes a instâncias (números) diferentes. "
+            "Uma Lista de Transmissão só pode conter clientes de uma única Instância de origem. <a href='javascript:history.back()'>Voltar</a>",
+            status_code=400
+        )
+
+    inferred_instance_id = list(instance_ids_found)[0] if instance_ids_found else None
+
+    list_repo = SQLBroadcastListRepository(db)
+    new_list = BroadcastList(
+        user_id=current_user.id, 
+        instance_id=inferred_instance_id,
+        name=name, 
+        description=description
+    )
+    new_list = list_repo.save(new_list)
     list_repo.set_members(new_list.id, members)
 
     return RedirectResponse(url="/broadcast/lists", status_code=303)
