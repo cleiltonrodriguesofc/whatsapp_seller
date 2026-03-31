@@ -158,6 +158,7 @@ class Instance:
 class BroadcastList:
     user_id: int
     name: str
+    instance_id: Optional[int] = None
     description: Optional[str] = None
     id: Optional[int] = None
     member_count: int = 0

@@ -278,7 +278,7 @@ async def sync_whatsapp_targets(
         targets.append({"id": c.get("id"), "subject": c.get("name") or c.get("id")})
 
     if targets:
-        target_repo.upsert_sync(targets, user_id=current_user.id)
+        target_repo.upsert_sync(targets, user_id=current_user.id, instance_id=instance_model.id)
 
     return {"success": True, "count": len(targets)}
 

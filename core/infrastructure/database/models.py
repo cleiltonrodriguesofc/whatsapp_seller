@@ -82,6 +82,7 @@ class WhatsAppTargetModel(Base):
     __tablename__ = "whatsapp_targets"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    instance_id = Column(Integer, ForeignKey("instances.id"), index=True, nullable=True)
     jid = Column(String, unique=False, index=True, nullable=False)
     name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
@@ -154,6 +155,7 @@ class BroadcastListModel(Base):
     __tablename__ = "broadcast_lists"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    instance_id = Column(Integer, ForeignKey("instances.id"), index=True, nullable=True)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=now_sp)
