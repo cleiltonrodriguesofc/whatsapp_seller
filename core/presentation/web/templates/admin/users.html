@@ -1,54 +1,85 @@
 {% extends "base.html" %}
 
-{% block page_title %}Gerenciar Usuários{% endblock %}
-{% block page_subtitle %}Monitore e controle o acesso dos usuários à plataforma.{% endblock %}
+{% block page_title %}Gestão de Utilizadores{% endblock %}
+{% block page_subtitle %}Controle total sobre o acesso e permissões dos membros da plataforma.{% endblock %}
 
 {% block content %}
-<div class="card card-modern">
+<div class="admin-card mb-2">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+        <div>
+            <h3 style="font-weight: 800; font-size: 1.3rem; letter-spacing: -0.02em;">Membros da Comunidade</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Gerencie permissões e status de acesso de todos os utilizadores.</p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 1.5rem; font-weight: 800; color: white;">{{ users|length }}</div>
+            <div style="font-size: 0.7rem; color: var(--primary); text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Registros Totais</div>
+        </div>
+    </div>
+
     <div class="table-container">
         <table>
             <thead>
                 <tr>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>Tipo</th>
-                    <th>Criado em</th>
-                    <th>Ações</th>
+                    <th>Identificação</th>
+                    <th>Estado</th>
+                    <th>Privilégios</th>
+                    <th>Membro desde</th>
+                    <th style="text-align: right;">Operações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in users %}
                 <tr>
-                    <td style="font-weight: 600;">{{ u.email }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 1.25rem;">
+                            <div class="user-avatar" style="width: 44px; height: 44px; font-size: 1rem;">{{ u.email[0].upper() }}</div>
+                            <div>
+                                <div style="font-weight: 800; font-size: 0.95rem; color: white;">{{ u.email.split('@')[0] }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ u.email }}</div>
+                            </div>
+                        </div>
+                    </td>
                     <td>
                         {% if u.is_active %}
-                        <span class="status-badge status-sent">Ativo</span>
+                        <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--success); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                            <span class="status-indicator" style="background: var(--success);"></span>
+                            Conta Ativa
+                        </div>
                         {% else %}
-                        <span class="status-badge status-failed">Desativado</span>
+                        <div style="display: flex; align-items: center; gap: 0.6rem; color: var(--text-muted); font-weight: 800; font-size: 0.75rem; text-transform: uppercase;">
+                            <span class="status-indicator" style="background: var(--text-muted);"></span>
+                            Suspenso
+                        </div>
                         {% endif %}
                     </td>
                     <td>
                         {% if u.is_admin %}
-                        <span class="status-badge status-sent" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">Admin</span>
+                        <span class="event-badge badge-auth" style="font-size: 0.6rem;">Administrator</span>
                         {% else %}
-                        <span class="status-badge" style="background: rgba(148, 163, 184, 0.1); color: #94a3b8;">User</span>
+                        <span class="event-badge badge-system" style="font-size: 0.6rem;">Padrão</span>
                         {% endif %}
                     </td>
-                    <td style="color: var(--text-muted); font-size: 0.85rem;">{{ u.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                     <td>
-                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <div style="font-weight: 700; font-size: 0.85rem; color: white;">{{ u.created_at.strftime('%d %b, %Y') }}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">às {{ u.created_at.strftime('%H:%M') }}</div>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
                             <form action="/admin/users/{{ u.id }}/toggle" method="POST" style="margin: 0;">
-                                <button type="submit" class="btn-secondary" style="font-size: 0.75rem; padding: 0.4rem 0.8rem;">
-                                    {{ 'Desativar' if u.is_active else 'Ativar' }}
+                                <button type="submit" class="btn {{ 'btn-ghost' if u.is_active else 'btn-primary' }}" 
+                                        style="font-size: 0.7rem; padding: 0.5rem 1rem; min-width: 90px; border-radius: 8px;">
+                                    {{ 'Suspender' if u.is_active else 'Reativar' }}
                                 </button>
                             </form>
-                            <a href="/admin/activities?user_id={{ u.id }}" class="btn-secondary" style="font-size: 0.75rem; padding: 0.4rem 0.8rem;">Atividades</a>
+                            <a href="/admin/activities?user_id={{ u.id }}" class="btn btn-ghost" title="Ver Histórico" style="padding:0.5rem; border-radius: 8px;">
+                                📜
+                            </a>
                         </div>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-muted);">Nenhum usuário cadastrado.</td>
+                    <td colspan="5" style="text-align: center; padding: 5rem; color: var(--text-muted);">Nenhum membro encontrado.</td>
                 </tr>
                 {% endfor %}
             </tbody>

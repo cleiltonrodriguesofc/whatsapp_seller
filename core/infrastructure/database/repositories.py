@@ -479,11 +479,14 @@ class SQLActivityRepository(ActivityRepository):
         return activity
 
     def list_all(self, limit: int = 100, user_id: Optional[int] = None) -> List[ActivityLog]:
-        query = self.db.query(ActivityLogModel).order_by(ActivityLogModel.timestamp.desc())
+        query = self.db.query(ActivityLogModel, UserModel.email).outerjoin(
+            UserModel, ActivityLogModel.user_id == UserModel.id
+        ).order_by(ActivityLogModel.timestamp.desc())
+        
         if user_id:
             query = query.filter(ActivityLogModel.user_id == user_id)
         
-        models = query.limit(limit).all()
+        results = query.limit(limit).all()
         return [
             ActivityLog(
                 id=m.id,
@@ -491,8 +494,9 @@ class SQLActivityRepository(ActivityRepository):
                 event_type=m.event_type,
                 description=m.description,
                 timestamp=m.timestamp,
+                user_email=email
             )
-            for m in models
+            for m, email in results
         ]
 
 
