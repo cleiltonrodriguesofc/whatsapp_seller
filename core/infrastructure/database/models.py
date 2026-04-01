@@ -43,9 +43,13 @@ class UserModel(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=now_sp)
+    referral_balance = Column(Float, default=0.0)
+    referral_code_id = Column(Integer, ForeignKey("referral_codes.id"), nullable=True)
 
     products = relationship("ProductModel", back_populates="user")
     instances = relationship("InstanceModel", back_populates="user")
+    subscription = relationship("SubscriptionModel", back_populates="user", uselist=False)
+    referral_code = relationship("ReferralCodeModel", foreign_keys=[referral_code_id])
 
 
 class InstanceModel(Base):
@@ -211,3 +215,49 @@ class BroadcastCampaignModel(Base):
     user = relationship("UserModel")
     instance = relationship("InstanceModel")
     broadcast_list = relationship("BroadcastListModel")
+
+
+class PlanModel(Base):
+    __tablename__ = "plans"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)  # "starter", "pro", "agency"
+    display_name = Column(String, nullable=False)  # "Starter", "Pro", "Agência"
+    price_brl = Column(Float, nullable=False)  # 97.00, 197.00, 397.00
+    max_instances = Column(Integer, nullable=False)  # 1, 3, -1
+    has_ai = Column(Boolean, default=False)
+    mp_plan_id = Column(String, nullable=True)  # ID do plano no Mercado Pago
+    created_at = Column(DateTime, default=now_sp)
+
+
+class SubscriptionModel(Base):
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
+    status = Column(String, default="trialing")  # "trialing", "active", "canceled", "past_due"
+    trial_ends_at = Column(DateTime, nullable=True)
+    current_period_end = Column(DateTime, nullable=True)
+    mp_preapproval_id = Column(String, nullable=True)  # ID da assinatura no Mercado Pago
+    created_at = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel", back_populates="subscription")
+    plan = relationship("PlanModel")
+
+
+class ReferralCodeModel(Base):
+    __tablename__ = "referral_codes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    code = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=now_sp)
+
+
+class ReferralConversionModel(Base):
+    __tablename__ = "referral_conversions"
+    id = Column(Integer, primary_key=True, index=True)
+    referrer_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # quem indicou
+    referred_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # quem se cadastrou
+    status = Column(String, default="pending")  # "pending", "converted", "rewarded"
+    reward_brl = Column(Float, default=0.0)
+    rewarded_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=now_sp)
