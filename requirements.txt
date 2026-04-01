@@ -17,3 +17,4 @@ pytest-cov
 python-dotenv
 supabase
 pytz
+mercadopago>=2.2.0
