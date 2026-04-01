@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block page_title %}Programa de Indicação{% endblock %}
+{% block page_subtitle %}Indique e ganhe 30% da primeira mensalidade de cada novos usuários indicados por você.{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+    <div class="card stat-card" style="grid-column: span 2; background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);">
+        <h4 style="margin-bottom: 1rem; color: var(--text-secondary);">Seu Link de Indicação</h4>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <input type="text" value="{{ ref_link }}" id="refLinkInput" readonly 
+                style="flex-grow: 1; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; font-family: monospace; font-size: 0.9rem;">
+            <button onclick="copyRefLink()" class="btn btn-primary" style="background: var(--p-grad); border: none; font-weight: 700; white-space: nowrap;">
+                Copiar Link
+            </button>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+            Seu código único: <strong style="color: var(--primary);">{{ ref_code }}</strong>
+        </p>
+    </div>
+
+    <div class="card stat-card">
+        <div class="stat-data">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">Saldo Disponível</h4>
+            <p style="font-size: 2rem; font-weight: 800; margin: 0; color: #10b981;">R$ {{ "%.2f"|format(user.referral_balance) }}</p>
+            {% if user.referral_balance >= 100 %}
+            <button class="btn btn-sm btn-outline-success" style="margin-top: 1rem; width: 100%; border-color: #10b981; color: #10b981;" onclick="document.getElementById('withdrawModal').style.display='flex'">
+                Solicitar Saque
+            </button>
+            {% else %}
+            <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">Faltam <strong>R$ {{ "%.2f"|format(100 - user.referral_balance) }}</strong> para o saque mínimo.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="stat-grid" style="margin-top: 2rem;">
+    <div class="card stat-card">
+        <div class="stat-data">
+            <h4 style="margin-bottom: 0.25rem;">Cadastros</h4>
+            <p style="font-size: 1.5rem; font-weight: 800; margin: 0;">{{ total_signups }}</p>
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-data">
+            <h4 style="margin-bottom: 0.25rem;">Conversões</h4>
+            <p style="font-size: 1.5rem; font-weight: 800; margin: 0;">{{ total_converted }}</p>
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-data">
+            <h4 style="margin-bottom: 0.25rem;">Total Ganhos</h4>
+            <p style="font-size: 1.5rem; font-weight: 800; margin: 0;">R$ {{ "%.2f"|format(total_earned or 0.0) }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 2rem; padding: 2rem;">
+    <h3 style="margin-bottom: 1.5rem;">Histórico de Indicações</h3>
+    {% if conversions %}
+    <div class="table-container">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                    <th style="padding: 1rem;">Data</th>
+                    <th style="padding: 1rem;">Status</th>
+                    <th style="padding: 1rem;">Recompensa</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for conv in conversions %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 1rem; color: var(--text-secondary);">{{ conv.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td style="padding: 1rem;">
+                        <span class="badge {{ 'badge-success' if conv.status == 'rewarded' else 'badge-warning' }}">
+                            {{ conv.status.upper() }}
+                        </span>
+                    </td>
+                    <td style="padding: 1rem; font-weight: 600;">{{ 'R$ ' ~ "%.2f"|format(conv.reward_brl) if conv.reward_brl else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+        <p>Você ainda não indicou ninguém. Compartilhe seu link para começar a ganhar!</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Simple Withdrawal Modal -->
+<div id="withdrawModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1001; align-items: center; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
+        <h3 style="margin-bottom: 1.5rem;">Solicitar Saque</h3>
+        <form action="/referral/request-withdrawal" method="POST">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Chave PIX (CPF, E-mail ou Telefone)</label>
+                <input type="text" name="pix_key" required placeholder="Sua chave PIX aqui" 
+                    style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--glass); color: white;">
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                O valor de <strong>R$ {{ "%.2f"|format(user.referral_balance) }}</strong> será enviado para sua conta em até 48 horas úteis.
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="document.getElementById('withdrawModal').style.display='none'" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="background: var(--p-grad); border: none; flex: 1;">Confirmar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function copyRefLink() {
+    const input = document.getElementById('refLinkInput');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value);
+    alert('Link de indicação copiado!');
+}
+</script>
+{% endblock %}
