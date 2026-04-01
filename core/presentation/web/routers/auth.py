@@ -81,8 +81,16 @@ async def register_action(
     email: str = Form(...),
     password: str = Form(...),
     business_name: str = Form(...),
+    terms_accepted: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    if terms_accepted != "on":
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Você precisa aceitar os Termos de Uso.", "title": "Register"},
+        )
+
     existing_user = db.query(UserModel).filter(UserModel.email == email).first()
     if existing_user:
         return templates.TemplateResponse(
@@ -91,7 +99,11 @@ async def register_action(
             context={"error": "Email already registered", "title": "Register"},
         )
 
-    new_user = UserModel(email=email, hashed_password=auth_service.hash_password(password))
+    new_user = UserModel(
+        email=email, 
+        hashed_password=auth_service.hash_password(password),
+        agreed_to_terms_at=datetime.utcnow()
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
