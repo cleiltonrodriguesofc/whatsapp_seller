@@ -13,10 +13,9 @@ from sqlalchemy.orm import Session
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.models import (
-    CampaignStatus as ModelCampaignStatus,
-    InstanceModel,
-    UserModel,
     StatusCampaignModel,
+    SubscriptionModel,
+    UserModel,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
@@ -53,9 +52,18 @@ async def home(
     status_campaigns = db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == current_user.id).all()
     sent_count = (
         db.query(StatusCampaignModel)
-        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == ModelCampaignStatus.SENT.value)
+        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == "sent")
         .count()
     )
+
+    # Buscar assinatura e dados de referral
+    subscription = db.query(SubscriptionModel).filter(SubscriptionModel.user_id == current_user.id).first()
+    
+    # Calcular dias restantes se for trial
+    days_left = 0
+    if subscription and subscription.status == "trialing" and subscription.trial_ends_at:
+        delta = subscription.trial_ends_at - datetime.utcnow()
+        days_left = max(0, delta.days)
 
     return templates.TemplateResponse(
         request=request,
@@ -66,6 +74,8 @@ async def home(
             "ai_count": 0,
             "total_clicks": 0,
             "user": current_user,
+            "subscription": subscription,
+            "days_left": days_left,
         },
     )
 
