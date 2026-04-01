@@ -4,6 +4,21 @@
 {% block page_subtitle %}Acompanhe suas campanhas e o desempenho do marketing automatizado.{% endblock %}
 
 {% block content %}
+{% if subscription and subscription.status == "trialing" %}
+<div class="card trial-banner" style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: white; margin-bottom: 2rem; border: none; display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 2rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="font-size: 1.5rem;">🎁</span>
+        <div>
+            <h4 style="margin: 0; font-weight: 700;">Seu Trial Gratuito está ativo!</h4>
+            <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">Você tem <strong>{{ days_left }} dias</strong> restantes para testar todas as funcionalidades Pro.</p>
+        </div>
+    </div>
+    <a href="/pricing" class="btn btn-primary" style="background: white; color: var(--primary); border: none; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+        Fazer Upgrade Agora
+    </a>
+</div>
+{% endif %}
+
 <div class="stat-grid">
     <div class="card stat-card">
         <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">📊</div>
