@@ -35,6 +35,12 @@
             <a href="/broadcast" class="nav-item {{ 'active' if '/broadcast' in request.url.path else '' }}">
                 <span class="nav-item-icon">📢</span> Broadcast
             </a>
+            <a href="/dashboard/billing" class="nav-item {{ 'active' if '/billing' in request.url.path else '' }}">
+                <span class="nav-item-icon">💳</span> Faturamento
+            </a>
+            <a href="/referral" class="nav-item {{ 'active' if '/referral' in request.url.path else '' }}">
+                <span class="nav-item-icon">🤝</span> Indicação
+            </a>
             <a href="/whatsapp/connect"
                 class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
                 <span class="nav-icon">📱</span>
