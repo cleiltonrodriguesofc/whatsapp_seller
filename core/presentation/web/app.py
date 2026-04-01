@@ -29,6 +29,7 @@ from core.presentation.web.routers import (
     storage,
     whatsapp,
     broadcast,
+    static_pages,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -161,3 +162,4 @@ app.include_router(status_campaigns.router)
 app.include_router(storage.router)
 app.include_router(whatsapp.router)
 app.include_router(broadcast.router)
+app.include_router(static_pages.router)
