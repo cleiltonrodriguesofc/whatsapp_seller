@@ -182,6 +182,34 @@
         .final-cta-sub { color: var(--text-secondary); font-size: 1.1rem; max-width: 550px; margin: 0 auto 2.5rem; line-height: 1.65; }
         .final-cta-note { color: var(--text-muted); font-size: 0.8rem; margin-top: 1.25rem; }
 
+        /* ── Pricing ─────────────────────────────────────────────── */
+        .pricing { padding: 8rem 0; background: #080910; position: relative; }
+        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 4.5rem; }
+        .price-card {
+            background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);
+            padding: 3.5rem 2.5rem; border-radius: 32px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; display: flex; flex-direction: column;
+        }
+        .price-card:hover { transform: translateY(-12px); border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.04); }
+        .price-card.popular {
+            background: rgba(99, 102, 241, 0.06); border: 2px solid var(--primary);
+            transform: scale(1.05); z-index: 10;
+        }
+        .price-card.popular:hover { transform: scale(1.05) translateY(-12px); }
+        .popular-badge {
+            position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+            background: var(--p-grad); color: white; font-size: 0.75rem; font-weight: 800;
+            padding: 0.4rem 1.2rem; border-radius: 100px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .price-name { font-size: 1.25rem; font-weight: 800; color: white; margin-bottom: 0.5rem; }
+        .price-val { font-size: 3.5rem; font-weight: 950; color: white; margin-bottom: 1.5rem; display: flex; align-items: baseline; gap: 0.25rem; }
+        .price-val span { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
+        .price-features { list-style: none; padding: 0; margin: 0 0 2.5rem; flex-grow: 1; }
+        .price-features li { padding: 0.85rem 0; color: rgba(255, 255, 255, 0.85); font-size: 0.95rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem; }
+        .price-features li::before { content: '✓'; color: var(--green); font-weight: 900; }
+        .price-features li.no::before { content: '×'; color: #ef4444; }
+        .price-features li.no { color: var(--text-muted); opacity: 0.6; }
+
         /* ── Footer ─────────────────────────────────────────────── */
         footer {
             padding: 4rem 0; border-top: 1px solid var(--border); text-align: center;
@@ -241,6 +269,7 @@
     <nav class="nav-landing">
         <a href="/" class="nav-logo">🚀 What<span style="color:#a5b4fc;">Seller</span> Pro</a>
         <div style="display: flex; gap: 1.5rem; align-items: center;">
+            <a href="#pricing" style="color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Preços</a>
             <a href="/login" style="color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Entrar</a>
             <a href="/register" class="btn-p" style="padding: 0.6rem 1.5rem; font-size: 0.85rem;">Começar Grátis</a>
         </div>
@@ -253,8 +282,8 @@
             <h1 class="hero-title">Venda mais pelo<br><span class="accent">WhatsApp</span>,<br>no piloto automático</h1>
             <p class="hero-subtitle">Escale seus lucros com Campanhas em Massa (Broadcast) e postagens automáticas nos Status. Crie textos com Inteligência Artificial, gerencie suas instâncias sem risco de ban e alcance seus clientes onde eles estão.</p>
             <div class="hero-ctas">
-                <a href="/register" class="btn-p">Criar conta gratuita</a>
-                <a href="#features" class="btn-ghost-l">Ver como funciona</a>
+                <a href="/register" class="btn-p">Começar Teste Grátis</a>
+                <a href="#pricing" class="btn-ghost-l">Ver Planos</a>
             </div>
             <img src="/static/dashboard_v3_mockup_1774045102162.png" alt="Painel WhatSeller Pro" class="hero-mockup">
         </header>
@@ -349,6 +378,59 @@
                     <div class="step-num">3</div>
                     <h3 class="step-title">3. Caixa Econômica Fazendo "Plim"</h3>
                     <p class="step-desc">Configure como "Imediato", "Agendado" ou "Recorrente". Nós enviaremos sem parecer um robô, preservando sua conta enquanto recuperamos seus lucros e carrinhos abandonados.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── PRICING ────────────────────────────────────────── -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Transparência</span>
+                <h2 class="section-title">Escolha o plano ideal para sua escala</h2>
+                <p class="section-sub">Comece hoje mesmo com 3 dias de trial gratuito em qualquer plano. Sem compromisso.</p>
+            </div>
+            <div class="price-grid">
+                <div class="price-card">
+                    <h3 class="price-name">Starter</h3>
+                    <div class="price-val">R$ 97 <span>/ mês</span></div>
+                    <ul class="price-features">
+                        <li>1 Instância do WhatsApp</li>
+                        <li>5 Campanhas por mês</li>
+                        <li>Até 500 contatos/mês</li>
+                        <li>Status Automático</li>
+                        <li class="no">Inteligência Artificial (IA)</li>
+                        <li class="no">Suporte Prioritário</li>
+                    </ul>
+                    <a href="/register?plan=starter" class="btn-ghost-l" style="width: 100%; text-align: center;">Assinar Starter</a>
+                </div>
+                <div class="price-card popular">
+                    <div class="popular-badge">Mais Popular</div>
+                    <h3 class="price-name">Pro</h3>
+                    <div class="price-val">R$ 197 <span>/ mês</span></div>
+                    <ul class="price-features">
+                        <li>3 Instâncias do WhatsApp</li>
+                        <li>Campanhas Ilimitadas</li>
+                        <li>Contatos Ilimitados</li>
+                        <li>Status Automático</li>
+                        <li>Inteligência Artificial (IA)</li>
+                        <li>Suporte Prioritário</li>
+                    </ul>
+                    <a href="/register?plan=pro" class="btn-p" style="width: 100%; text-align: center;">Assinar Pro</a>
+                </div>
+                <div class="price-card">
+                    <h3 class="price-name">Agência</h3>
+                    <div class="price-val">R$ 397 <span>/ mês</span></div>
+                    <ul class="price-features">
+                        <li>Instâncias Ilimitadas</li>
+                        <li>Campanhas Ilimitadas</li>
+                        <li>Contatos Ilimitados</li>
+                        <li>Status Automático</li>
+                        <li>Inteligência Artificial (IA)</li>
+                        <li>Gerente de Conta</li>
+                    </ul>
+                    <a href="/register?plan=agency" class="btn-ghost-l" style="width: 100%; text-align: center;">Assinar Agência</a>
                 </div>
             </div>
         </div>
@@ -474,9 +556,9 @@
             <a href="/" class="nav-logo" style="justify-content: center;">🚀 What<span style="color:#a5b4fc;">Seller</span> Pro</a>
             <p style="color: var(--text-muted); margin-top: 1rem; font-size: 0.85rem;">A plataforma de automação de vendas mais inteligente do mercado.</p>
             <div class="footer-links">
-                <a href="#">Termos de Uso</a>
-                <a href="#">Privacidade</a>
-                <a href="#">Documentação</a>
+                <a href="/terms">Termos de Uso</a>
+                <a href="/privacy">Privacidade</a>
+                <a href="/docs">Documentação</a>
                 <a href="/login">Entrar</a>
             </div>
             <p style="color: var(--text-muted); margin-top: 2.5rem; font-size: 0.75rem;">© 2026 WhatSeller Pro. Todos os direitos reservados.</p>
