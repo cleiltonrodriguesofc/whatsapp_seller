@@ -12,7 +12,19 @@ from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
-from core.infrastructure.database.models import InstanceModel, UserModel
+from datetime import datetime, timedelta
+import uuid
+import string
+import random
+
+from core.infrastructure.database.models import (
+    InstanceModel, 
+    UserModel, 
+    SubscriptionModel, 
+    PlanModel, 
+    ReferralCodeModel, 
+    ReferralConversionModel
+)
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.presentation.web.dependencies import auth_service, templates
@@ -83,6 +95,61 @@ async def register_action(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # 1. generate referral code for the new user
+    def generate_code(length=8):
+        chars = string.ascii_uppercase + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
+    
+    unique_code = generate_code()
+    while db.query(ReferralCodeModel).filter(ReferralCodeModel.code == unique_code).first():
+        unique_code = generate_code()
+        
+    user_ref_code = ReferralCodeModel(user_id=new_user.id, code=unique_code)
+    db.add(user_ref_code)
+    db.commit()
+    db.refresh(user_ref_code)
+    
+    new_user.referral_code_id = user_ref_code.id
+    db.commit()
+
+    # 2. handle referral from another user
+    ref_code = request.query_params.get("ref")
+    if ref_code:
+        referrer_code_obj = db.query(ReferralCodeModel).filter(ReferralCodeModel.code == ref_code).first()
+        if referrer_code_obj and referrer_code_obj.user_id != new_user.id:
+            conversion = ReferralConversionModel(
+                referrer_id=referrer_code_obj.user_id,
+                referred_id=new_user.id,
+                status="pending"
+            )
+            db.add(conversion)
+            db.commit()
+
+    # 3. create 3-day trial subscription
+    # first, ensure a 'starter' plan exists (or use a default)
+    starter_plan = db.query(PlanModel).filter(PlanModel.name == "starter").first()
+    if not starter_plan:
+        # fallback/auto-create if not exists for trial
+        starter_plan = PlanModel(
+            name="starter",
+            display_name="Starter",
+            price_brl=97.00,
+            max_instances=1,
+            has_ai=False
+        )
+        db.add(starter_plan)
+        db.commit()
+        db.refresh(starter_plan)
+
+    trial_subscription = SubscriptionModel(
+        user_id=new_user.id,
+        plan_id=starter_plan.id,
+        status="trialing",
+        trial_ends_at=datetime.utcnow() + timedelta(days=3)
+    )
+    db.add(trial_subscription)
+    db.commit()
 
     # provision whitatsapp instance
     try:
