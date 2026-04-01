@@ -61,7 +61,8 @@ try:
             ("whatsapp_targets", "instance_id", "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
             ("broadcast_lists", "instance_id", "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
             ("users", "referral_balance", "ALTER TABLE users ADD COLUMN referral_balance FLOAT DEFAULT 0.0;"),
-            ("users", "referral_code_id", "ALTER TABLE users ADD COLUMN referral_code_id INTEGER REFERENCES referral_codes(id) ON DELETE SET NULL;"),
+            ("users", "referral_code_id", "ALTER TABLE users ADD COLUMN referral_code_id INTEGER;"),
+            ("users", "agreed_to_terms_at", "ALTER TABLE users ADD COLUMN agreed_to_terms_at TIMESTAMP;"),
         ]
 
         for table, column, stmt in migrations:
@@ -101,7 +102,7 @@ except Exception as e:
 # rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="WhatSeller Pro", debug=os.environ.get("DEBUG", "false") == "true")
+app = FastAPI(title="🚀 WhatSeller Pro", debug=os.environ.get("DEBUG", "false") == "true")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
