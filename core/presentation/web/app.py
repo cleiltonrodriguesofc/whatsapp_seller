@@ -31,6 +31,7 @@ from core.presentation.web.routers import (
     broadcast,
     static_pages,
     billing,
+    referral,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -165,3 +166,4 @@ app.include_router(whatsapp.router)
 app.include_router(broadcast.router)
 app.include_router(static_pages.router)
 app.include_router(billing.router)
+app.include_router(referral.router)
