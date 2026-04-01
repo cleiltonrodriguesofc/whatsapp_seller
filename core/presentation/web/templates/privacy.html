@@ -1,33 +1,151 @@
 {% extends "public_layout.html" %}
 
+{% block title %}Política de Privacidade{% endblock %}
 {% block page_title %}Política de Privacidade{% endblock %}
-{% block page_subtitle %}Sua privacidade e segurança são nossa prioridade máxima.{% endblock %}
+{% block page_subtitle %}Última atualização: 01 de Abril de 2026 &nbsp;·&nbsp; Versão 2.0{% endblock %}
 
 {% block content %}
-<div style="line-height: 1.8;">
-    <section style="margin-bottom: 2rem;">
-        <h3 style="color: var(--primary); margin-bottom: 1rem;">1. Coleta de Dados</h3>
-        <p>Ao se cadastrar no WhatSeller Pro, coletamos informações como nome completo, e-mail e dados da sessão. Esses dados são fundamentais para o funcionamento da plataforma e autenticação segura.</p>
-    </section>
+<style>
+  .legal-body { font-size: 0.8rem; line-height: 1.6; color: rgba(255,255,255,0.85); }
+  .legal-body h2 { font-size: 1.2rem; font-weight: 700; margin: 3rem 0 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .legal-body p, .legal-body li { margin-bottom: 1rem; }
+  .legal-body ul, .legal-body ol { padding-left: 1.5rem; margin-bottom: 1.5rem; }
+  
+  /* Tables */
+  .legal-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.75rem; background: rgba(255, 255, 255, 0.02); border-radius: 12px; overflow: hidden; }
+  .legal-body th { background: rgba(255, 255, 255, 0.05); text-align: left; padding: 12px 16px; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border); }
+  .legal-body td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; color: rgba(255, 255, 255, 0.7); }
+  .legal-body tr:last-child td { border-bottom: none; }
 
-    <section style="margin-bottom: 2rem;">
-        <h3 style="color: var(--primary); margin-bottom: 1rem;">2. Uso das Informações</h3>
-        <p>Seus dados são utilizados exclusivamente para o gerenciamento de suas campanhas, processamento de pagamentos e comunicação sobre atualizações do serviço.</p>
-    </section>
+  .info-box {
+    background: rgba(99, 102, 241, 0.1); border-left: 4px solid var(--primary);
+    padding: 1.5rem; border-radius: 12px; margin: 2rem 0;
+  }
+  .info-box strong { display: block; margin-bottom: 0.5rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; }
+  
+  .green-box {
+    background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981;
+    padding: 1.5rem; border-radius: 12px; margin: 2rem 0;
+  }
+  .green-box strong { display: block; margin-bottom: 0.5rem; color: #10b981; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; }
+  
+  .toc { 
+    background: rgba(255, 255, 255, 0.03); 
+    border: 1px solid var(--border); 
+    border-radius: 16px; 
+    padding: 2rem; 
+    margin-bottom: 4rem; 
+    backdrop-filter: blur(4px);
+  }
+  .toc h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 1rem; }
+  .toc ol { margin: 0; padding-left: 1.25rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .toc li { font-size: 0.8rem; color: var(--text-muted); }
+  .toc a { color: var(--primary); text-decoration: none; transition: color 0.2s; }
+  .toc a:hover { color: white; text-decoration: underline; }
 
-    <section style="margin-bottom: 2rem;">
-        <h3 style="color: var(--primary); margin-bottom: 1rem;">3. Segurança e Armazenamento</h3>
-        <p>Os dados são armazenados em servidores seguros, com criptografia e acesso restrito. Não compartilhamos informações pessoais com terceiros para fins publicitários.</p>
-    </section>
+  .rights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 2rem 0; }
+  .rights-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; transition: transform 0.2s; }
+  .rights-card:hover { transform: translateY(-5px); background: rgba(255, 255, 255, 0.05); }
+  .rights-card .icon { font-size: 1.5rem; margin-bottom: 1rem; }
+  .rights-card strong { display: block; font-size: 0.9rem; margin-bottom: 0.5rem; color: white; }
+  .rights-card p { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
 
-    <section style="margin-bottom: 2rem;">
-        <h3 style="color: var(--primary); margin-bottom: 1rem;">4. Direitos do Titular (LGPD)</h3>
-        <p>Em conformidade com a LGPD, o usuário tem o direito de acessar, corrigir ou solicitar a exclusão de seus dados pessoais a qualquer momento, enviando um e-mail para nossa central.</p>
-    </section>
+  @media (max-width: 640px) {
+    .toc ol, .rights-grid { grid-template-columns: 1fr; }
+  }
+</style>
 
-    <section>
-        <h3 style="color: var(--primary); margin-bottom: 1rem;">5. Cookies</h3>
-        <p>A plataforma utiliza cookies estritamente necessários para manter a sessão do usuário ativa e garantir a segurança da navegação.</p>
-    </section>
+<div class="legal-body">
+
+  <div class="info-box">
+    <strong>ℹ️ RESUMO DE PRIVACIDADE</strong>
+    Coletamos apenas os dados necessários para operar a plataforma 🚀 WhatSeller Pro. Não vendemos nem alugamos seus dados para terceiros. Você tem controle total e pode exercer seus direitos LGPD a qualquer momento pelo e-mail <strong>privacidade@whatsellerpro.com.br</strong>.
+  </div>
+
+  <div class="toc">
+    <h3>Índice</h3>
+    <ol>
+      <li><a href="#p1">Quem somos (Controlador)</a></li>
+      <li><a href="#p2">Dados coletados e como</a></li>
+      <li><a href="#p3">Finalidades do uso</a></li>
+      <li><a href="#p4">Base legal (LGPD)</a></li>
+      <li><a href="#p5">Dados de terceiros (leads)</a></li>
+      <li><a href="#p6">Compartilhamento</a></li>
+      <li><a href="#p7">Transferência internacional</a></li>
+      <li><a href="#p8">Armazenamento e segurança</a></li>
+      <li><a href="#p9">Cookies técnicos</a></li>
+      <li><a href="#p10">Seus direitos (LGPD)</a></li>
+      <li><a href="#p11">Menores de idade</a></li>
+      <li><a href="#p12">Alterações à Política</a></li>
+      <li><a href="#p13">Contato DPO</a></li>
+    </ol>
+  </div>
+
+  <h2 id="p1">1. Quem somos — Identificação do Controlador</h2>
+  <p>O 🚀 <strong>WhatSeller Pro</strong> é o Controlador dos dados pessoais dos Usuários cadastrados na Plataforma, nos termos da Lei Federal nº 13.709/2018 (Lei Geral de Proteção de Dados — LGPD).</p>
+
+  <h2 id="p2">2. Quais dados coletamos e como</h2>
+  <p><strong>2.1 Dados fornecidos diretamente por você</strong></p>
+  <table>
+    <thead><tr><th>Dado</th><th>Momento</th><th>Finalidade</th></tr></thead>
+    <tbody>
+      <tr><td>Nome/E-mail</td><td>Cadastro</td><td>Identificação e comunicação</td></tr>
+      <tr><td>Senha (Hashed)</td><td>Cadastro</td><td>Autenticação segura (bcrypt)</td></tr>
+      <tr><td>Pagamento</td><td>Assinatura</td><td>Processado via Mercado Pago</td></tr>
+      <tr><td>Código de Indicação</td><td>Cadastro</td><td>Recompensas de indicação</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>2.2 Dados coletados automaticamente</strong></p>
+  <table>
+    <thead><tr><th>Dado</th><th>Origem</th><th>Finalidade</th></tr></thead>
+    <tbody>
+      <tr><td>Endereço IP</td><td>Navegação</td><td>Segurança e rate limiting</td></tr>
+      <tr><td>Token JWT</td><td>Autenticação</td><td>Manutenção de sessão segura</td></tr>
+      <tr><td>Logs de Acesso</td><td>Servidor</td><td>Diagnóstico e Auditoria</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="p3">3. Para que usamos seus dados</h2>
+  <ul>
+    <li><strong>Operação:</strong> Criação de conta e acesso às funcionalidades Pro;</li>
+    <li><strong>Assinatura:</strong> Gestão de faturamento recorrente e planos;</li>
+    <li><strong>Comunicação:</strong> E-mails transacionais e alertas do sistema;</li>
+    <li><strong>Segurança:</strong> Prevenção de abusos e fraudes.</li>
+  </ul>
+
+  <h2 id="p4">4. Base legal para o tratamento</h2>
+  <p>O tratamento de dados é realizado com base na **Execução de Contrato** (Art. 7º, V da LGPD) e no **Legítimo Interesse** (Art. 7º, IX) para proteção e melhoria contínua da Plataforma.</p>
+
+  <h2 id="p5">5. Dados de terceiros inseridos pelo Usuário</h2>
+  <div class="info-box">
+    <strong>ℹ️ PAPEL DA PLATAFORMA COMO OPERADORA</strong>
+    Nós atuamos como <strong>Operadora</strong> dos dados de seus leads e clientes. O Usuário é o <strong>Controlador</strong> e deve garantir que possui base legal válida para realizar os disparos de mensagens.
+  </div>
+
+  <h2 id="p6">6. Compartilhamento com terceiros</h2>
+  <p>Compartilhamos dados necessários com: **Mercado Pago** (pagamentos), **Provedores de Nuvem** (infraestrutura) e **OpenAI** (somente se habilitada a geração de conteúdo por IA).</p>
+
+  <h2 id="p8">8. Armazenamento, segurança e retenção</h2>
+  <div class="green-box">
+    <strong>🔒 PADRÕES DE SEGURANÇA</strong>
+    Criptografia ponta a ponta · JWT HttpOnly · Proteção CSRF/SOP · Monitoramento de Logs · Acesso restrito via VPC.
+  </div>
+
+  <h2 id="p10">10. Seus direitos como titular (LGPD)</h2>
+  <div class="rights-grid">
+    <div class="rights-card"><div class="icon">👁️</div><strong>Acesso</strong><p>Saber quais dados temos sobre você.</p></div>
+    <div class="rights-card"><div class="icon">✏️</div><strong>Correção</strong><p>Corrigir dados inexatos.</p></div>
+    <div class="rights-card"><div class="icon">🗑️</div><strong>Exclusão</strong><p>Eliminar sua conta e dados residuais.</p></div>
+    <div class="rights-card"><div class="icon">📦</div><strong>Portabilidade</strong><p>Exportação de dados estruturados.</p></div>
+  </div>
+
+  <h2 id="p13">13. Contato e Encarregado de Dados (DPO)</h2>
+  <p>Para dúvidas ou solicitações: <strong>privacidade@whatsellerpro.com.br</strong></p>
+
+  <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; opacity: 0.5; font-size: 0.75rem;">
+    © 2026 🚀 WhatSeller Pro. Todos os direitos reservados.
+  </div>
+
 </div>
 {% endblock %}
