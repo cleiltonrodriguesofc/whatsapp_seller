@@ -40,7 +40,7 @@ async def create_checkout_session(
         "payer_email": current_user.email,
         "back_url": f"{os.environ.get('BASE_URL', 'http://localhost:8000')}/checkout/success",
         "external_reference": str(current_user.id),
-        "reason": f"🚀 WhatSeller Pro - Plano {plan.display_name}",
+        "reason": f"WhatSeller Pro - Plano {plan.display_name}",
         "auto_recurring": {
             "frequency": 1,
             "frequency_type": "months",
