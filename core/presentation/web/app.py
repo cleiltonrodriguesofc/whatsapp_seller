@@ -103,7 +103,7 @@ except Exception as e:
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title="🚀 WhatSeller Pro",
+    title="WhatSeller Pro",
     debug=os.environ.get("DEBUG", "false") == "true",
     docs_url="/api-docs",
     redoc_url="/api-redoc"
