@@ -3,11 +3,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 import os
 import mercadopago
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
 
 from core.infrastructure.database.models import UserModel, SubscriptionModel, PlanModel, ReferralConversionModel
 from core.infrastructure.database.session import get_db
-from core.presentation.web.dependencies import templates, get_current_user, login_required
+from core.presentation.web.dependencies import templates, login_required
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["billing"])
 

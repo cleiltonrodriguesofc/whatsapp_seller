@@ -14,11 +14,11 @@ def client(override_get_db):
 
 def login_user(client, db_session, email="pro_test@test.com"):
     auth = AuthService()
-    user = UserModel(email=email, hashed_password=auth.hash_password("pro_pass_123"))
+    user = UserModel(email=email, hashed_password=auth.hash_password("test_password_placeholder"))
     db_session.add(user)
     db_session.commit()
     
-    client.post("/login", data={"username": email, "password": "pro_pass_123"})
+    client.post("/login", data={"username": email, "password": "test_password_placeholder"})
     return user
 
 def test_login_page_identity(client):

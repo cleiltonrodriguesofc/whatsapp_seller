@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from core.infrastructure.database.models import UserModel, ReferralCodeModel, ReferralConversionModel
 from core.infrastructure.database.session import get_db
-from core.presentation.web.dependencies import templates, get_current_user, login_required
+from core.presentation.web.dependencies import templates, login_required
 
 router = APIRouter(tags=["referral"])
 
