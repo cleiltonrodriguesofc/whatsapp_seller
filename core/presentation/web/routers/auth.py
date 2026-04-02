@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
 from datetime import datetime, timedelta
-import uuid
 import string
 import random
 
