@@ -5,14 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "🚀 WhatSeller Pro" }}</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
     <div class="mobile-header">
-        <a href="/" class="sidebar-logo" style="margin-bottom: 0; padding: 0; text-decoration: none;">
-            <span>🚀</span> <strong style="font-weight: 900;">What<span style="color: var(--primary);">Seller</span> Pro</strong>
+        <a href="/" class="sidebar-logo" style="text-decoration: none;">
+            <span>🚀</span> <strong style="font-weight: 700;">What<span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Seller</span> Pro</strong>
         </a>
         <div style="margin-left: auto;">
             {% if user %}
@@ -23,7 +24,7 @@
     </div>
     <aside class="sidebar">
         <a href="/" class="sidebar-logo" style="text-decoration: none;">
-            <span>🚀</span> <strong style="font-weight: 900;">What<span style="color: var(--primary);">Seller</span> Pro</strong>
+            <span>🚀</span> <strong style="font-weight: 700;">What<span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Seller</span> Pro</strong>
         </a>
 
         <nav class="nav-menu">
@@ -36,12 +37,14 @@
             <a href="/broadcast" class="nav-item {{ 'active' if '/broadcast' in request.url.path else '' }}">
                 <span class="nav-item-icon">📢</span> Broadcast
             </a>
+            {# 
             <a href="/dashboard/billing" class="nav-item {{ 'active' if '/billing' in request.url.path else '' }}">
                 <span class="nav-item-icon">💳</span> Faturamento
             </a>
             <a href="/referral" class="nav-item {{ 'active' if '/referral' in request.url.path else '' }}">
                 <span class="nav-item-icon">🤝</span> Indicação
-            </a>
+            </a> 
+            #}
             <a href="/whatsapp/connect"
                 class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
                 <span class="nav-icon">📱</span>
@@ -81,14 +84,6 @@
             {% block content %}{% endblock %}
         </section>
 
-        <footer style="margin-top: 4rem; padding: 2rem 0; border-top: 2px solid rgba(99, 102, 241, 0.05); display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
-            <div>
-                &copy; {{ now_sp().year if now_sp else "2024" }} <strong>🚀 WhatSeller Pro</strong>. Todos os direitos reservados.
-            </div>
-            <div style="display: flex; gap: 1.5rem;">
-                <!-- Legal links moved to public pages (Landing, Login, Register) per SaaS best practices -->
-            </div>
-        </footer>
     </main>
 
     <script>

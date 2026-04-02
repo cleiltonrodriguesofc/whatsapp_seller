@@ -1,111 +1,186 @@
 {% extends "base.html" %}
 
 {% block page_title %}Programa de Indicação{% endblock %}
-{% block page_subtitle %}Indique e ganhe 30% da primeira mensalidade de cada novos usuários indicados por você.{% endblock %}
+{% block page_subtitle %}Cresça com o 🚀 WhatSeller Pro e receba 30% de comissão recorrente.{% endblock %}
 
 {% block content %}
-<div class="stat-grid">
-    <div class="card stat-card" style="grid-column: span 2; background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);">
-        <h4 style="margin-bottom: 1rem; color: var(--text-secondary);">Seu Link de Indicação</h4>
+<style>
+    .ref-link-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(8px);
+        padding: 2.5rem;
+        border-radius: 24px;
+        margin-bottom: 2rem;
+    }
+    
+    .glass-input {
+        background: rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 1.25rem !important;
+        color: #fff !important;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+    }
+
+    .stat-card-premium {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.5rem;
+        backdrop-filter: blur(4px);
+        transition: transform 0.3s ease, background 0.3s ease;
+    }
+    .stat-card-premium:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .withdraw-modal-glass {
+        background: rgba(15, 17, 26, 0.8) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+</style>
+
+<div class="ref-link-card animate-fade-in">
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div>
+            <h4 style="margin: 0 0 0.5rem 0; color: white; display: flex; align-items: center; gap: 0.5rem;">
+                <span>🔗</span> Seu Link de Indicação Único
+            </h4>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Compartilhe e ganhe 30% em Rewards por cada assinatura convertida.</p>
+        </div>
+        
         <div style="display: flex; gap: 1rem; align-items: center;">
-            <input type="text" value="{{ ref_link }}" id="refLinkInput" readonly 
-                style="flex-grow: 1; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; font-family: monospace; font-size: 0.9rem;">
-            <button onclick="copyRefLink()" class="btn btn-primary" style="background: var(--p-grad); border: none; font-weight: 700; white-space: nowrap;">
-                Copiar Link
+            <input type="text" value="{{ ref_link }}" id="refLinkInput" readonly class="glass-input" style="flex-grow: 1;">
+            <button onclick="copyRefLink()" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                Copiar
             </button>
         </div>
-        <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
-            Seu código único: <strong style="color: var(--primary);">{{ ref_code }}</strong>
-        </p>
     </div>
+</div>
 
-    <div class="card stat-card">
-        <div class="stat-data">
-            <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">Saldo Disponível</h4>
-            <p style="font-size: 2rem; font-weight: 800; margin: 0; color: #10b981;">R$ {{ "%.2f"|format(user.referral_balance) }}</p>
+<div class="stat-grid">
+    <div class="stat-card-premium">
+        <h4 style="margin: 0 0 1rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Saldo Disponível</h4>
+        <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+            <span style="font-size: 2.25rem; font-weight: 900; color: #10b981;">R$ {{ "%.2f"|format(user.referral_balance) }}</span>
+        </div>
+        <div style="margin-top: 1.5rem;">
             {% if user.referral_balance >= 100 %}
-            <button class="btn btn-sm btn-outline-success" style="margin-top: 1rem; width: 100%; border-color: #10b981; color: #10b981;" onclick="document.getElementById('withdrawModal').style.display='flex'">
-                Solicitar Saque
+            <button class="btn btn-primary" style="width: 100%; background: #10b981; border: none;" onclick="document.getElementById('withdrawModal').style.display='flex'">
+                Solicitar Saque via PIX
             </button>
             {% else %}
-            <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">Faltam <strong>R$ {{ "%.2f"|format(100 - user.referral_balance) }}</strong> para o saque mínimo.</p>
+            <div style="background: rgba(255,255,255,0.03); border-radius: 12px; height: 8px; margin-bottom: 0.5rem; overflow: hidden;">
+                <div style="background: var(--primary); height: 100%; width: {{ (user.referral_balance / 100) * 100 }}%;"></div>
+            </div>
+            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Progresso para saque: <strong>{{ "%.1f"|format((user.referral_balance / 100) * 100) }}%</strong></p>
             {% endif %}
         </div>
     </div>
+
+    <div class="stat-card-premium">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Performance</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block;">{{ total_signups }}</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">Cadastros</span>
+            </div>
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block; color: var(--secondary);">{{ total_converted }}</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">Vendas</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card-premium">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Total Bruto</h4>
+        <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+            <span style="font-size: 1.5rem; font-weight: 700;">R$ {{ "%.2f"|format(total_earned or 0.0) }}</span>
+        </div>
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.7rem; color: var(--text-muted);">Comissões vitalícias acumuladas.</p>
+    </div>
 </div>
 
-<div class="stat-grid" style="margin-top: 2rem;">
-    <div class="card stat-card">
-        <div class="stat-data">
-            <h4 style="margin-bottom: 0.25rem;">Cadastros</h4>
-            <p style="font-size: 1.5rem; font-weight: 800; margin: 0;">{{ total_signups }}</p>
-        </div>
+<div class="card" style="margin-top: 2.5rem; padding: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h3 style="margin: 0;">Histórico de Recompensas</h3>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Mostrando as últimas {{ conversions|length }} movimentações</span>
     </div>
-    <div class="card stat-card">
-        <div class="stat-data">
-            <h4 style="margin-bottom: 0.25rem;">Conversões</h4>
-            <p style="font-size: 1.5rem; font-weight: 800; margin: 0;">{{ total_converted }}</p>
-        </div>
-    </div>
-    <div class="card stat-card">
-        <div class="stat-data">
-            <h4 style="margin-bottom: 0.25rem;">Total Ganhos</h4>
-            <p style="font-size: 1.5rem; font-weight: 800; margin: 0;">R$ {{ "%.2f"|format(total_earned or 0.0) }}</p>
-        </div>
-    </div>
-</div>
 
-<div class="card" style="margin-top: 2rem; padding: 2rem;">
-    <h3 style="margin-bottom: 1.5rem;">Histórico de Indicações</h3>
     {% if conversions %}
     <div class="table-container">
         <table style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="text-align: left; border-bottom: 1px solid var(--border);">
-                    <th style="padding: 1rem;">Data</th>
-                    <th style="padding: 1rem;">Status</th>
-                    <th style="padding: 1rem;">Recompensa</th>
+                    <th style="padding: 1rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Evento</th>
+                    <th style="padding: 1rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Status</th>
+                    <th style="padding: 1rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Data</th>
+                    <th style="padding: 1rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; text-align: right;">Valor</th>
                 </tr>
             </thead>
             <tbody>
                 {% for conv in conversions %}
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td style="padding: 1rem; color: var(--text-secondary);">{{ conv.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                     <td style="padding: 1rem;">
-                        <span class="badge {{ 'badge-success' if conv.status == 'rewarded' else 'badge-warning' }}">
-                            {{ conv.status.upper() }}
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(99, 102, 241, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                                ✨
+                            </div>
+                            <span style="font-size: 0.9rem; font-weight: 500;">Conversão Digital</span>
+                        </div>
+                    </td>
+                    <td style="padding: 1rem;">
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; background: {{ 'rgba(16, 185, 129, 0.1)' if conv.status == 'rewarded' else 'rgba(245, 158, 11, 0.1)' }}; color: {{ '#10b981' if conv.status == 'rewarded' else '#f59e0b' }};">
+                            {{ 'LIBERADO' if conv.status == 'rewarded' else 'EM ANÁLISE' }}
                         </span>
                     </td>
-                    <td style="padding: 1rem; font-weight: 600;">{{ 'R$ ' ~ "%.2f"|format(conv.reward_brl) if conv.reward_brl else '-' }}</td>
+                    <td style="padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">{{ conv.created_at.strftime('%d %b, %Y') }}</td>
+                    <td style="padding: 1rem; text-align: right; font-weight: 700; color: #fff;">
+                        {{ '+ R$ ' ~ "%.2f"|format(conv.reward_brl) if conv.reward_brl else '---' }}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
     {% else %}
-    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
-        <p>Você ainda não indicou ninguém. Compartilhe seu link para começar a ganhar!</p>
+    <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted); background: rgba(255,255,255,0.01); border-radius: 20px; border: 1px dashed var(--border);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📣</div>
+        <h4 style="color: white; margin-bottom: 0.5rem;">Nenhuma indicação encontrada</h4>
+        <p style="margin: 0; font-size: 0.85rem; max-width: 300px; margin: 0 auto;">Comece a compartilhar seu link exclusivo e acompanhe seus ganhos em tempo real.</p>
     </div>
     {% endif %}
 </div>
 
-<!-- Simple Withdrawal Modal -->
-<div id="withdrawModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1001; align-items: center; justify-content: center;">
-    <div class="card" style="width: 100%; max-width: 400px; padding: 2rem;">
-        <h3 style="margin-bottom: 1.5rem;">Solicitar Saque</h3>
+<!-- Glass Withdrawal Modal -->
+<div id="withdrawModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="withdraw-modal-glass" style="width: 100%; max-width: 440px; padding: 2.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0;">Solicitar Resgate</h3>
+            <button onclick="document.getElementById('withdrawModal').style.display='none'" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
+        </div>
+        
         <form action="/referral/request-withdrawal" method="POST">
             <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Chave PIX (CPF, E-mail ou Telefone)</label>
-                <input type="text" name="pix_key" required placeholder="Sua chave PIX aqui" 
-                    style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--glass); color: white;">
+                <label style="display: block; margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Sua Chave PIX</label>
+                <input type="text" name="pix_key" required placeholder="CPF, E-mail ou Telefone" class="glass-input" style="width: 100%;">
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem;">Certifique-se de que a chave está correta para evitar atrasos.</p>
             </div>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-                O valor de <strong>R$ {{ "%.2f"|format(user.referral_balance) }}</strong> será enviado para sua conta em até 48 horas úteis.
-            </p>
-            <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="document.getElementById('withdrawModal').style.display='none'" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
-                <button type="submit" class="btn btn-primary" style="background: var(--p-grad); border: none; flex: 1;">Confirmar</button>
+            
+            <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1rem; margin-bottom: 2rem;">
+                <p style="margin: 0; font-size: 0.85rem; color: #10b981;">Valor a ser resgatado: <strong>R$ {{ "%.2f"|format(user.referral_balance) }}</strong></p>
             </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-weight: 700; background: var(--p-grad); border: none;">
+                Confirmar Saque
+            </button>
         </form>
     </div>
 </div>
@@ -116,7 +191,12 @@ function copyRefLink() {
     input.select();
     input.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(input.value);
-    alert('Link de indicação copiado!');
+    
+    // Simple visual feedback
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Copiado!';
+    setTimeout(() => { btn.innerHTML = originalText; }, 2000);
 }
 </script>
 {% endblock %}

@@ -4,46 +4,346 @@
 {% block page_subtitle %}Acesse seu painel de vendas automatizadas.{% endblock %}
 
 {% block content %}
-<div class="animate-fade-in" style="max-width: 450px; margin: 4rem auto;">
-    <div class="card" style="padding: 2.5rem; border: 1px solid var(--border); background: var(--bg-card); box-shadow: 0 20px 40px rgba(0,0,0,0.4);">
-        <div style="text-align: center; margin-bottom: 2.5rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
-            <h2 style="font-size: 1.5rem; color: #fff;">Bem-vindo de volta</h2>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Acesse seus agentes de vendas com IA.</p>
+<div class="auth-split-container">
+    <!-- Left Side: Branded Banner (Fixed / Sticky) -->
+    <div class="auth-banner">
+        <div class="auth-banner-content">
+            <div class="brand-logo-large">
+                What<span class="gradient-text">Seller</span> Pro
+            </div>
+            <h1 class="auth-headline">Bem-vindo ao futuro das vendas.</h1>
+            <p class="auth-description">Sua operação em escala com o poder da Inteligência Artificial e automação estratégica.</p>
         </div>
+        
+        <div class="auth-banner-footer">
+            <p>"Tecnologia que transforma sua rotina de vendas."</p>
+        </div>
+        
+        <div class="glow-sphere"></div>
+    </div>
 
-        <form action="/login" method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
-            <div class="form-group">
-                <label class="form-label">E-mail</label>
-                <input type="email" name="username" class="form-input" placeholder="nome@empresa.com" required style="padding: 0.75rem 1rem;">
+    <!-- Mobile Header (Compact & Fluid) -->
+    <div class="auth-mobile-header">
+        <div class="brand-logo-small">
+            What<span class="gradient-text">Seller</span> Pro
+        </div>
+    </div>
+
+    <!-- Right Side: Action Area (Scrollable if needed, Refined Scale) -->
+    <div class="auth-form-side">
+        <div class="auth-form-container animate-fade-in">
+            <h2 class="auth-form-title">Entrar</h2>
+            <p class="auth-form-subtitle">Insira suas credenciais para acessar.</p>
+
+            <form action="/login" method="post" class="auth-form-body">
+                <div class="form-group">
+                    <label class="form-label">E-mail corporativo</label>
+                    <input type="email" name="username" class="form-input" placeholder="seu@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Senha</label>
+                    <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+                </div>
+
+                {% if error %}
+                <div class="auth-error-box">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary btn-auth">
+                    Acessar Agora
+                </button>
+            </form>
+
+            <div class="auth-form-footer">
+                <div class="auth-footer-nav">
+                    <div>
+                        Não tem uma conta? <a href="/register" class="auth-link-main">Criar Conta Agora</a>
+                    </div>
+                    <a href="/" class="auth-link-secondary">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Voltar para o Início
+                    </a>
+                </div>
             </div>
-
-            <div class="form-group">
-                <label class="form-label">Senha</label>
-                <input type="password" name="password" class="form-input" placeholder="••••••••" required style="padding: 0.75rem 1rem;">
-            </div>
-
-            {% if error %}
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; text-align: center;">
-                {{ error }}
-            </div>
-            {% endif %}
-
-            <button type="submit" class="btn btn-primary" style="padding: 0.85rem; font-weight: 700; font-size: 1rem; margin-top: 0.5rem; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                Entrar no Painel
-            </button>
-        </form>
-
-        <div style="margin-top: 2rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
-            Não tem uma conta? <a href="/register" style="color: var(--primary); font-weight: 600; text-decoration: none;">Criar agora</a>
         </div>
     </div>
 </div>
 
 <style>
-.sidebar { display: none !important; }
-.main-layout { margin-left: 0 !important; width: 100% !important; }
-.top-bar { display: none !important; }
-body { background: radial-gradient(circle at top right, #1e2133, #0f111a); }
+/* Global Layout Locking */
+.sidebar, .top-bar, .mobile-header { display: none !important; }
+.main-layout { margin-left: 0 !important; width: 100% !important; padding: 0 !important; height: 100vh; background: #06070a !important; overflow: hidden; }
+body { background: #06070a !important; overflow: hidden !important; height: 100vh !important; }
+
+.auth-split-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* Fixed Left Banner (Grand Scale) */
+.auth-banner {
+    width: 45%;
+    min-width: 400px;
+    background: linear-gradient(135deg, #020305 0%, #0d0e12 100%);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 4rem 3.5rem;
+    border-right: 1px solid rgba(255,255,255,0.03);
+    overflow: hidden;
+}
+
+.auth-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.auth-banner-content {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.brand-logo-large {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 2rem;
+    letter-spacing: -1.5px;
+    text-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-headline {
+    font-size: 3rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1.1;
+    margin-bottom: 1.2rem;
+    letter-spacing: -1.5px;
+}
+
+.auth-description {
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.5);
+    max-width: 400px;
+    line-height: 1.5;
+}
+
+.auth-banner-footer {
+    position: relative;
+    z-index: 2;
+}
+
+.auth-banner-footer p {
+    font-style: italic;
+    color: rgba(255,255,255,0.2);
+    font-size: 0.9rem;
+}
+
+.glow-sphere {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+    filter: blur(80px);
+    opacity: 0.08;
+    bottom: -150px;
+    right: -100px;
+    border-radius: 50%;
+}
+
+/* Flexible Scrollable Action Area */
+.auth-form-side {
+    flex: 1;
+    background: #06070a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow-y: auto; /* Only this scrolls */
+}
+
+.auth-form-container {
+    width: 100%;
+    max-width: 360px; /* Reduced to match user request */
+}
+
+.auth-form-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.5px;
+}
+
+.auth-form-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.auth-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem; 
+}
+
+.form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.form-input {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    color: white;
+    font-size: 0.95rem;
+    width: 100%;
+    transition: var(--transition);
+}
+
+.form-input:focus {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    outline: none;
+}
+
+.btn-auth {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    margin-top: 0.5rem;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.2);
+    border: none;
+    cursor: pointer;
+    color: white;
+    transition: var(--transition);
+}
+
+.auth-error-box {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    padding: 0.75rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.auth-form-footer {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    font-size: 0.9rem;
+}
+
+.auth-footer-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.auth-link-main {
+    color: white;
+    font-weight: 700;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.auth-link-main:hover { color: var(--primary); }
+
+.auth-link-secondary {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+/* Mobile Fluidity Overhaul */
+.auth-mobile-header { display: none; }
+
+@media (max-width: 850px) {
+    .auth-banner { display: none; }
+    .main-layout, body { overflow: auto !important; height: auto !important; }
+    
+    .auth-split-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    .auth-mobile-header {
+        display: block;
+        padding: 3.5rem 1.5rem 1rem;
+        text-align: center;
+        background: #06070a;
+    }
+    
+    .brand-logo-small {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: white;
+        letter-spacing: -1px;
+        text-shadow: 0 0 25px rgba(99, 102, 241, 0.4);
+    }
+    
+    .auth-form-side {
+        padding: 2rem 1.5rem 4rem;
+        flex: none;
+        overflow: visible;
+        align-items: flex-start;
+    }
+    
+    .auth-form-container {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .auth-form-title { font-size: 1.8rem; text-align: center; margin-bottom: 0.5rem; }
+    .auth-form-subtitle { text-align: center; margin-bottom: 2.5rem; font-size: 1rem; }
+    
+    .form-input {
+        padding: 1rem;
+        font-size: 1rem;
+    }
+    
+    .btn-auth {
+        padding: 1.1rem;
+        font-size: 1.1rem;
+        margin-top: 1.5rem;
+    }
+}
 </style>
 {% endblock %}

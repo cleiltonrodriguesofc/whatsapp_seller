@@ -216,7 +216,7 @@ async def new_broadcast_list(
 @router.get("/api/targets")
 async def api_targets(
     instance_id: int,
-    target_type: str = Query("chat", regex="^(chat|group)$"),
+    target_type: str = Query("chat", pattern="^(chat|group)$"),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
