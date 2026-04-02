@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} | 🚀 WhatSeller Pro</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -86,7 +87,7 @@
 <body>
     <nav>
         <div class="container nav-content">
-            <a href="/" class="logo">🚀 What<span>Seller</span> Pro</a>
+            <a href="/" class="logo"><span>🚀</span> <strong style="font-weight: 700;">What<span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Seller</span> Pro</strong></a>
             <a href="/" class="btn-back">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                 Voltar para o Início
@@ -97,7 +98,6 @@
     <main class="container content-area">
         <header class="page-header">
             <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
-            <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
         </header>
 
         <div class="legal-card">
@@ -107,14 +107,18 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 <strong>🚀 WhatSeller Pro</strong>. Todos os direitos reservados.</p>
-            <div class="footer-links">
-                <a href="/terms">Termos de Uso</a>
-                <a href="/privacy">Privacidade</a>
-                <a href="/docs">Documentação</a>
-                <a href="/login">Entrar</a>
+            <div style="margin-bottom: 1.5rem;">
+                <span style="font-size: 1.1rem; font-weight: 700;">What<span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">Seller</span> Pro</span>
             </div>
+            <div class="footer-links">
+                <a href="/">Início</a>
+                <a href="/docs">Documentação</a>
+                <a href="/terms">Termos</a>
+                <a href="/privacy">Privacidade</a>
+            </div>
+            <p style="margin-top: 2rem; opacity: 0.5; font-size: 0.75rem;">© 2026 WhatSeller Pro. Todos os direitos reservados.</p>
         </div>
     </footer>
+
 </body>
 </html>

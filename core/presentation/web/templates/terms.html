@@ -2,43 +2,115 @@
 
 {% block title %}Termos de Uso{% endblock %}
 {% block page_title %}Termos de Uso{% endblock %}
-{% block page_subtitle %}Última atualização: 01 de Abril de 2026 &nbsp;·&nbsp; Versão 2.0{% endblock %}
+{% block page_subtitle %}{% endblock %}
 
 {% block content %}
 <style>
-  .legal-body { font-size: 0.8rem; line-height: 1.6; color: rgba(255,255,255,0.85); }
-  .legal-body h2 { font-size: 1.2rem; font-weight: 700; margin: 3rem 0 1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-  .legal-body p, .legal-body li { margin-bottom: 1rem; }
-  .legal-body ul, .legal-body ol { padding-left: 1.5rem; margin-bottom: 1.5rem; }
-  
+  .legal-body {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .legal-body h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 3rem 0 1rem;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+
+  .legal-body p,
+  .legal-body li {
+    margin-bottom: 1rem;
+  }
+
+  .legal-body ul,
+  .legal-body ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
   .warning-box {
-    background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b;
-    padding: 1.5rem; border-radius: 12px; margin: 2rem 0;
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 4px solid #f59e0b;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 2rem 0;
   }
-  .warning-box strong { display: block; margin-bottom: 0.5rem; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; }
-  
+
+  .warning-box strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #f59e0b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+  }
+
   .danger-box {
-    background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444;
-    padding: 1.5rem; border-radius: 12px; margin: 2rem 0;
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin: 2rem 0;
   }
-  .danger-box strong { display: block; margin-bottom: 0.5rem; color: #ef4444; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem; }
-  
-  .toc { 
-    background: rgba(255, 255, 255, 0.03); 
-    border: 1px solid var(--border); 
-    border-radius: 16px; 
-    padding: 2rem; 
-    margin-bottom: 4rem; 
+
+  .danger-box strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #ef4444;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+  }
+
+  .toc {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 4rem;
     backdrop-filter: blur(4px);
   }
-  .toc h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 1rem; }
-  .toc ol { margin: 0; padding-left: 1.25rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-  .toc li { font-size: 0.8rem; color: var(--text-muted); }
-  .toc a { color: var(--primary); text-decoration: none; transition: color 0.2s; }
-  .toc a:hover { color: white; text-decoration: underline; }
+
+  .toc h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .toc ol {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .toc li {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .toc a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .toc a:hover {
+    color: white;
+    text-decoration: underline;
+  }
 
   @media (max-width: 640px) {
-    .toc ol { grid-template-columns: 1fr; }
+    .toc ol {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
 
@@ -71,18 +143,26 @@
   <h2 id="s1">1. Partes e Definições</h2>
   <p>Para os fins destes Termos de Uso, aplicam-se as seguintes definições:</p>
   <ul>
-    <li><strong>"Plataforma" / "WhatSeller Pro" / "Nós":</strong> refere-se ao software WhatSeller Pro, seus proprietários, desenvolvedores e operadores.</li>
-    <li><strong>"Usuário" / "Você":</strong> qualquer pessoa física ou jurídica que acesse, se cadastre ou utilize a Plataforma.</li>
-    <li><strong>"Serviço":</strong> o conjunto de funcionalidades oferecidas pela Plataforma, incluindo automação de envio de mensagens, agendamento de campanhas, geração de conteúdo por inteligência artificial e gerenciamento de instâncias.</li>
-    <li><strong>"WhatsApp":</strong> o serviço de mensagens operado pela WhatsApp LLC, subsidiária da Meta Platforms, Inc., com o qual a Plataforma não possui qualquer vínculo, parceria ou autorização.</li>
-    <li><strong>"Conteúdo do Usuário":</strong> mensagens, textos, imagens, listas de contatos, grupos e qualquer outro dado inserido pelo Usuário na Plataforma.</li>
+    <li><strong>"Plataforma" / "WhatSeller Pro" / "Nós":</strong> refere-se ao software WhatSeller Pro, seus
+      proprietários, desenvolvedores e operadores.</li>
+    <li><strong>"Usuário" / "Você":</strong> qualquer pessoa física ou jurídica que acesse, se cadastre ou utilize a
+      Plataforma.</li>
+    <li><strong>"Serviço":</strong> o conjunto de funcionalidades oferecidas pela Plataforma, incluindo automação de
+      envio de mensagens, agendamento de campanhas, geração de conteúdo por inteligência artificial e gerenciamento de
+      instâncias.</li>
+    <li><strong>"WhatsApp":</strong> o serviço de mensagens operado pela WhatsApp LLC, subsidiária da Meta Platforms,
+      Inc., com o qual a Plataforma não possui qualquer vínculo, parceria ou autorização.</li>
+    <li><strong>"Conteúdo do Usuário":</strong> mensagens, textos, imagens, listas de contatos, grupos e qualquer outro
+      dado inserido pelo Usuário na Plataforma.</li>
   </ul>
 
   <h2 id="s2">2. Natureza do Serviço — O que somos e o que não somos</h2>
 
   <div class="warning-box">
     <strong>⚠️ LEIA COM ATENÇÃO — AVISO DE NATUREZA TÉCNICA</strong>
-    Ao contratar o 🚀 WhatSeller Pro, você declara compreender que somos uma plataforma de automação de software independente. Não temos qualquer relação oficial com a Meta Platforms ou o WhatsApp LLC. Nosso serviço funciona como uma interface técnica entre as configurações que você define e as instâncias de envio que você conecta.
+    Ao contratar o 🚀 WhatSeller Pro, você declara compreender que somos uma plataforma de automação de software
+    independente. Não temos qualquer relação oficial com a Meta Platforms ou o WhatsApp LLC. Nosso serviço funciona como
+    uma interface técnica entre as configurações que você define e as instâncias de envio que você conecta.
   </div>
 
   <p>A Plataforma fornece ferramentas tecnológicas que permitem ao Usuário:</p>
@@ -93,38 +173,50 @@
     <li>Gerenciar contatos, grupos e catálogos de produtos.</li>
   </ul>
 
-  <p><strong>A Plataforma funciona exclusivamente como intermediária técnica.</strong> Todo o controle, configuração e uso das instâncias é de responsabilidade exclusiva do Usuário.</p>
+  <p><strong>A Plataforma funciona exclusivamente como intermediária técnica.</strong> Todo o controle, configuração e
+    uso das instâncias é de responsabilidade exclusiva do Usuário.</p>
 
   <h2 id="s3">3. Isenção Total de Responsabilidade em Relação ao WhatsApp</h2>
 
   <div class="danger-box">
     <strong>🚫 AVISO CRÍTICO — RISCO DE BANIMENTO</strong>
-    O WhatSeller Pro não garante a imunidade da sua conta contra bloqueios. O uso de automações é uma infração direta aos termos de serviço do WhatsApp. Você assume 100% dos riscos ao conectar seu celular à nossa plataforma.
+    O WhatSeller Pro não garante a imunidade da sua conta contra bloqueios. O uso de automações é uma infração direta
+    aos termos de serviço do WhatsApp. Você assume 100% dos riscos ao conectar seu celular à nossa plataforma.
   </div>
 
   <p>O Usuário reconhece, de forma irrevogável, que:</p>
   <ol>
-    <li><strong>Risco inerente ao uso:</strong> O uso de qualquer ferramenta de automação sobre o WhatsApp carrega risco intrínseco de suspensão ou banimento permanente da conta;</li>
-    <li><strong>Sem garantia de proteção:</strong> As funcionalidades anti-ban da Plataforma são recursos auxiliares de boas práticas. Não constituem garantia absoluta;</li>
-    <li><strong>Decisão unilateral do WhatsApp:</strong> O WhatsApp pode, a qualquer momento e sem aviso prévio, suspender contas detectadas utilizando automação;</li>
-    <li><strong>Sem recuperação de contas:</strong> A Plataforma não tem qualquer capacidade de recuperar contas banidas pelo WhatsApp;</li>
-    <li><strong>Sem reembolso por banimento:</strong> O banimento da conta de WhatsApp do Usuário não constitui fundamento para solicitação de reembolso de valores pagos;</li>
+    <li><strong>Risco inerente ao uso:</strong> O uso de qualquer ferramenta de automação sobre o WhatsApp carrega risco
+      intrínseco de suspensão ou banimento permanente da conta;</li>
+    <li><strong>Sem garantia de proteção:</strong> As funcionalidades anti-ban da Plataforma são recursos auxiliares de
+      boas práticas. Não constituem garantia absoluta;</li>
+    <li><strong>Decisão unilateral do WhatsApp:</strong> O WhatsApp pode, a qualquer momento e sem aviso prévio,
+      suspender contas detectadas utilizando automação;</li>
+    <li><strong>Sem recuperação de contas:</strong> A Plataforma não tem qualquer capacidade de recuperar contas banidas
+      pelo WhatsApp;</li>
+    <li><strong>Sem reembolso por banimento:</strong> O banimento da conta de WhatsApp do Usuário não constitui
+      fundamento para solicitação de reembolso de valores pagos;</li>
     <li><strong>Dissociação total:</strong> O WhatSeller Pro não é afiliado à Meta Platforms, Inc.</li>
   </ol>
 
   <h2 id="s4">4. Aceitação dos Termos</h2>
-  <p>O acesso ou uso de qualquer funcionalidade da Plataforma constitui aceitação plena e incondicional destes Termos de Uso e da Política de Privacidade.</p>
+  <p>O acesso ou uso de qualquer funcionalidade da Plataforma constitui aceitação plena e incondicional destes Termos de
+    Uso e da Política de Privacidade.</p>
 
   <h2 id="s5">5. Elegibilidade e Cadastro</h2>
-  <p>Para se cadastrar e utilizar o Serviço, o Usuário deve ter ao menos 18 anos de idade e plena capacidade civil. A Plataforma reserva-se o direito de recusar cadastros a seu critério exclusivo.</p>
+  <p>Para se cadastrar e utilizar o Serviço, o Usuário deve ter ao menos 18 anos de idade e plena capacidade civil. A
+    Plataforma reserva-se o direito de recusar cadastros a seu critério exclusivo.</p>
 
   <h2 id="s6">6. Obrigações e Responsabilidades Exclusivas do Usuário</h2>
   <p>O Usuário é <strong>única e exclusivamente responsável</strong> por:</p>
   <ol>
-    <li><strong>Conformidade legal:</strong> Garantir que todo uso esteja em conformidade com a LGPD e o Código de Defesa do Consumidor;</li>
-    <li><strong>Consentimento (Opt-in):</strong> Obter o consentimento prévio e expresso de todos os contatos que receberão suas mensagens;</li>
+    <li><strong>Conformidade legal:</strong> Garantir que todo uso esteja em conformidade com a LGPD e o Código de
+      Defesa do Consumidor;</li>
+    <li><strong>Consentimento (Opt-in):</strong> Obter o consentimento prévio e expresso de todos os contatos que
+      receberão suas mensagens;</li>
     <li><strong>Qualidade do Conteúdo:</strong> Todo o conteúdo disparado pela Plataforma;</li>
-    <li><strong>Danos a terceiros:</strong> Quaisquer prejuízos causados a terceiros em decorrência do uso de suas automações.</li>
+    <li><strong>Danos a terceiros:</strong> Quaisquer prejuízos causados a terceiros em decorrência do uso de suas
+      automações.</li>
   </ol>
 
   <h2 id="s7">7. Condutas Expressamente Proibidas</h2>
@@ -137,22 +229,27 @@
   </ul>
 
   <h2 id="s8">8. Planos, Faturamento e Renovação</h2>
-  <p>Os planos possuem renovação automática. O cancelamento deve ser feito pelo Usuário na área de cliente antes da próxima data de faturamento.</p>
+  <p>Os planos possuem renovação automática. O cancelamento deve ser feito pelo Usuário na área de cliente antes da
+    próxima data de faturamento.</p>
 
   <h2 id="s9">9. Trial Gratuito</h2>
-  <p>O trial de 3 dias serve para avaliação técnica. Ao término do período, o serviço é suspenso até que um plano pago seja assinado.</p>
+  <p>O trial de 3 dias serve para avaliação técnica. Ao término do período, o serviço é suspenso até que um plano pago
+    seja assinado.</p>
 
   <h2 id="s10">10. Política de Cancelamento e Reembolso</h2>
-  <p>Respeitamos o direito de arrependimento (7 dias) do CDC. Após esse período, não há reembolso proporcional. <strong>Banimentos de WhatsApp não dão direito a reembolso.</strong></p>
+  <p>Respeitamos o direito de arrependimento (7 dias) do CDC. Após esse período, não há reembolso proporcional.
+    <strong>Banimentos de WhatsApp não dão direito a reembolso.</strong></p>
 
   <h2 id="s11">11. Programa de Indicação (Referral)</h2>
-  <p>Bônus de indicação são aplicados conforme as regras vigentes e podem ser auditados para evitar fraudes ou criação de contas fakes.</p>
+  <p>Bônus de indicação são aplicados conforme as regras vigentes e podem ser auditados para evitar fraudes ou criação
+    de contas fakes.</p>
 
   <h2 id="s12">12. Propriedade Intelectual</h2>
   <p>Todos os direitos sobre o software pertencem exclusivamente ao 🚀 WhatSeller Pro.</p>
 
   <h2 id="s13">13. Proteção de Dados e LGPD</h2>
-  <p>Atuamos como operadores de dados. O Usuário é o controlador e deve garantir que possui base legal para o tratamento dos dados de seus leads.</p>
+  <p>Atuamos como operadores de dados. O Usuário é o controlador e deve garantir que possui base legal para o tratamento
+    dos dados de seus leads.</p>
 
   <h2 id="s14">14. Limitação de Responsabilidade</h2>
   <p>Nossa responsabilidade total é limitada ao valor pago pelo Usuário nos últimos 3 meses de serviço.</p>
@@ -161,17 +258,14 @@
   <p>Violações graves dos termos resultam em encerramento imediato da conta sem aviso prévio ou reembolso.</p>
 
   <h2 id="s16">16. Modificações</h2>
-  <p>Podemos alterar estes termos a qualquer momento para refletir mudanças legais ou técnicas. Avisaremos sobre mudanças significativas.</p>
+  <p>Podemos alterar estes termos a qualquer momento para refletir mudanças legais ou técnicas. Avisaremos sobre
+    mudanças significativas.</p>
 
   <h2 id="s17">17. Disposições Gerais</h2>
   <p>Estes termos são regidos pelas leis brasileiras. O foro eleito é o do domicílio do Usuário.</p>
 
   <h2 id="s18">18. Contato</h2>
   <p>Para suporte ou questões legais: <strong>legal@whatsellerpro.com.br</strong></p>
-
-  <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; opacity: 0.5; font-size: 0.75rem;">
-    © 2026 🚀 WhatSeller Pro. Todos os direitos reservados.
-  </div>
 
 </div>
 {% endblock %}

@@ -22,7 +22,7 @@
     --glass-blur: blur(12px);
     --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
     
-    --sidebar-width: 270px;
+    --sidebar-width: 240px;
     --border-radius: 18px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -67,8 +67,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.4rem;
-    font-weight: 800;
+    font-size: 1.25rem;
     color: white;
     margin-bottom: 3rem;
     text-decoration: none;
@@ -90,11 +89,11 @@ body {
     display: flex;
     align-items: center;
     gap: 0.85rem;
-    padding: 0.9rem 1.25rem;
+    padding: 0.65rem 1rem;
     border-radius: 14px;
     color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.95rem;
+    font-weight: 500;
+    font-size: 0.85rem;
     transition: var(--transition);
     border: 1px solid transparent;
 }
