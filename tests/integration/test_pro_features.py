@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime, timedelta
+from datetime import datetime
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
 from core.infrastructure.database.models import UserModel, SubscriptionModel, ReferralCodeModel, PlanModel, ReferralConversionModel
