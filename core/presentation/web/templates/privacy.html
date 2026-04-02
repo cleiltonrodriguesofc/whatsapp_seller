@@ -2,7 +2,7 @@
 
 {% block title %}Política de Privacidade{% endblock %}
 {% block page_title %}Política de Privacidade{% endblock %}
-{% block page_subtitle %}Última atualização: 01 de Abril de 2026 &nbsp;·&nbsp; Versão 2.0{% endblock %}
+{% block page_subtitle %}{% endblock %}
 
 {% block content %}
 <style>
@@ -120,17 +120,20 @@
   <h2 id="p5">5. Dados de terceiros inseridos pelo Usuário</h2>
   <div class="info-box">
     <strong>ℹ️ PAPEL DA PLATAFORMA COMO OPERADORA</strong>
-    Nós atuamos como <strong>Operadora</strong> dos dados de seus leads e clientes. O Usuário é o <strong>Controlador</strong> e deve garantir que possui base legal válida para realizar os disparos de mensagens.
-  </div>
-
   <h2 id="p6">6. Compartilhamento com terceiros</h2>
   <p>Compartilhamos dados necessários com: **Mercado Pago** (pagamentos), **Provedores de Nuvem** (infraestrutura) e **OpenAI** (somente se habilitada a geração de conteúdo por IA).</p>
+
+  <h2 id="p7">7. Transferência internacional de dados</h2>
+  <p>Como utilizamos infraestrutura em nuvem global (AWS/Supabase), seus dados podem ser processados em servidores localizados fora do Brasil, mantendo níveis de proteção equivalentes aos exigidos pela LGPD.</p>
 
   <h2 id="p8">8. Armazenamento, segurança e retenção</h2>
   <div class="green-box">
     <strong>🔒 PADRÕES DE SEGURANÇA</strong>
     Criptografia ponta a ponta · JWT HttpOnly · Proteção CSRF/SOP · Monitoramento de Logs · Acesso restrito via VPC.
   </div>
+
+  <h2 id="p9">9. Cookies técnicos</h2>
+  <p>Utilizamos apenas cookies estritamente necessários para o funcionamento da plataforma (autenticação e segurança). Não utilizamos cookies de rastreamento ou marketing de terceiros dentro do dashboard.</p>
 
   <h2 id="p10">10. Seus direitos como titular (LGPD)</h2>
   <div class="rights-grid">
@@ -140,12 +143,14 @@
     <div class="rights-card"><div class="icon">📦</div><strong>Portabilidade</strong><p>Exportação de dados estruturados.</p></div>
   </div>
 
+  <h2 id="p11">11. Menores de idade</h2>
+  <p>O 🚀 WhatSeller Pro não é destinado a menores de 18 anos. Não coletamos intencionalmente dados de crianças ou adolescentes.</p>
+
+  <h2 id="p12">12. Alterações à Política</h2>
+  <p>Podemos atualizar esta política periodicamente. Notificaremos você sobre mudanças materiais através do e-mail cadastrado ou alertas no sistema.</p>
+
   <h2 id="p13">13. Contato e Encarregado de Dados (DPO)</h2>
   <p>Para dúvidas ou solicitações: <strong>privacidade@whatsellerpro.com.br</strong></p>
-
-  <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; opacity: 0.5; font-size: 0.75rem;">
-    © 2026 🚀 WhatSeller Pro. Todos os direitos reservados.
-  </div>
 
 </div>
 {% endblock %}
