@@ -1,4 +1,4 @@
-# 🚀 WhatsApp Seller
+# WhatsApp Seller
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-05998b.svg)](https://fastapi.tiangolo.com/)
@@ -65,7 +65,7 @@ render.yaml           # one-click Render deployment blueprint
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
