@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.models import (
+    InstanceModel,
     StatusCampaignModel,
     SubscriptionModel,
     UserModel,

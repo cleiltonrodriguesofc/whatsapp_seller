@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
-from core.infrastructure.database.models import UserModel
+from core.infrastructure.database.models import UserModel, InstanceModel
 from core.application.services.auth_service import AuthService
 
 
@@ -30,7 +30,7 @@ def test_registration_flow(client, db_session):
 
         response = client.post(
             "/register",
-            data={"email": "api_test@test.com", "password": "mock_auth_val_x9", "business_name": "API Business"},
+            data={"email": "api_test@test.com", "password": "mock_auth_val_x9", "business_name": "API Business", "terms_accepted": "on"},
             follow_redirects=True,
         )
 
