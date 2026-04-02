@@ -27,6 +27,22 @@
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.gradient-text {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.brand-logo-small {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.5px;
+    text-align: center;
+    text-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -342,12 +358,12 @@ body {
 
     .mobile-header {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
         width: 100%;
-        padding: 1rem 1.5rem;
-        background-color: rgba(16, 18, 24, 0.95);
-        backdrop-filter: blur(10px);
+        padding: 1.1rem 1.5rem;
+        background: linear-gradient(135deg, #020305 0%, #0d0e12 100%);
+        backdrop-filter: blur(12px);
         border-bottom: 1px solid var(--border);
         position: sticky;
         top: 0;
@@ -407,7 +423,11 @@ body {
     }
 
     .nav-item span:not(.nav-item-icon):not(.nav-icon):not(#sidebar-status-dot) {
-        display: none; /* Hide text, show only icons for bottom nav */
+        display: block; 
+        font-size: 0.62rem;
+        font-weight: 700;
+        white-space: nowrap;
+        opacity: 0.9;
     }
 
     /* Main layout adjustments */
