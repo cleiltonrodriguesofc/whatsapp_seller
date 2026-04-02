@@ -102,7 +102,12 @@ except Exception as e:
 # rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="🚀 WhatSeller Pro", debug=os.environ.get("DEBUG", "false") == "true")
+app = FastAPI(
+    title="🚀 WhatSeller Pro",
+    debug=os.environ.get("DEBUG", "false") == "true",
+    docs_url="/api-docs",
+    redoc_url="/api-redoc"
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
