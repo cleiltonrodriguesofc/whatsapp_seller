@@ -8,12 +8,13 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from core.domain.entities import StatusCampaign, CampaignStatus
+from core.domain.entities import StatusCampaign, CampaignStatus, ActivityLog
 from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
 from core.infrastructure.database.repositories import (
     SQLStatusCampaignRepository,
     SQLInstanceRepository,
     SQLTargetRepository,
+    SQLActivityRepository,
 )
 from core.infrastructure.database.session import get_db
 from core.presentation.web.dependencies import login_required, templates
@@ -127,6 +128,17 @@ async def create_status_campaign(
         send_time=send_time if is_recurring else None,
     )
     repo.save(campaign)
+
+    # Log activity
+    from core.infrastructure.database.repositories import SQLActivityRepository
+    from core.domain.entities import ActivityLog
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="status_campaign_create", 
+        description=f"Created status campaign: {title}"
+    ))
+
     return RedirectResponse(url="/status_campaigns", status_code=303)
 
 
@@ -226,6 +238,17 @@ async def update_status_campaign(
         campaign.status = CampaignStatus.SCHEDULED
 
     repo.save(campaign)
+
+    # Log activity
+    from core.infrastructure.database.repositories import SQLActivityRepository
+    from core.domain.entities import ActivityLog
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="status_campaign_edit", 
+        description=f"Updated status campaign: {title}"
+    ))
+
     return RedirectResponse(url="/status_campaigns", status_code=303)
 
 
@@ -283,6 +306,15 @@ async def delete_status_campaign(
     success = repo.delete(campaign_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="status_campaign_delete", 
+        description=f"Deleted status campaign: {campaign.title}"
+    ))
+    
     return RedirectResponse(url="/status_campaigns", status_code=303)
 
 

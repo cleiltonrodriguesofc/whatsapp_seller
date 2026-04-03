@@ -26,7 +26,9 @@ from core.infrastructure.database.models import (
 )
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
-from core.presentation.web.dependencies import auth_service, templates
+from core.infrastructure.database.repositories import SQLActivityRepository
+from core.domain.entities import ActivityLog
+from core.presentation.web.dependencies import auth_service, templates, get_current_user
 
 logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
@@ -56,6 +58,11 @@ async def login_action(
         )
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(user_id=user.id, event_type="login", description=f"User logged in from {request.client.host if request.client else 'unknown'}"))
+
     response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
     is_prod = os.environ.get("RENDER") == "true"
     response.set_cookie(
@@ -98,10 +105,14 @@ async def register_action(
             context={"error": "Email already registered", "title": "Register"},
         )
 
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    is_admin = (email == admin_email)
+
     new_user = UserModel(
         email=email, 
         hashed_password=auth_service.hash_password(password),
-        agreed_to_terms_at=datetime.utcnow()
+        agreed_to_terms_at=datetime.utcnow(),
+        is_admin=is_admin
     )
     db.add(new_user)
     db.commit()
@@ -162,6 +173,10 @@ async def register_action(
     db.add(trial_subscription)
     db.commit()
 
+    # 4. log registration activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(user_id=new_user.id, event_type="register", description=f"User registered (Admin: {is_admin})"))
+
     # provision whitatsapp instance
     try:
         instance_name = business_name.lower().replace(" ", "_") + "_" + str(new_user.id)
@@ -208,7 +223,20 @@ async def register_action(
 
 
 @router.get("/logout")
-async def logout():
+async def logout(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    if current_user:
+        # Log activity
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(ActivityLog(
+            user_id=current_user.id, 
+            event_type="logout", 
+            description="User logged out"
+        ))
+
     response = RedirectResponse(url="/login")
     response.delete_cookie("access_token")
     return response

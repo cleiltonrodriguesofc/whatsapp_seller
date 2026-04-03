@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block page_title %}Audit de Atividades{% endblock %}
+{% block page_subtitle %}
+    Rastreamento completo de eventos e ações executadas na plataforma.
+{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+    <div style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 2rem;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.1em; background: rgba(99, 102, 241, 0.1); padding: 0.2rem 0.6rem; border-radius: 4px;">Auditoria Global</span>
+                <h3 style="font-weight: 800; font-size: 1.5rem; letter-spacing: -0.03em;">Histórico de Eventos</h3>
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">Rastreamento imutável de todas as ações críticas executadas.</p>
+        </div>
+        
+        <div style="display: flex; gap: 0.75rem; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <a href="/admin/activities" class="btn {{ 'btn-primary' if not filter_user_id else 'btn-ghost' }}" style="font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 8px;">Todos os Logs</a>
+            {% if filter_user_id %}
+            <span style="font-size: 0.75rem; font-weight: 700; color: white; padding: 0 0.5rem;">
+                Filtrando Usuário <strong style="color: var(--primary);">#{{ filter_user_id }}</strong>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 250px;">Ator / Origem</th>
+                    <th style="width: 200px;">Evento</th>
+                    <th>Detalhes da Operação</th>
+                    <th style="width: 154px; text-align: right;">Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for act in activities %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div class="user-avatar" style="width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.05); color: white; font-size: 0.8rem;">
+                                {{ (act.user_email or 'S')[0].upper() }}
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9rem; font-weight: 700; color: white;">{{ act.user_email or 'Sistema' }}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">ID: #{{ act.user_id or 'SYSTEM' }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="event-badge {% if 'create' in act.event_type or 'new' in act.event_type %}badge-create{% elif 'delete' in act.event_type %}badge-delete{% elif 'edit' in act.event_type or 'update' in act.event_type %}badge-edit{% elif 'login' in act.event_type or 'register' in act.event_type %}badge-auth{% else %}badge-system{% endif %}">
+                            {{ act.event_type.replace('_', ' ') }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); max-width: 500px;">
+                            {{ act.description or 'Sem descrição adicional' }}
+                        </div>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="color: white; font-size: 0.85rem; font-weight: 700;">{{ act.timestamp.strftime('%H:%M:%S') }}</div>
+                        <div style="color: var(--text-muted); font-size: 0.7rem; font-weight: 600;">{{ act.timestamp.strftime('%d/%m/%Y') }}</div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 6rem; color: var(--text-muted); background: rgba(0,0,0,0.1);">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3;">📂</div>
+                        Nenhum registro de auditoria disponível.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

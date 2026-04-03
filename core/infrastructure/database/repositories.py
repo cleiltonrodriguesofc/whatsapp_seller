@@ -12,6 +12,8 @@ from core.domain.entities import (
     CampaignStatus as DomainCampaignStatus,
     BroadcastList,
     BroadcastCampaign,
+    User,
+    ActivityLog,
 )
 from core.application.repositories import (
     ProductRepository,
@@ -19,6 +21,8 @@ from core.application.repositories import (
     StatusCampaignRepository,
     BroadcastListRepository,
     BroadcastCampaignRepository,
+    UserRepository,
+    ActivityRepository,
 )
 from core.infrastructure.database.models import (
     ProductModel,
@@ -31,6 +35,7 @@ from core.infrastructure.database.models import (
     BroadcastListModel,
     BroadcastListMemberModel,
     BroadcastCampaignModel,
+    ActivityLogModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -407,21 +412,92 @@ class SQLTargetRepository:
         )
 
 
-class SQLUserRepository:
+class SQLUserRepository(UserRepository):
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_email(self, email: str) -> Optional[UserModel]:
-        return self.db.query(UserModel).filter(UserModel.email == email).first()
+    def get_by_email(self, email: str) -> Optional[User]:
+        model = self.db.query(UserModel).filter(UserModel.email == email).first()
+        return self._to_entity(model) if model else None
 
-    def save(self, user: UserModel) -> UserModel:
+    def get_by_id(self, user_id: int) -> Optional[User]:
+        model = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+        return self._to_entity(model) if model else None
+
+    def save(self, user: User) -> User:
         if user.id:
-            self.db.merge(user)
+            model = self.db.query(UserModel).filter(UserModel.id == user.id).first()
+            if model:
+                model.email = user.email
+                model.hashed_password = user.hashed_password
+                model.is_active = user.is_active
+                model.is_admin = user.is_admin
         else:
-            self.db.add(user)
+            model = UserModel(
+                email=user.email,
+                hashed_password=user.hashed_password,
+                is_active=user.is_active,
+                is_admin=user.is_admin,
+            )
+            self.db.add(model)
+        
         self.db.commit()
-        self.db.refresh(user)
+        self.db.refresh(model)
+        user.id = model.id
         return user
+
+    def list_all(self, limit: int = 100) -> List[User]:
+        models = self.db.query(UserModel).order_by(UserModel.created_at.desc()).limit(limit).all()
+        return [self._to_entity(m) for m in models]
+
+    def _to_entity(self, model: UserModel) -> User:
+        return User(
+            id=model.id,
+            email=model.email,
+            hashed_password=model.hashed_password,
+            is_active=model.is_active,
+            is_admin=model.is_admin,
+            created_at=model.created_at,
+        )
+
+
+class SQLActivityRepository(ActivityRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, activity: ActivityLog) -> ActivityLog:
+        model = ActivityLogModel(
+            user_id=activity.user_id,
+            event_type=activity.event_type,
+            description=activity.description,
+            timestamp=activity.timestamp or now_sp(),
+        )
+        self.db.add(model)
+        self.db.commit()
+        self.db.refresh(model)
+        activity.id = model.id
+        return activity
+
+    def list_all(self, limit: int = 100, user_id: Optional[int] = None) -> List[ActivityLog]:
+        query = self.db.query(ActivityLogModel, UserModel.email).outerjoin(
+            UserModel, ActivityLogModel.user_id == UserModel.id
+        ).order_by(ActivityLogModel.timestamp.desc())
+        
+        if user_id:
+            query = query.filter(ActivityLogModel.user_id == user_id)
+        
+        results = query.limit(limit).all()
+        return [
+            ActivityLog(
+                id=m.id,
+                user_id=m.user_id,
+                event_type=m.event_type,
+                description=m.description,
+                timestamp=m.timestamp,
+                user_email=email
+            )
+            for m, email in results
+        ]
 
 
 class SQLInstanceRepository:

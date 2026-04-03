@@ -523,3 +523,165 @@ body {
 @media (max-width: 480px) {
     .grid-7 { grid-template-columns: repeat(3, 1fr) !important; }
 }
+
+/* ── Administrative Premium Styles (Vision 2.0) ────────────────────────── */
+
+:root {
+    --glass-bg: rgba(22, 25, 34, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-accent: rgba(99, 102, 241, 0.2);
+    --card-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.5);
+}
+
+.admin-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.admin-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-6px);
+    box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25);
+}
+
+.stat-premium {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.stat-premium .stat-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    font-size: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.admin-card:hover .stat-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.table-container {
+    background: rgba(16, 18, 24, 0.4);
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    margin-top: 1.5rem;
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+thead th {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1.25rem 1.5rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+tbody td {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    font-size: 0.9rem;
+    transition: background 0.2s ease;
+}
+
+tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+    color: white;
+}
+
+.event-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-block;
+    border: 1px solid transparent;
+}
+
+.badge-create { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
+.badge-delete { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+.badge-edit { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
+.badge-auth { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+.badge-system { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border-color: rgba(148, 163, 184, 0.2); }
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px currentColor;
+}
+
+.form-premium .form-input {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-premium .form-input:focus {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+/* Animations for Dashboard */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-card {
+    animation: fadeInUp 0.5s ease backwards;
+}
+
+.admin-card:nth-child(1) { animation-delay: 0.1s; }
+.admin-card:nth-child(2) { animation-delay: 0.2s; }
+.admin-card:nth-child(3) { animation-delay: 0.3s; }

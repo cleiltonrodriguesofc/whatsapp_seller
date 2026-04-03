@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block page_title %}Visão do Administrador{% endblock %}
+{% block page_subtitle %}Controle centralizado da inteligência e operações da plataforma.{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+    <div class="admin-card stat-premium" style="color: var(--primary);">
+        <div class="stat-icon">👤</div>
+        <div class="stat-data">
+            <h4>Pessoas na Base</h4>
+            <p>{{ users|length }}</p>
+        </div>
+    </div>
+    <div class="admin-card stat-premium" style="color: var(--success);">
+        <div class="stat-icon">📊</div>
+        <div class="stat-data">
+            <h4>Logs Processados</h4>
+            <p>{{ activities|length }}</p>
+        </div>
+    </div>
+    <div class="admin-card stat-premium" style="color: var(--secondary);">
+        <div class="stat-icon">🔗</div>
+        <div class="stat-data">
+            <h4>Sessões Ativas</h4>
+            <p>01</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid-split" style="grid-template-columns: 1.6fr 1fr; margin-top: 3rem; gap: 2rem;">
+    <!-- Recent Activities -->
+    <div class="admin-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem;">
+            <div>
+                <h3 style="font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em;">Audit Logs</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Eventos críticos em tempo real</p>
+            </div>
+            <a href="/admin/activities" class="btn btn-ghost" style="font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 10px;">Audit Completo</a>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Identidade</th>
+                        <th>Tipo de Evento</th>
+                        <th>Registro Temporal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for act in activities[:7] %}
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div class="user-avatar" style="width: 36px; height: 36px; font-size: 0.85rem;">{{ (act.user_email or '?')[0].upper() }}</div>
+                                <div>
+                                    <div style="font-size: 0.9rem; font-weight: 700; color: white;">{{ act.user_email or 'Sistema' }}</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">IP: {{ request.client.host if request.client else '127.0.0.1' }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="event-badge {% if 'create' in act.event_type or 'new' in act.event_type %}badge-create{% elif 'delete' in act.event_type %}badge-delete{% elif 'edit' in act.event_type or 'update' in act.event_type %}badge-edit{% elif 'login' in act.event_type or 'register' in act.event_type %}badge-auth{% else %}badge-system{% endif %}">
+                                {{ act.event_type.replace('_', ' ') }}
+                            </span>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; line-height: 1.4;">{{ act.description[:45] }}{{ '...' if act.description|length > 45 }}</div>
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">
+                            <div style="color: white;">{{ act.timestamp.strftime('%H:%M') }}</div>
+                            <div style="font-size: 0.7rem;">{{ act.timestamp.strftime('%d/%m/%Y') }}</div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 4rem; color: var(--text-muted); font-style: italic;">Aguardando novos eventos...</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Right Sidebar on Dashboard: New Members & Quick Actions -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        <div class="admin-card">
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-weight: 800; font-size: 1.1rem;">Últimos Registros</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Novos utilizadores na plataforma</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                {% for u in users[:5] %}
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div class="user-avatar" style="width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.05); color: var(--primary);">{{ u.email[0].upper() }}</div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: white;">{{ u.email.split('@')[0] }}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">{{ u.email }}</div>
+                        </div>
+                    </div>
+                    <span class="status-indicator" style="background: {{ 'var(--success)' if u.is_active else 'var(--text-muted)' }};"></span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <a href="/admin/users" class="btn btn-primary" style="width: 100%; margin-top: 2rem; font-size: 0.8rem; border-radius: 12px; background: linear-gradient(to right, var(--primary), #818cf8);">Gerenciar Membros</a>
+        </div>
+        
+        <div class="admin-card" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1)); border-color: rgba(99,102,241,0.2);">
+            <h4 style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: var(--primary); margin-bottom: 1rem;">Dica Pro</h4>
+            <p style="font-size: 0.8rem; line-height: 1.6; color: var(--text-secondary);">Utilize o <strong>Audit de Atividades</strong> para rastrear modificações em campanhas e instâncias de forma granular.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
