@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from core.domain.entities import Product, Campaign, StatusCampaign, BroadcastList, BroadcastCampaign
+from core.domain.entities import User, Product, Campaign, StatusCampaign, BroadcastList, BroadcastCampaign, ActivityLog
 
 
 class ProductRepository(ABC):
@@ -102,4 +102,32 @@ class BroadcastCampaignRepository(ABC):
 
     @abstractmethod
     def delete(self, campaign_id: int, user_id: int) -> bool:
+        pass
+
+
+class UserRepository(ABC):
+    @abstractmethod
+    def get_by_email(self, email: str) -> Optional[User]:
+        pass
+
+    @abstractmethod
+    def save(self, user: User) -> User:
+        pass
+
+    @abstractmethod
+    def list_all(self, limit: int = 100) -> List[User]:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, user_id: int) -> Optional[User]:
+        pass
+
+
+class ActivityRepository(ABC):
+    @abstractmethod
+    def save(self, activity: ActivityLog) -> ActivityLog:
+        pass
+
+    @abstractmethod
+    def list_all(self, limit: int = 100, user_id: Optional[int] = None) -> List[ActivityLog]:
         pass
