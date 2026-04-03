@@ -25,9 +25,9 @@ async def admin_dashboard(
     users = admin_service.list_users()
     activities = admin_service.list_activities(limit=10)
     return templates.TemplateResponse(
-        "admin/dashboard.html",
-        {
-            "request": request,
+        request=request,
+        name="admin/dashboard.html",
+        context={
             "user": current_admin,
             "users": users,
             "activities": activities,
@@ -43,9 +43,9 @@ async def manage_users(
 ):
     users = admin_service.list_users()
     return templates.TemplateResponse(
-        "admin/users.html",
-        {
-            "request": request,
+        request=request,
+        name="admin/users.html",
+        context={
             "user": current_admin,
             "users": users,
             "title": "Manage Users"
@@ -77,9 +77,9 @@ async def view_activities(
 ):
     activities = admin_service.list_activities(limit=100, user_id=user_id)
     return templates.TemplateResponse(
-        "admin/activities.html",
-        {
-            "request": request,
+        request=request,
+        name="admin/activities.html",
+        context={
             "user": current_admin,
             "activities": activities,
             "filter_user_id": user_id,
