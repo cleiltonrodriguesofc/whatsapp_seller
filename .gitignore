@@ -49,3 +49,4 @@ htmlcov/
 *.log
 *.txt
 implementation_plan*.md
+coverage.xml
