@@ -1,9 +1,16 @@
 import sys
 import os
 import pytest
+
+# Ensure testing always uses an in-memory database and never touches production
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Disable testing variable to signify pytest
+os.environ["TESTING"] = "1"
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core.infrastructure.database.models import Base
+from limits.storage import MemoryStorage
 
 # Add the project root to sys.path to allow importing the 'core' package
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -40,3 +47,10 @@ def override_get_db(db_session):
         finally:
             pass
     return _override_get_db
+
+@pytest.fixture(scope="session", autouse=True)
+def disable_rate_limiter():
+    """Disable rate limiter entirely during tests to prevent 429 errors."""
+    from core.presentation.web.app import limiter
+    limiter.enabled = False
+    yield
