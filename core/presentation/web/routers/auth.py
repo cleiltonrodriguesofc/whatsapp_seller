@@ -7,8 +7,7 @@ import os
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.presentation.web.limiter import limiter
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
@@ -31,7 +30,7 @@ from core.domain.entities import ActivityLog
 from core.presentation.web.dependencies import auth_service, templates, get_current_user
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
+# use shared limiter from app
 
 router = APIRouter(tags=["auth"])
 

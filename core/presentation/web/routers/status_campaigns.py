@@ -55,9 +55,9 @@ async def new_status_campaign_form(
     targets = target_repo.list_all(current_user.id)
 
     return templates.TemplateResponse(
-        request=request,
         name="status_editor.html",
         context={
+            "request": request,
             "user": current_user,
             "campaign": None,
             "instances": instances,

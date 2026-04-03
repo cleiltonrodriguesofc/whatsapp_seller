@@ -194,11 +194,10 @@ class EvolutionWhatsAppService(NotificationService):
                 return True
         except httpx.TimeoutException:
             logger.warning(
-                "evolution api sendstatus timed out after 60s, but delivery likely started (jid_list_size=%s)",
+                "evolution api sendstatus timed out after 60s. Marking as failed to prevent silent dropping (jid_list_size=%s)",
                 len(jid_list) if jid_list else 0,
             )
-            # return true because message usually arrives anyway when this happens
-            return True
+            return False
         except Exception as exc:
             logger.error("evolution-api sendStatus failed with exception: %s", exc)
             return False
@@ -207,10 +206,11 @@ class EvolutionWhatsAppService(NotificationService):
         return await self.send_text(group_jid, message)
 
     async def get_contacts(self) -> list:
-        url = f"{self.base_url}/chat/fetchAllChats/{self.instance}"
+        # In Evolution API v1/v2, the endpoint is typically POST findContacts
+        url = f"{self.base_url}/chat/findContacts/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(url, headers=self._headers())
+                response = await client.post(url, headers=self._headers())
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:
