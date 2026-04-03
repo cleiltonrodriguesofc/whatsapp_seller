@@ -245,9 +245,21 @@ async def campaign_scheduler_loop() -> None:
     """
     Background task that checks and dispatches scheduled/recurring campaigns every minute.
     """
+    logger.info("starting campaign scheduler loop")
     while True:
+        # Give some time for migrations/startup to complete if needed
         db = SessionLocal()
         try:
+            # Check if tables exist before querying (basic resilience)
+            # This prevents sqlite3.OperationalError: no such table: campaigns
+            from sqlalchemy import inspect
+            inspector = inspect(db.bind)
+            if not inspector.has_table("campaigns"):
+                logger.warning("scheduler: 'campaigns' table not found yet. skipping this tick.")
+                db.close()
+                await asyncio.sleep(10)
+                continue
+
             now = now_sp()
             current_time_str = now.strftime("%H:%M")
             current_day_str = now.strftime("%a").lower()

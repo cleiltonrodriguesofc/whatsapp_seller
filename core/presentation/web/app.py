@@ -12,9 +12,9 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from core.presentation.web.limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import text
 from core.infrastructure.database.models import (
     Base,
@@ -101,8 +101,7 @@ try:
 except Exception as e:
     logger.warning("auto-migration base loop failed: %s", e)
 
-# rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# shared limiter
 
 app = FastAPI(
     title="WhatSeller Pro",
