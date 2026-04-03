@@ -13,6 +13,9 @@
 
 ## ✨ Features
 
+- **Billing & Subscriptions** — built-in MercadoPago integration to handle recurring SaaS subscriptions
+- **Referral Program** — automatically tracks and rewards users who refer new customers via their unique ref links
+- **Admin Dashboard** — central monitoring for platform activities, user management, and growth metrics
 - **Multi-Instance Management** — connect multiple WhatsApp numbers via QR Code and manage them from a single dashboard
 - **Campaign Scheduling** — one-shot or recurring campaigns with day/time granularity
 - **AI Copywriting** — generate sales messages via OpenAI GPT based on your product catalogue
@@ -59,6 +62,7 @@ render.yaml           # one-click Render deployment blueprint
 | Templates | Jinja2 |
 | HTTP client | httpx |
 | AI | OpenAI Python SDK |
+| Subscriptions | Mercado Pago SDK |
 | Rate limiting | SlowAPI |
 | Container | Docker (multi-stage) |
 | Deployment | Render |
@@ -72,6 +76,7 @@ render.yaml           # one-click Render deployment blueprint
 - [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/)
 - An active [Evolution API](https://github.com/EvolutionAPI/evolution-api) instance
 - An [OpenAI API Key](https://platform.openai.com/api-keys) (optional — required for AI copywriting)
+- A [Mercado Pago](https://www.mercadopago.com.br/developers/) access token (for billing)
 
 ### Setup
 
@@ -97,6 +102,9 @@ The app will be available at **http://localhost:8000**.
 | `EVOLUTION_API_URL` | ✅ | Base URL of your Evolution API instance |
 | `EVOLUTION_API_KEY` | ✅ | Global API key for the Evolution API |
 | `EVOLUTION_DB_URL` | ✅ | PostgreSQL connection string (production) |
+| `DATABASE_URL` | ✅ | Standard Database URL format (`sqlite:///...` or `postgresql://...`) |
+| `MP_ACCESS_TOKEN` | ⬜ | Required for Mercado Pago checkout & billing webhooks |
+| `ADMIN_EMAIL` | ⬜ | Primary Administrator email string |
 | `OPENAI_API_KEY` | ⬜ | Required only for AI copywriting |
 
 ---
