@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
 from core.application.services.auth_service import AuthService
-from core.infrastructure.database.models import UserModel, PlanModel, SubscriptionModel
+from core.infrastructure.database.models import UserModel, PlanModel
 
 @pytest.fixture
 def client(override_get_db):
