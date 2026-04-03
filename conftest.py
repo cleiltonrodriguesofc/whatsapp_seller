@@ -51,6 +51,6 @@ def override_get_db(db_session):
 @pytest.fixture(scope="session", autouse=True)
 def disable_rate_limiter():
     """Disable rate limiter entirely during tests to prevent 429 errors."""
-    from core.presentation.web.app import limiter
+    from core.presentation.web.limiter import limiter
     limiter.enabled = False
     yield
