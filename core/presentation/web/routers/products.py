@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 
 from core.domain.entities import Product
 from core.infrastructure.database.models import UserModel
-from core.infrastructure.database.repositories import SQLProductRepository
 from core.infrastructure.database.session import get_db
 from core.infrastructure.services.supabase_storage import SupabaseStorageService
+from core.infrastructure.database.repositories import SQLProductRepository, SQLActivityRepository
+from core.domain.entities import ActivityLog
 from core.presentation.web.dependencies import login_required, templates
 
 logger = logging.getLogger(__name__)
@@ -149,6 +150,15 @@ async def create_product(
         user_id=current_user.id,
     )
     product_repo.save(product)
+
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="product_create", 
+        description=f"Created product: {name}"
+    ))
+
     return RedirectResponse(url="/products", status_code=303)
 
 
@@ -236,6 +246,15 @@ async def update_product(
     product.image_url = final_image_url
 
     product_repo.save(product)
+
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="product_edit", 
+        description=f"Updated product: {name}"
+    ))
+
     return RedirectResponse(url="/products", status_code=303)
 
 
@@ -246,7 +265,21 @@ async def delete_product(
     current_user: UserModel = Depends(login_required),
 ):
     product_repo = SQLProductRepository(db)
+    product = product_repo.get_by_id(product_id, user_id=current_user.id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found or not owned by user")
+    
+    name = product.name
     success = product_repo.delete(product_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Product not found or not owned by user")
+        
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="product_delete", 
+        description=f"Deleted product: {name}"
+    ))
+    
     return RedirectResponse(url="/products", status_code=303)

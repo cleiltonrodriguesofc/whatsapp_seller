@@ -42,6 +42,7 @@ class UserModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=now_sp)
     referral_balance = Column(Float, default=0.0)
     referral_code_id = Column(Integer, ForeignKey("referral_codes.id"), nullable=True)
@@ -159,7 +160,7 @@ class StatusCampaignModel(Base):
 class BroadcastListModel(Base):
     __tablename__ = "broadcast_lists"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     instance_id = Column(Integer, ForeignKey("instances.id"), index=True, nullable=True)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
@@ -185,7 +186,7 @@ class BroadcastListMemberModel(Base):
 class BroadcastCampaignModel(Base):
     __tablename__ = "broadcast_campaigns"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     instance_id = Column(Integer, ForeignKey("instances.id"), nullable=False)
     title = Column(String, nullable=False)
 
@@ -262,3 +263,14 @@ class ReferralConversionModel(Base):
     reward_brl = Column(Float, default=0.0)
     rewarded_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=now_sp)
+
+
+class ActivityLogModel(Base):
+    __tablename__ = "activity_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    event_type = Column(String, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel")

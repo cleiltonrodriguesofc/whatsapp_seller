@@ -32,6 +32,7 @@ from core.presentation.web.routers import (
     static_pages,
     billing,
     referral,
+    admin,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -63,6 +64,7 @@ try:
             ("users", "referral_balance", "ALTER TABLE users ADD COLUMN referral_balance FLOAT DEFAULT 0.0;"),
             ("users", "referral_code_id", "ALTER TABLE users ADD COLUMN referral_code_id INTEGER;"),
             ("users", "agreed_to_terms_at", "ALTER TABLE users ADD COLUMN agreed_to_terms_at TIMESTAMP;"),
+            ("users", "is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;"),
         ]
 
         for table, column, stmt in migrations:
@@ -173,3 +175,4 @@ app.include_router(broadcast.router)
 app.include_router(static_pages.router)
 app.include_router(billing.router)
 app.include_router(referral.router)
+app.include_router(admin.router)

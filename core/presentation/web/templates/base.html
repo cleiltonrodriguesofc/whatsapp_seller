@@ -44,7 +44,12 @@
                 <span id="sidebar-status-dot"
                     style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; margin-left: auto;"></span>
             </a>
-            
+            {% if user and user.is_admin %}
+            <a href="/admin" class="nav-item {{ 'active' if '/admin' in request.url.path else '' }}">
+                <span class="nav-item-icon">⚙️</span> Admin Panel
+            </a>
+            {% endif %}
+
             <a href="/logout" class="nav-item nav-item-logout" style="color: #fca5a5; margin-top: auto;">
                 <span class="nav-item-icon">🚪</span>
                 <span>Sair</span>
