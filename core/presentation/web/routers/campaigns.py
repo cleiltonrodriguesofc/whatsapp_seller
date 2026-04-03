@@ -21,6 +21,7 @@ from core.infrastructure.database.models import (
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
     SQLProductRepository,
+    SQLActivityRepository,
 )
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
@@ -28,7 +29,6 @@ from core.presentation.web.dependencies import (
     get_current_user,
     login_required,
     templates,
-    get_activity_repo,
 )
 from core.domain.entities import ActivityLog
 
@@ -275,8 +275,6 @@ async def update_campaign(
     campaign_repo.save(campaign)
     
     # Log activity
-    from core.infrastructure.database.repositories import SQLActivityRepository
-    from core.domain.entities import ActivityLog
     activity_repo = SQLActivityRepository(db)
     activity_repo.save(ActivityLog(
         user_id=current_user.id, 

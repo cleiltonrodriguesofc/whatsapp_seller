@@ -77,7 +77,13 @@ def test_auth_pages_suppress_base_mobile_header(client):
 
 def test_login_submission_works_with_new_ui(client, db_session):
     """Verify that the login form remains functional after the UI redesign."""
-    email = "functional@test.com"
+    from core.presentation.web.app import limiter
+    from limits.storage import MemoryStorage
+    limiter._storage = MemoryStorage()
+    limiter.enabled = False
+
+    import uuid
+    email = f"functional_{uuid.uuid4().hex[:6]}@test.com"
     password = "pass"
     auth = AuthService()
     user = UserModel(email=email, hashed_password=auth.hash_password(password))
@@ -85,6 +91,7 @@ def test_login_submission_works_with_new_ui(client, db_session):
     db_session.commit()
     
     response = client.post("/login", data={"username": email, "password": password}, follow_redirects=True)
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Failed with {response.status_code}: {response.text}"
     # Should land on dashboard
     assert "Dashboard" in response.text or "Painel" in response.text
+
