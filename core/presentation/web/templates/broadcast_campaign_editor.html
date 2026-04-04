@@ -485,6 +485,40 @@
         if (isRec) setScheduleType('recurring');
         else if (hasSch) setScheduleType('once');
         else setScheduleType('now');
+
+        // === On-the-fly campaign: read pre-selected contacts/groups from localStorage ===
+        const customJidsRaw = localStorage.getItem('broadcast_selected_custom_jids');
+        if (customJidsRaw) {
+            try {
+                const customJids = JSON.parse(customJidsRaw);
+                if (Array.isArray(customJids) && customJids.length > 0) {
+                    // Detect target type from jid format
+                    const firstJid = customJids[0].jid || '';
+                    const isGroup = firstJid.includes('@g.us');
+                    const targetType = isGroup ? 'groups' : 'contacts';
+
+                    // Select the correct radio button
+                    const radio = document.querySelector(`input[name="target_type"][value="${targetType}"]`);
+                    if (radio) {
+                        radio.checked = true;
+                        onTargetTypeChange();
+                    }
+
+                    // Pre-check matching chips
+                    const jidSet = new Set(customJids.map(c => c.jid));
+                    const allChips = document.querySelectorAll(`#ui-${targetType} input[name="target_jids"]`);
+                    allChips.forEach(chip => {
+                        if (jidSet.has(chip.value)) {
+                            chip.checked = true;
+                        }
+                    });
+                }
+            } catch(e) {
+                console.error('Error parsing custom jids:', e);
+            }
+            // Clean up to avoid stale state
+            localStorage.removeItem('broadcast_selected_custom_jids');
+        }
     });
 
     document.querySelector('form').addEventListener('submit', function(e) {

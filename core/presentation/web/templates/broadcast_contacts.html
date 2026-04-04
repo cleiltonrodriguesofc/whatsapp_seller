@@ -10,7 +10,8 @@
             <div id="selection-count" style="display: none; background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">
                 0 selecionados
             </div>
-            <button id="btn-create-list" class="btn btn-ghost" style="display: none; border-color: #f59e0b; color: #f59e0b;">➕ Criar Lista de Transmissão</button>
+            <button id="btn-create-list" class="btn btn-ghost" style="display: none; border-color: #f59e0b; color: #f59e0b; padding: 0.65rem 1rem; border-radius: 10px;">➕ Criar Lista</button>
+            <button id="btn-create-campaign" class="btn btn-primary" style="display: none; font-weight: 700; padding: 0.65rem 1rem; border-radius: 10px; background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);">🚀 Criar Campanha</button>
         </div>
         <div style="display: flex; gap: 1rem; align-items: center;">
             <form id="instance-form" method="get" action="/broadcast/contacts" style="margin: 0;">
@@ -25,6 +26,14 @@
                 <button type="submit" class="btn btn-ghost" style="border-radius: 10px; padding: 0.65rem 1rem;">🔄 Sincronizar Agora</button>
             </form>
             <a href="/broadcast/campaigns/new" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 700; border-radius: 10px;">Nova Campanha</a>
+        </div>
+    </div>
+
+    <!-- Barra de Pesquisa de Contatos -->
+    <div style="margin-bottom: 1.5rem;">
+        <div style="position: relative; max-width: 500px;">
+            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+            <input type="text" id="search-input" placeholder="Pesquisar contatos por nome ou número..." style="width: 100%; padding: 0.85rem 1rem 0.85rem 2.8rem; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 0.95rem; color: white;">
         </div>
     </div>
 
@@ -89,16 +98,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkboxes = document.querySelectorAll('.contact-checkbox');
     const selectionCount = document.getElementById('selection-count');
     const btnCreateList = document.getElementById('btn-create-list');
+    const btnCreateCampaign = document.getElementById('btn-create-campaign');
+    const searchInput = document.getElementById('search-input');
+
+    // Funcionalidade de Busca (Filtro Client-side)
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.table-row');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if(text.includes(query)) row.style.display = '';
+                else row.style.display = 'none';
+            });
+        });
+    }
 
     function updateSelection() {
-        const selected = Array.from(checkboxes).filter(cb => cb.checked).length;
+        const selectedElements = Array.from(checkboxes).filter(cb => cb.checked);
+        const selected = selectedElements.length;
         if (selected > 0) {
             selectionCount.style.display = 'block';
-            selectionCount.innerText = `${selected} selecionados`;
+            selectionCount.innerText = `${selected} selecionado${selected > 1 ? 's' : ''}`;
             btnCreateList.style.display = 'block';
+            // Regra: Campanha direta só se tiver pelo menos 2 contatos.
+            if (selected >= 2) {
+                btnCreateCampaign.style.display = 'block';
+            } else {
+                btnCreateCampaign.style.display = 'none';
+            }
         } else {
             selectionCount.style.display = 'none';
             btnCreateList.style.display = 'none';
+            btnCreateCampaign.style.display = 'none';
         }
     }
 
@@ -127,6 +159,26 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/broadcast/lists/new';
         } else {
             alert('Por favor, selecione ao menos um contato.');
+        }
+    });
+
+    btnCreateCampaign.addEventListener('click', () => {
+        const selectedElements = Array.from(checkboxes).filter(cb => cb.checked);
+        if (selectedElements.length >= 2) {
+            const instancesRef = new Set();
+            for(let cb of selectedElements) {
+                const row = cb.closest('.table-row');
+                if (row.dataset.instanceId) instancesRef.add(row.dataset.instanceId);
+            }
+            if (instancesRef.size > 1) {
+                alert('Erro Anti-Ban: Você não pode criar uma campanha unindo contatos de instâncias diferentes. Por favor, filtre primeiro por uma instância no menu acima.');
+                return;
+            }
+
+            // Mapeando JID+NAME para o injetor dinâmico no editor de Campanhas
+            const selectedJids = selectedElements.map(cb => { return { jid: cb.dataset.jid, name: cb.dataset.name }; });
+            localStorage.setItem('broadcast_selected_custom_jids', JSON.stringify(selectedJids));
+            window.location.href = '/broadcast/campaigns/new';
         }
     });
 });
