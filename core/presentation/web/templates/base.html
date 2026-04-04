@@ -32,6 +32,12 @@
             <a href="/chats" class="nav-item {{ 'active' if '/chats' in request.url.path else '' }}">
                 <span class="nav-item-icon">💬</span> Conversas
             </a>
+            <a href="/broadcast/contacts" class="nav-item {{ 'active' if '/broadcast/contacts' in request.url.path else '' }}">
+                <span class="nav-item-icon">👥</span> Contatos
+            </a>
+            <a href="/broadcast/groups" class="nav-item {{ 'active' if '/broadcast/groups' in request.url.path else '' }}">
+                <span class="nav-item-icon">🏢</span> Grupos
+            </a>
             {# 
             <a href="/dashboard/billing" class="nav-item {{ 'active' if '/billing' in request.url.path else '' }}">
                 <span class="nav-item-icon">💳</span> Faturamento
