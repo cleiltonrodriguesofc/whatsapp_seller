@@ -13,14 +13,15 @@ from sqlalchemy.orm import Session
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.models import (
-    CampaignStatus as ModelCampaignStatus,
     InstanceModel,
-    UserModel,
     StatusCampaignModel,
+    SubscriptionModel,
+    UserModel,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
     SQLProductRepository,
+    SQLActivityRepository,
 )
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
@@ -29,6 +30,7 @@ from core.presentation.web.dependencies import (
     login_required,
     templates,
 )
+from core.domain.entities import ActivityLog
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +55,18 @@ async def home(
     status_campaigns = db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == current_user.id).all()
     sent_count = (
         db.query(StatusCampaignModel)
-        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == ModelCampaignStatus.SENT.value)
+        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == "sent")
         .count()
     )
+
+    # Buscar assinatura e dados de referral
+    subscription = db.query(SubscriptionModel).filter(SubscriptionModel.user_id == current_user.id).first()
+    
+    # Calcular dias restantes se for trial
+    days_left = 0
+    if subscription and subscription.status == "trialing" and subscription.trial_ends_at:
+        delta = subscription.trial_ends_at - datetime.utcnow()
+        days_left = max(0, delta.days)
 
     return templates.TemplateResponse(
         request=request,
@@ -66,6 +77,8 @@ async def home(
             "ai_count": 0,
             "total_clicks": 0,
             "user": current_user,
+            "subscription": subscription,
+            "days_left": days_left,
         },
     )
 
@@ -77,9 +90,23 @@ async def delete_campaign(
     current_user: UserModel = Depends(login_required),
 ):
     campaign_repo = SQLCampaignRepository(db)
+    campaign = campaign_repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    title = campaign.title
     success = campaign_repo.delete(campaign_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="campaign_delete", 
+        description=f"Deleted campaign: {title}"
+    ))
+    
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -158,6 +185,14 @@ async def create_campaign(
         user_id=current_user.id,
         save_as_draft=save_as_draft,
     )
+
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="campaign_create", 
+        description=f"Created campaign: {title} (Draft: {save_as_draft})"
+    ))
 
     return RedirectResponse(url="/", status_code=303)
 
@@ -238,6 +273,15 @@ async def update_campaign(
             )
 
     campaign_repo.save(campaign)
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="campaign_edit", 
+        description=f"Updated campaign: {title}"
+    ))
+    
     return RedirectResponse(url="/", status_code=303)
 
 

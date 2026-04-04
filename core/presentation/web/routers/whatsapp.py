@@ -12,8 +12,9 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
-from core.infrastructure.database.models import InstanceModel, UserModel
-from core.infrastructure.database.repositories import SQLTargetRepository
+from core.infrastructure.database.repositories import SQLTargetRepository, SQLActivityRepository
+from core.infrastructure.database.models import UserModel, InstanceModel
+from core.domain.entities import ActivityLog
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.presentation.web.dependencies import login_required, templates
@@ -32,8 +33,13 @@ async def connect_whatsapp_page(
     instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
     return templates.TemplateResponse(
         request=request,
-        name="connect_whatsapp.html",
-        context={"user": current_user, "instances": instances, "title": "Connect WhatsApp"},
+        name="connect_whatsapp.html", 
+        context={
+            "request": request, 
+            "instances": instances, 
+            "user": current_user,
+            "title": "Configuração WhatsApp"
+        }
     )
 
 
@@ -66,6 +72,15 @@ async def create_new_instance(
         )
         db.add(new_instance)
         db.commit()
+        
+        # Log activity
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(ActivityLog(
+            user_id=current_user.id, 
+            event_type="instance_create", 
+            description=f"Created new WhatsApp instance: {name} ({full_name})"
+        ))
+        
         return {"success": True, "instance_id": new_instance.id}
 
     logger.error("failed to create instance. response type: %s", type(instance_data))
@@ -165,6 +180,15 @@ async def delete_whatsapp(
     await whatsapp_service.delete_instance()
     db.delete(instance_model)
     db.commit()
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="instance_delete", 
+        description=f"Deleted WhatsApp instance: {instance_model.display_name}"
+    ))
+    
     return {"success": True}
 
 
@@ -185,6 +209,15 @@ async def rename_whatsapp(
 
     instance_model.display_name = new_name
     db.commit()
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="instance_rename", 
+        description=f"Renamed WhatsApp instance to: {new_name}"
+    ))
+    
     return {"success": True}
 
 
@@ -218,6 +251,15 @@ async def logout_whatsapp(
 
     instance_model.status = "disconnected"
     db.commit()
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(
+        user_id=current_user.id, 
+        event_type="instance_logout", 
+        description=f"Logged out from WhatsApp instance: {instance_model.display_name}"
+    ))
+    
     return {"success": True}
 
 
@@ -278,7 +320,7 @@ async def sync_whatsapp_targets(
         targets.append({"id": c.get("id"), "subject": c.get("name") or c.get("id")})
 
     if targets:
-        target_repo.upsert_sync(targets, user_id=current_user.id)
+        target_repo.upsert_sync(targets, user_id=current_user.id, instance_id=instance_model.id)
 
     return {"success": True, "count": len(targets)}
 
@@ -296,6 +338,16 @@ async def send_test_message(
         apikey=instance_model.apikey if instance_model else None,
     )
     success = await whatsapp_service.send_text(phone, message)
+    
+    if success:
+        # Log activity
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(ActivityLog(
+            user_id=current_user.id, 
+            event_type="whatsapp_test", 
+            description=f"Sent test message to: {phone}"
+        ))
+        
     return {"success": success}
 
 

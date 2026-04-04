@@ -12,6 +12,8 @@ from core.domain.entities import (
     CampaignStatus as DomainCampaignStatus,
     BroadcastList,
     BroadcastCampaign,
+    User,
+    ActivityLog,
 )
 from core.application.repositories import (
     ProductRepository,
@@ -19,6 +21,8 @@ from core.application.repositories import (
     StatusCampaignRepository,
     BroadcastListRepository,
     BroadcastCampaignRepository,
+    UserRepository,
+    ActivityRepository,
 )
 from core.infrastructure.database.models import (
     ProductModel,
@@ -31,6 +35,7 @@ from core.infrastructure.database.models import (
     BroadcastListModel,
     BroadcastListMemberModel,
     BroadcastCampaignModel,
+    ActivityLogModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -295,9 +300,9 @@ class SQLTargetRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def upsert_sync(self, targets: List[dict], user_id: int):
+    def upsert_sync(self, targets: List[dict], user_id: int, instance_id: int = None):
         """
-        Syncs a list of targets from the API, preventing duplicates for a specific user.
+        Syncs a list of targets from the API, preventing duplicates for a specific user and instance.
         Evolution API returns different formats:
           - groups: { "id": "...", "subject": "Group Name" }
           - contacts (fetchAllChats): { "id": "...", "name": "Contact Name", "remoteJid": "..." }
@@ -318,23 +323,34 @@ class SQLTargetRepository:
             if "broadcast" in jid or "status" in jid:
                 continue
 
-            existing = (
-                self.db.query(WhatsAppTargetModel)
-                .filter(
-                    WhatsAppTargetModel.jid == jid,
-                    WhatsAppTargetModel.user_id == user_id,
-                )
-                .first()
+            query = self.db.query(WhatsAppTargetModel).filter(
+                WhatsAppTargetModel.jid == jid,
+                WhatsAppTargetModel.user_id == user_id,
             )
+            
+            # Buscando se já temos esse JID para a Instância solicitada OU se é um registro legado sem instância
+            existing = None
+            if instance_id is not None:
+                # Tenta achar exato
+                existing = query.filter(WhatsAppTargetModel.instance_id == instance_id).first()
+                if not existing:
+                    # Tenta achar legado sem instancia para reaproveitar e fixar
+                    existing = query.filter(WhatsAppTargetModel.instance_id.is_(None)).first()
+            else:
+                existing = query.first()
+            
             if existing:
                 existing.name = name
                 existing.type = target_type
                 existing.phone = phone
                 existing.last_synced_at = now
                 existing.is_active = True
+                if instance_id is not None:
+                    existing.instance_id = instance_id
             else:
                 new_target = WhatsAppTargetModel(
                     user_id=user_id,
+                    instance_id=instance_id,
                     jid=jid,
                     name=name,
                     phone=phone,
@@ -345,27 +361,45 @@ class SQLTargetRepository:
         self.db.commit()
 
 
-    def list_contacts(self, user_id: int) -> List[WhatsAppTargetModel]:
-        return (
-            self.db.query(WhatsAppTargetModel)
-            .filter(
-                WhatsAppTargetModel.user_id == user_id,
-                WhatsAppTargetModel.type == "chat",
-                WhatsAppTargetModel.is_active,
-            )
-            .all()
+    def list_contacts(self, user_id: int, instance_id: Optional[int] = None) -> List[WhatsAppTargetModel]:
+        query = self.db.query(WhatsAppTargetModel).filter(
+            WhatsAppTargetModel.user_id == user_id,
+            WhatsAppTargetModel.type == "chat",
+            WhatsAppTargetModel.is_active,
         )
+        if instance_id is not None:
+            query = query.filter(WhatsAppTargetModel.instance_id == instance_id)
+            return query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+            
+        # Deduplication for 'All Instances' View
+        results = query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+        seen = set()
+        unique_results = []
+        for r in results:
+            if r.jid not in seen:
+                seen.add(r.jid)
+                unique_results.append(r)
+        return unique_results
 
-    def list_groups(self, user_id: int) -> List[WhatsAppTargetModel]:
-        return (
-            self.db.query(WhatsAppTargetModel)
-            .filter(
-                WhatsAppTargetModel.user_id == user_id,
-                WhatsAppTargetModel.type == "group",
-                WhatsAppTargetModel.is_active,
-            )
-            .all()
+    def list_groups(self, user_id: int, instance_id: Optional[int] = None) -> List[WhatsAppTargetModel]:
+        query = self.db.query(WhatsAppTargetModel).filter(
+            WhatsAppTargetModel.user_id == user_id,
+            WhatsAppTargetModel.type == "group",
+            WhatsAppTargetModel.is_active,
         )
+        if instance_id is not None:
+            query = query.filter(WhatsAppTargetModel.instance_id == instance_id)
+            return query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+            
+        # Deduplication for 'All Instances' View
+        results = query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+        seen = set()
+        unique_results = []
+        for r in results:
+            if r.jid not in seen:
+                seen.add(r.jid)
+                unique_results.append(r)
+        return unique_results
 
     def list_all(self, user_id: int):
         return (
@@ -378,21 +412,92 @@ class SQLTargetRepository:
         )
 
 
-class SQLUserRepository:
+class SQLUserRepository(UserRepository):
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_email(self, email: str) -> Optional[UserModel]:
-        return self.db.query(UserModel).filter(UserModel.email == email).first()
+    def get_by_email(self, email: str) -> Optional[User]:
+        model = self.db.query(UserModel).filter(UserModel.email == email).first()
+        return self._to_entity(model) if model else None
 
-    def save(self, user: UserModel) -> UserModel:
+    def get_by_id(self, user_id: int) -> Optional[User]:
+        model = self.db.query(UserModel).filter(UserModel.id == user_id).first()
+        return self._to_entity(model) if model else None
+
+    def save(self, user: User) -> User:
         if user.id:
-            self.db.merge(user)
+            model = self.db.query(UserModel).filter(UserModel.id == user.id).first()
+            if model:
+                model.email = user.email
+                model.hashed_password = user.hashed_password
+                model.is_active = user.is_active
+                model.is_admin = user.is_admin
         else:
-            self.db.add(user)
+            model = UserModel(
+                email=user.email,
+                hashed_password=user.hashed_password,
+                is_active=user.is_active,
+                is_admin=user.is_admin,
+            )
+            self.db.add(model)
+        
         self.db.commit()
-        self.db.refresh(user)
+        self.db.refresh(model)
+        user.id = model.id
         return user
+
+    def list_all(self, limit: int = 100) -> List[User]:
+        models = self.db.query(UserModel).order_by(UserModel.created_at.desc()).limit(limit).all()
+        return [self._to_entity(m) for m in models]
+
+    def _to_entity(self, model: UserModel) -> User:
+        return User(
+            id=model.id,
+            email=model.email,
+            hashed_password=model.hashed_password,
+            is_active=model.is_active,
+            is_admin=model.is_admin,
+            created_at=model.created_at,
+        )
+
+
+class SQLActivityRepository(ActivityRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    def save(self, activity: ActivityLog) -> ActivityLog:
+        model = ActivityLogModel(
+            user_id=activity.user_id,
+            event_type=activity.event_type,
+            description=activity.description,
+            timestamp=activity.timestamp or now_sp(),
+        )
+        self.db.add(model)
+        self.db.commit()
+        self.db.refresh(model)
+        activity.id = model.id
+        return activity
+
+    def list_all(self, limit: int = 100, user_id: Optional[int] = None) -> List[ActivityLog]:
+        query = self.db.query(ActivityLogModel, UserModel.email).outerjoin(
+            UserModel, ActivityLogModel.user_id == UserModel.id
+        ).order_by(ActivityLogModel.timestamp.desc())
+        
+        if user_id:
+            query = query.filter(ActivityLogModel.user_id == user_id)
+        
+        results = query.limit(limit).all()
+        return [
+            ActivityLog(
+                id=m.id,
+                user_id=m.user_id,
+                event_type=m.event_type,
+                description=m.description,
+                timestamp=m.timestamp,
+                user_email=email
+            )
+            for m, email in results
+        ]
 
 
 class SQLInstanceRepository:
@@ -543,10 +648,12 @@ class SQLBroadcastListRepository(BroadcastListRepository):
             )
             if model:
                 model.name = broadcast_list.name
+                model.instance_id = broadcast_list.instance_id
                 model.description = broadcast_list.description
         else:
             model = BroadcastListModel(
                 user_id=broadcast_list.user_id,
+                instance_id=broadcast_list.instance_id,
                 name=broadcast_list.name,
                 description=broadcast_list.description,
             )
@@ -578,6 +685,7 @@ class SQLBroadcastListRepository(BroadcastListRepository):
         return BroadcastList(
             id=model.id,
             user_id=model.user_id,
+            instance_id=model.instance_id,
             name=model.name,
             description=model.description,
             member_count=member_count,
@@ -601,6 +709,7 @@ class SQLBroadcastListRepository(BroadcastListRepository):
                 BroadcastList(
                     id=m.id,
                     user_id=m.user_id,
+                    instance_id=m.instance_id,
                     name=m.name,
                     description=m.description,
                     member_count=member_count,

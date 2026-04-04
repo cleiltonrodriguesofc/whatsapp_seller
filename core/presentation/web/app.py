@@ -12,9 +12,9 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from core.presentation.web.limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import text
 from core.infrastructure.database.models import (
     Base,
@@ -29,6 +29,10 @@ from core.presentation.web.routers import (
     storage,
     whatsapp,
     broadcast,
+    static_pages,
+    billing,
+    referral,
+    admin,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -46,60 +50,65 @@ Base.metadata.create_all(bind=engine)
 # run auto-migrations on startup
 try:
     with engine.connect() as conn:
-        # products.click_count
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'products' AND column_name = 'click_count';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"))
-            conn.commit()
-            logger.info("auto-migration: added 'click_count' to products table")
-        
-        # status_campaigns.link
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'status_campaigns' AND column_name = 'link';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN link TEXT;"))
-            conn.commit()
-            logger.info("auto-migration: added 'link' to status_campaigns table")
+        migrations = [
+            ("products", "click_count", "ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"),
+            ("status_campaigns", "link", "ALTER TABLE status_campaigns ADD COLUMN link TEXT;"),
+            ("status_campaigns", "price", "ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"),
+            ("status_campaigns", "target_contacts", "ALTER TABLE status_campaigns ADD COLUMN target_contacts TEXT;"),
+            ("whatsapp_targets", "phone", "ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;"),
+            ("broadcast_campaigns", "target_type", "ALTER TABLE broadcast_campaigns ADD COLUMN target_type TEXT DEFAULT 'contacts';"),
+            ("broadcast_campaigns", "target_jids", "ALTER TABLE broadcast_campaigns ADD COLUMN target_jids TEXT;"),
+            ("broadcast_campaigns", "list_id", "ALTER TABLE broadcast_campaigns ADD COLUMN list_id INTEGER;"),
+            ("whatsapp_targets", "instance_id", "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
+            ("broadcast_lists", "instance_id", "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
+            ("users", "referral_balance", "ALTER TABLE users ADD COLUMN referral_balance FLOAT DEFAULT 0.0;"),
+            ("users", "referral_code_id", "ALTER TABLE users ADD COLUMN referral_code_id INTEGER;"),
+            ("users", "agreed_to_terms_at", "ALTER TABLE users ADD COLUMN agreed_to_terms_at TIMESTAMP;"),
+            ("users", "is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;"),
+        ]
 
-        # status_campaigns.price
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'status_campaigns' AND column_name = 'price';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"))
-            conn.commit()
-            logger.info("auto-migration: added 'price' to status_campaigns table")
+        for table, column, stmt in migrations:
+            try:
+                res = conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = :table_name AND column_name = :column_name;"
+                    ),
+                    {"table_name": table, "column_name": column}
+                )
+                if not res.fetchone():
+                    conn.execute(text(stmt))
+                    conn.commit()
+                    logger.info(f"auto-migration: added '{column}' to {table} table")
+            except Exception as e:
+                logger.warning(f"auto-migration failed for {table}.{column}: {e}")
 
-        # whatsapp_targets.phone
-        res = conn.execute(
-            text(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name = 'whatsapp_targets' AND column_name = 'phone';"
-            )
-        )
-        if not res.fetchone():
-            conn.execute(text("ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;"))
-            conn.commit()
-            logger.info("auto-migration: added 'phone' to whatsapp_targets table")
+        # postgres-only enum-to-varchar casts
+        postgres_casts = [
+            "ALTER TABLE campaigns ALTER COLUMN status TYPE VARCHAR(50) USING status::varchar;",
+            "ALTER TABLE status_campaigns ALTER COLUMN status TYPE VARCHAR(50) USING status::varchar;",
+            "ALTER TABLE broadcast_campaigns ALTER COLUMN status TYPE VARCHAR(50) USING status::varchar;",
+        ]
+        for cast_stmt in postgres_casts:
+            try:
+                conn.execute(text(cast_stmt))
+                conn.commit()
+                logger.debug("auto-migration: executed postgres type cast successfully")
+            except Exception:
+                # Expected to fail silently on SQLite or if already casted in Postgres
+                pass
+
 except Exception as e:
-    logger.warning("auto-migration failed: %s", e)
+    logger.warning("auto-migration base loop failed: %s", e)
 
-# rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# shared limiter
 
-app = FastAPI(title="WhatSeller Pro", debug=os.environ.get("DEBUG", "false") == "true")
+app = FastAPI(
+    title="WhatSeller Pro",
+    debug=os.environ.get("DEBUG", "false") == "true",
+    docs_url="/api-docs",
+    redoc_url="/api-redoc"
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -162,3 +171,7 @@ app.include_router(status_campaigns.router)
 app.include_router(storage.router)
 app.include_router(whatsapp.router)
 app.include_router(broadcast.router)
+app.include_router(static_pages.router)
+app.include_router(billing.router)
+app.include_router(referral.router)
+app.include_router(admin.router)

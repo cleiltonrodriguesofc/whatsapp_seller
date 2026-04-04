@@ -4,6 +4,21 @@
 {% block page_subtitle %}Acompanhe suas campanhas e o desempenho do marketing automatizado.{% endblock %}
 
 {% block content %}
+{% if subscription and subscription.status == "trialing" %}
+<div class="card trial-banner animate-fade-in" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%); border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 2.5rem; backdrop-filter: blur(10px);">
+    <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <div style="font-size: 2rem; background: rgba(255, 255, 255, 0.05); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 16px;">🎁</div>
+        <div>
+            <h4 style="margin: 0; font-weight: 800; font-size: 1.1rem; color: white;">Seu Trial Gratuito está ativo!</h4>
+            <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Você tem <strong style="color: var(--primary-light);">{{ days_left }} dias</strong> restantes para testar todas as funcionalidades Pro.</p>
+        </div>
+    </div>
+    <a href="/pricing" class="btn btn-primary">
+        Fazer Upgrade Agora
+    </a>
+</div>
+{% endif %}
+
 <div class="stat-grid">
     <div class="card stat-card">
         <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">📊</div>
@@ -33,6 +48,110 @@
             <p>{{ total_clicks or 0 }}</p>
         </div>
     </div>
+<div class="grid-split" style="grid-template-columns: 2fr 1fr; margin-bottom: 3rem;">
+    <!-- Performance Chart -->
+    <div class="card" style="padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h3 style="margin-bottom: 0.25rem;">Desempenho Semanal</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Engajamento e cliques nos últimos 7 dias</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-success" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">Cliques</span>
+                <span class="badge badge-success" style="background: rgba(168, 85, 247, 0.1); color: var(--secondary);">Envios</span>
+            </div>
+        </div>
+        <div style="height: 300px; width: 100%;">
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card" style="padding: 2rem; display: flex; flex-direction: column;">
+        <h3 style="margin-bottom: 1.5rem;">Atividade Recente</h3>
+        <div style="display: flex; flex-direction: column; gap: 1.25rem; flex-grow: 1;">
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-top: 0.5rem; box-shadow: 0 0 8px var(--success);"></div>
+                <div>
+                    <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.1rem;">Campanha Finalizada</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">"Oferta de Verão" enviada com sucesso</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 0.5rem; box-shadow: 0 0 8px var(--primary);"></div>
+                <div>
+                    <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.1rem;">Novo Clique Registrado</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">Lead clicou no link do Produto X</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); margin-top: 0.5rem; box-shadow: 0 0 8px var(--secondary);"></div>
+                <div>
+                    <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.1rem;">Status Postado</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">Automação de status ativa há 2h</p>
+                </div>
+            </div>
+        </div>
+        <a href="/activities" style="margin-top: 2rem; text-align: center; font-size: 0.85rem; color: var(--primary); font-weight: 600; text-decoration: none;">Ver todo o histórico →</a>
+    </div>
 </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        // Mock data for 7 days
+        const labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+        const data = {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Cliques',
+                    data: [12, 19, 15, 25, 22, 30, 45],
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#6366f1'
+                },
+                {
+                    label: 'Mensagens',
+                    data: [50, 65, 55, 80, 70, 90, 120],
+                    borderColor: '#a855f7',
+                    backgroundColor: 'transparent',
+                    fill: false,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0
+                }
+            ]
+        };
+
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

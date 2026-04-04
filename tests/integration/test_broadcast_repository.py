@@ -19,15 +19,17 @@ def db_session():
 
 def test_broadcast_list_repository_save_and_get(db_session):
     repo = SQLBroadcastListRepository(db_session)
-    blist = BroadcastList(user_id=1, name="Integration Test List", description="Testing repo")
+    blist = BroadcastList(user_id=1, instance_id=2, name="Integration Test List", description="Testing repo")
     
     # Save
     saved_list = repo.save(blist)
     assert saved_list.id is not None
+    assert saved_list.instance_id == 2
     
     # Get
     retrieved = repo.get_by_id(saved_list.id, user_id=1)
     assert retrieved.name == "Integration Test List"
+    assert retrieved.instance_id == 2
     assert retrieved.member_count == 0
 
 

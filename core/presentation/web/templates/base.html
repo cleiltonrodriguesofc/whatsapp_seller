@@ -5,24 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "WhatSeller Pro" }}</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
     <div class="mobile-header">
-        <a href="/" class="sidebar-logo" style="margin-bottom: 0; padding: 0; text-decoration: none;">
-            <span>🚀</span> <strong style="font-weight: 900;">What<span style="color: var(--primary);">Seller</span> Pro</strong>
-        </a>
-        <div style="margin-left: auto;">
-            {% if user %}
-            <a href="/logout"
-                style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none; font-weight: 600;">Sair</a>
-            {% endif %}
-        </div>
+        <div class="brand-logo-small">What<span class="gradient-text">Seller</span> Pro</div>
     </div>
     <aside class="sidebar">
         <a href="/" class="sidebar-logo" style="text-decoration: none;">
-            <span>🚀</span> <strong style="font-weight: 900;">What<span style="color: var(--primary);">Seller</span> Pro</strong>
+            <strong style="font-weight: 700;">What<span class="gradient-text">Seller</span> Pro</strong>
         </a>
 
         <nav class="nav-menu">
@@ -35,12 +29,30 @@
             <a href="/broadcast" class="nav-item {{ 'active' if '/broadcast' in request.url.path else '' }}">
                 <span class="nav-item-icon">📢</span> Broadcast
             </a>
+            {# 
+            <a href="/dashboard/billing" class="nav-item {{ 'active' if '/billing' in request.url.path else '' }}">
+                <span class="nav-item-icon">💳</span> Faturamento
+            </a>
+            <a href="/referral" class="nav-item {{ 'active' if '/referral' in request.url.path else '' }}">
+                <span class="nav-item-icon">🤝</span> Indicação
+            </a> 
+            #}
             <a href="/whatsapp/connect"
                 class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
                 <span class="nav-icon">📱</span>
                 <span>WhatsApp</span>
                 <span id="sidebar-status-dot"
                     style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; margin-left: auto;"></span>
+            </a>
+            {% if user and user.is_admin %}
+            <a href="/admin" class="nav-item {{ 'active' if '/admin' in request.url.path else '' }}">
+                <span class="nav-item-icon">⚙️</span> Admin Panel
+            </a>
+            {% endif %}
+
+            <a href="/logout" class="nav-item nav-item-logout" style="color: #fca5a5; margin-top: auto;">
+                <span class="nav-item-icon">🚪</span>
+                <span>Sair</span>
             </a>
         </nav>
     </aside>
@@ -58,9 +70,7 @@
             <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
                 <div style="text-align: right;">
                     <div style="font-size: 0.9rem; font-weight: 600;">{{ user.email.split('@')[0] }}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">
-                        <a href="/logout" style="color: #ef4444; text-decoration: none;">Sair</a>
-                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Administrador</div>
                 </div>
                 <div
                     style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; align-items: center; justify-content: center; font-weight: 700;">
@@ -73,6 +83,7 @@
         <section class="animate-fade-in" style="animation-delay: 0.1s;">
             {% block content %}{% endblock %}
         </section>
+
     </main>
 
     <script>
@@ -87,6 +98,7 @@
                 const res = await fetch('/whatsapp/status');
                 const data = await res.json();
                 const dot = document.getElementById('sidebar-status-dot');
+                
                 if (data.connected) {
                     dot.style.background = '#10b981';
                     dot.title = 'WhatsApp Conectado';

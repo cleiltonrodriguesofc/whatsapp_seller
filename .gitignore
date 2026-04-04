@@ -44,3 +44,9 @@ clubedomilcomapi/
 __pycache__/
 *.pyc
 uploads/
+.coverage
+htmlcov/
+*.log
+*.txt
+implementation_plan*.md
+coverage.xml

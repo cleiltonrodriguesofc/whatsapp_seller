@@ -7,18 +7,30 @@ import os
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.presentation.web.limiter import limiter
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
-from core.infrastructure.database.models import InstanceModel, UserModel
+from datetime import datetime, timedelta
+import string
+import random
+
+from core.infrastructure.database.models import (
+    InstanceModel, 
+    UserModel, 
+    SubscriptionModel, 
+    PlanModel, 
+    ReferralCodeModel, 
+    ReferralConversionModel
+)
 from core.infrastructure.database.session import get_db
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
-from core.presentation.web.dependencies import auth_service, templates
+from core.infrastructure.database.repositories import SQLActivityRepository
+from core.domain.entities import ActivityLog
+from core.presentation.web.dependencies import auth_service, templates, get_current_user
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
+# use shared limiter from app
 
 router = APIRouter(tags=["auth"])
 
@@ -45,6 +57,11 @@ async def login_action(
         )
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
+    
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(user_id=user.id, event_type="login", description=f"User logged in from {request.client.host if request.client else 'unknown'}"))
+
     response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
     is_prod = os.environ.get("RENDER") == "true"
     response.set_cookie(
@@ -69,8 +86,16 @@ async def register_action(
     email: str = Form(...),
     password: str = Form(...),
     business_name: str = Form(...),
+    terms_accepted: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    if terms_accepted != "on":
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Você precisa aceitar os Termos de Uso.", "title": "Register"},
+        )
+
     existing_user = db.query(UserModel).filter(UserModel.email == email).first()
     if existing_user:
         return templates.TemplateResponse(
@@ -79,10 +104,77 @@ async def register_action(
             context={"error": "Email already registered", "title": "Register"},
         )
 
-    new_user = UserModel(email=email, hashed_password=auth_service.hash_password(password))
+    admin_email = os.environ.get("ADMIN_EMAIL")
+    is_admin = (email == admin_email)
+
+    new_user = UserModel(
+        email=email, 
+        hashed_password=auth_service.hash_password(password),
+        agreed_to_terms_at=datetime.utcnow(),
+        is_admin=is_admin
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # 1. generate referral code for the new user
+    def generate_code(length=8):
+        chars = string.ascii_uppercase + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
+    
+    unique_code = generate_code()
+    while db.query(ReferralCodeModel).filter(ReferralCodeModel.code == unique_code).first():
+        unique_code = generate_code()
+        
+    user_ref_code = ReferralCodeModel(user_id=new_user.id, code=unique_code)
+    db.add(user_ref_code)
+    db.commit()
+    db.refresh(user_ref_code)
+    
+    new_user.referral_code_id = user_ref_code.id
+    db.commit()
+
+    # 2. handle referral from another user
+    ref_code = request.query_params.get("ref")
+    if ref_code:
+        referrer_code_obj = db.query(ReferralCodeModel).filter(ReferralCodeModel.code == ref_code).first()
+        if referrer_code_obj and referrer_code_obj.user_id != new_user.id:
+            conversion = ReferralConversionModel(
+                referrer_id=referrer_code_obj.user_id,
+                referred_id=new_user.id,
+                status="pending"
+            )
+            db.add(conversion)
+            db.commit()
+
+    # 3. create 3-day trial subscription
+    # first, ensure a 'starter' plan exists (or use a default)
+    starter_plan = db.query(PlanModel).filter(PlanModel.name == "starter").first()
+    if not starter_plan:
+        # fallback/auto-create if not exists for trial
+        starter_plan = PlanModel(
+            name="starter",
+            display_name="Starter",
+            price_brl=97.00,
+            max_instances=1,
+            has_ai=False
+        )
+        db.add(starter_plan)
+        db.commit()
+        db.refresh(starter_plan)
+
+    trial_subscription = SubscriptionModel(
+        user_id=new_user.id,
+        plan_id=starter_plan.id,
+        status="trialing",
+        trial_ends_at=datetime.utcnow() + timedelta(days=3)
+    )
+    db.add(trial_subscription)
+    db.commit()
+
+    # 4. log registration activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(ActivityLog(user_id=new_user.id, event_type="register", description=f"User registered (Admin: {is_admin})"))
 
     # provision whitatsapp instance
     try:
@@ -130,7 +222,20 @@ async def register_action(
 
 
 @router.get("/logout")
-async def logout():
+async def logout(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    if current_user:
+        # Log activity
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(ActivityLog(
+            user_id=current_user.id, 
+            event_type="logout", 
+            description="User logged out"
+        ))
+
     response = RedirectResponse(url="/login")
     response.delete_cookie("access_token")
     return response
