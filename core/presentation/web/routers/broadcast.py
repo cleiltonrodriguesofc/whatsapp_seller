@@ -532,12 +532,12 @@ async def improve_broadcast_caption(
 
     prompt = (
         f"Melhore esta mensagem para um Broadcast de WhatsApp.\n\n"
-        f"Título/Assunto: {title}\n"
         f"Ideia do que enviar: {description}\n\n"
         f"Instruções:\n"
         f"1. {context_instr}\n"
         f"2. Use emojis de forma estratégica.\n"
-        f"3. Responda APENAS com a mensagem sugerida, sem comentários extras.\n"
+        f"3. Responda APENAS E DIRETAMENTE com o CONTEÚDO da mensagem gerada.\n"
+        f"4. NUNCA escreva PREFIXOS, nem repita Assunto/Título (exemplo: NÃO comece com 'Assunto:', nem 'Título:', etc).\n"
     )
 
     improved_text = await ai_service.chat(prompt)
@@ -574,7 +574,15 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     scheduled_at_str = form_data.get("scheduled_at")
     is_recurring = form_data.get("is_recurring") == "true"
     recurrence_days = ",".join(form_data.getlist("recurrence_days"))
-    send_time = form_data.get("send_time")
+    product_link = form_data.get("product_link", "").strip()
+    product_price = form_data.get("product_price", "").strip()
+    
+    # Se o usuário preencheu link e/ou preço, não permitimos duplicar se já existirem
+    # Mas anexamos ao final caso não existam no texto.
+    if product_price and product_price not in message:
+        message += f"\n\n💰 *Valor:* {product_price}"
+    if product_link and product_link not in message:
+        message += f"\n🔗 *Acesse:* {product_link}"
     
     # Save mode (draft vs schedule)
     save_mode = form_data.get("save_mode", "schedule")
