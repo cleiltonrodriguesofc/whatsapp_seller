@@ -283,13 +283,29 @@ async def get_whatsapp_groups(
     )
 
     groups = await whatsapp_service.get_groups()
-    chats = await whatsapp_service.get_contacts()
+    chats = await whatsapp_service.get_active_chats()
+    phonebook = await whatsapp_service.get_phonebook_contacts()
 
-    targets = []
+    target_map = {}
     for g in groups:
-        targets.append({"id": g.get("id"), "subject": g.get("subject") or g.get("name")})
+        jid = g.get("id")
+        if jid:
+            target_map[jid] = {"id": jid, "subject": g.get("subject") or g.get("name") or jid}
+            
     for c in chats:
-        targets.append({"id": c.get("id"), "subject": c.get("name") or c.get("id")})
+        jid = c.get("id")
+        if jid and jid not in target_map:
+            target_map[jid] = {"id": jid, "subject": c.get("name") or jid}
+            
+    for p in phonebook:
+        jid = p.get("id") or p.get("remoteJid")
+        if not jid:
+            continue
+        name = p.get("name") or p.get("pushName") or p.get("notify") or jid
+        if jid not in target_map or target_map[jid]["subject"] == jid:
+            target_map[jid] = {"id": jid, "subject": name}
+            
+    targets = list(target_map.values())
 
     return {"success": True, "groups": targets}
 
@@ -311,13 +327,29 @@ async def sync_whatsapp_targets(
     target_repo = SQLTargetRepository(db)
 
     groups = await whatsapp_service.get_groups()
-    chats = await whatsapp_service.get_contacts()
+    chats = await whatsapp_service.get_active_chats()
+    phonebook = await whatsapp_service.get_phonebook_contacts()
 
-    targets = []
+    target_map = {}
     for g in groups:
-        targets.append({"id": g.get("id"), "subject": g.get("subject") or g.get("name")})
+        jid = g.get("id")
+        if jid:
+            target_map[jid] = {"id": jid, "subject": g.get("subject") or g.get("name") or jid}
+            
     for c in chats:
-        targets.append({"id": c.get("id"), "subject": c.get("name") or c.get("id")})
+        jid = c.get("id")
+        if jid and jid not in target_map:
+            target_map[jid] = {"id": jid, "subject": c.get("name") or jid}
+            
+    for p in phonebook:
+        jid = p.get("id") or p.get("remoteJid")
+        if not jid:
+            continue
+        name = p.get("name") or p.get("pushName") or p.get("notify") or jid
+        if jid not in target_map or target_map[jid]["subject"] == jid:
+            target_map[jid] = {"id": jid, "subject": name}
+            
+    targets = list(target_map.values())
 
     if targets:
         target_repo.upsert_sync(targets, user_id=current_user.id, instance_id=instance_model.id)
