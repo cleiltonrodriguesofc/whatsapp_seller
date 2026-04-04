@@ -1,12 +1,12 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request, Form, Query
+from fastapi import APIRouter, Depends, Request, Form, Query, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 
-from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
+from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel, BroadcastListMemberModel
 from core.infrastructure.database.session import get_db
 from core.infrastructure.database.repositories import (
     SQLTargetRepository,
@@ -20,6 +20,7 @@ from core.presentation.web.dependencies import login_required, templates
 from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.utils.timezone import now_sp, to_sp
+from core.infrastructure.utils.text_utils import parse_contacts_text
 
 router = APIRouter(prefix="/broadcast", tags=["broadcast"])
 
@@ -153,7 +154,21 @@ async def sync_broadcast_targets(
 
         # Sync contacts
         try:
-            contacts = await whatsapp_service.get_contacts()
+            chats = await whatsapp_service.get_active_chats()
+            phonebook = await whatsapp_service.get_phonebook_contacts()
+            
+            target_map = {}
+            for c in chats:
+                jid = c.get("id")
+                if jid: target_map[jid] = {"id": jid, "subject": c.get("name") or jid}
+            for p in phonebook:
+                jid = p.get("id") or p.get("remoteJid")
+                if not jid: continue
+                name = p.get("name") or p.get("pushName") or p.get("notify") or jid
+                if jid not in target_map or target_map[jid]["subject"] == jid:
+                    target_map[jid] = {"id": jid, "subject": name}
+                    
+            contacts = list(target_map.values())
             sync_logger.info("fetched %d contacts from instance %s", len(contacts or []), inst.name)
             if contacts:
                 target_repo.upsert_sync(contacts, current_user.id, instance_id=inst.id)
@@ -318,6 +333,68 @@ async def delete_broadcast_list(
     ))
     
     return RedirectResponse(url="/broadcast/lists", status_code=303)
+
+
+@router.post("/lists/{list_id}/import")
+async def import_broadcast_contacts(
+    list_id: int,
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    raw_text: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    list_repo = SQLBroadcastListRepository(db)
+    b_list = list_repo.get_by_id(list_id, current_user.id)
+    if not b_list:
+        return RedirectResponse(url="/broadcast/lists", status_code=303)
+
+    content = ""
+    if file and file.filename:
+        content_bytes = await file.read()
+        content = content_bytes.decode("utf-8", errors="ignore")
+    elif raw_text:
+        content = raw_text
+
+    if content:
+        parsed_contacts = parse_contacts_text(content)
+        if parsed_contacts:
+            target_repo = SQLTargetRepository(db)
+            instance_repo = SQLInstanceRepository(db)
+            
+            # Upsert them to global targets too, assigning to first instance if any
+            default_inst = instance_repo.list_by_user(current_user.id)
+            inst_id = default_inst[0].id if default_inst else None
+            import_payload = [{"id": f"{c['phone']}@s.whatsapp.net", "subject": c["name"]} for c in parsed_contacts]
+            if inst_id:
+                target_repo.upsert_sync(import_payload, current_user.id, instance_id=inst_id)
+
+            existing_jids = set(list_repo.get_member_jids(list_id))
+            added_count = 0
+            
+            for c in parsed_contacts:
+                jid = f"{c['phone']}@s.whatsapp.net"
+                if jid not in existing_jids:
+                    new_member = BroadcastListMemberModel(
+                        list_id=list_id,
+                        target_jid=jid,
+                        target_name=c["name"],
+                        target_type="chat",
+                    )
+                    db.add(new_member)
+                    added_count += 1
+            
+            db.commit()
+            
+            # Log activity
+            activity_repo = SQLActivityRepository(db)
+            activity_repo.save(ActivityLog(
+                user_id=current_user.id, 
+                event_type="broadcast_list_import", 
+                description=f"Imported {added_count} new contacts to list ID: {list_id}"
+            ))
+
+    return RedirectResponse(url=f"/broadcast/lists/{list_id}", status_code=303)
 
 
 

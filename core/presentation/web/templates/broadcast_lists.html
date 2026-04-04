@@ -32,6 +32,7 @@
             </div>
             
             <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
+                <button type="button" onclick="openImportModal({{ list.id }}, '{{ list.name|escape }}')" class="btn btn-ghost" style="flex: 1; font-size: 0.85rem; padding: 0.6rem; border: 1px solid var(--border);">📥 Importar</button>
                 <a href="/broadcast/campaigns/new?list_id={{ list.id }}" class="btn btn-primary" style="flex: 1; font-size: 0.85rem; padding: 0.6rem;">Enviar agora</a>
             </div>
         </div>
@@ -56,4 +57,50 @@
     box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
 }
 </style>
+
+<!-- Import Modal -->
+<div id="importModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--bg-surface); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 500px; position: relative;">
+        <button onclick="closeImportModal()" style="position: absolute; right: 1.5rem; top: 1.5rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
+        <h3 style="margin: 0 0 0.5rem; font-size: 1.25rem;">📥 Importar Contatos</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Injetar leads na lista: <strong id="modalListName" style="color: var(--text-primary);">...</strong></p>
+        
+        <form id="importForm" method="POST" enctype="multipart/form-data" action="">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">1. Arquivo do Excel (.CSV ou .TXT)</label>
+                <div style="border: 2px dashed rgba(255,255,255,0.1); padding: 1.5rem; text-align: center; border-radius: 12px; background: rgba(0,0,0,0.2);">
+                    <input type="file" name="file" accept=".csv,.txt" style="display: block; width: 100%; font-size: 0.9rem;">
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">ou</div>
+            
+            <div style="margin-bottom: 2rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">2. Cole os números brutos abaixo</label>
+                <textarea name="raw_text" rows="5" placeholder="Exemplo:&#10;5511999999999&#10;5521888888888, Joãozinho" style="width: 100%; resize: none; padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; color: white;"></textarea>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem;">Pode colar textos bagunçados com travessão e nomes. O sistema higieniza tudo sozinho.</p>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-weight: 700; border-radius: 12px; font-size: 1.05rem;" onclick="this.innerHTML='⏳ Processando contatos...';">
+                Processar e Importar
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openImportModal(listId, listName) {
+    document.getElementById('importForm').action = `/broadcast/lists/${listId}/import`;
+    document.getElementById('modalListName').innerText = listName;
+    const modal = document.getElementById('importModal');
+    modal.style.display = 'flex';
+}
+function closeImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+}
+document.getElementById('importModal').addEventListener('click', function(e) {
+    if (e.target === this) closeImportModal();
+});
+</script>
+
 {% endblock %}
