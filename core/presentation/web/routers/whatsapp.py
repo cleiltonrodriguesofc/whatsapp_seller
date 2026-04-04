@@ -32,6 +32,7 @@ async def connect_whatsapp_page(
 ):
     instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
     return templates.TemplateResponse(
+        request=request,
         name="connect_whatsapp.html", 
         context={
             "request": request, 
