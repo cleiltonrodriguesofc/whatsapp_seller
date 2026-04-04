@@ -415,3 +415,27 @@ async def whatsapp_webhook_trigger(
         return {"status": "alive", "action": action}
 
     return {"status": "received", "action": action}
+
+
+@router.get("/chats", response_class=HTMLResponse)
+async def view_whatsapp_chats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    """
+    Simulates a WhatsApp Web inbox view by loading the user's active chats.
+    """
+    target_repo = SQLTargetRepository(db)
+    # Fetch all chats (not groups) from the repository to simulate the inbox
+    chats = target_repo.list_contacts(current_user.id)
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="chats.html",
+        context={
+            "user": current_user,
+            "title": "Conversas Ativas",
+            "chats": chats,
+        },
+    )
