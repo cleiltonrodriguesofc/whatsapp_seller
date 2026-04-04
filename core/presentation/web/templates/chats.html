@@ -1,14 +1,9 @@
 {% extends "base.html" %}
-{% block content %}
 
-<div class="page-header" style="margin-bottom: 2rem;">
-    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary); margin: 0;">
-        💬 Conversas
-    </h1>
-    <p style="color: var(--text-muted); margin-top: 0.4rem;">
-        Visualize os bate-papos ativos nos seus números de WhatsApp.
-    </p>
-</div>
+{% block page_title %}💬 Conversas{% endblock %}
+{% block page_subtitle %}Visualize os bate-papos ativos nos seus números de WhatsApp.{% endblock %}
+
+{% block content %}
 
 <div class="chats-layout" style="display: flex; gap: 1.5rem; height: calc(100vh - 180px);">
 
@@ -30,33 +25,39 @@
             
             <div class="card" style="flex: 1; overflow-y: auto; padding: 0; display: flex; flex-direction: column;">
                 <div style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;">
-                    <input type="text" class="form-input" placeholder="Pesquisar conversa..." style="font-size: 0.85rem; padding: 0.5rem 0.8rem; border-radius: 20px;">
+                    <input type="text" id="chat-search" class="form-input" placeholder="🔍 Pesquisar conversa..." style="font-size: 0.85rem; padding: 0.5rem 0.8rem; border-radius: 20px;">
                 </div>
                 
-                <div style="flex: 1; overflow-y: auto;">
+                <div style="flex: 1; overflow-y: auto;" id="chat-list-container">
                     {% if chats %}
-                        <ul style="list-style: none; margin: 0; padding: 0;">
+                        <ul style="list-style: none; margin: 0; padding: 0;" id="chat-list">
                             {% for chat in chats %}
-                                <li style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                                <li class="chat-item" 
+                                    data-jid="{{ chat.id }}" 
+                                    data-name="{{ chat.name }}"
+                                    onclick="openChat('{{ chat.id }}', '{{ chat.name }}', {{ selected_instance.id if selected_instance else 0 }})"
+                                    style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; transition: 0.2s;"
+                                    onmouseover="this.style.background='rgba(255,255,255,0.03)'" 
+                                    onmouseout="if(!this.classList.contains('active-chat')) this.style.background='transparent'">
                                     <div style="display: flex; gap: 0.9rem; align-items: center;">
-                                        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(99,102,241,0.1); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: var(--primary);">
+                                        <div style="width: 48px; height: 48px; border-radius: 50%; background: {{ 'rgba(16,185,129,0.15)' if chat.isGroup else 'rgba(99,102,241,0.1)' }}; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: {{ 'var(--success)' if chat.isGroup else 'var(--primary)' }};">
                                             {% if chat.profilePicUrl %}
                                                 <img src="{{ chat.profilePicUrl }}" style="width: 100%; height: 100%; object-fit: cover;">
                                             {% else %}
-                                                <span style="font-size: 1.4rem;">👤</span>
+                                                <span style="font-size: 1.4rem;">{{ '🏢' if chat.isGroup else '👤' }}</span>
                                             {% endif %}
                                         </div>
                                         <div style="flex: 1; min-width: 0;">
                                             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem;">
                                                 <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    {{ chat.name or chat.id.split('@')[0] }}
+                                                    {{ chat.name }}
                                                 </div>
                                                 {% if chat.unreadCount and chat.unreadCount > 0 %}
-                                                    <span style="background: var(--primary); color: white; padding: 2px 7px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; margin-left: 0.5rem;">{{ chat.unreadCount }}</span>
+                                                    <span style="background: var(--primary); color: white; padding: 2px 7px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; margin-left: 0.5rem; flex-shrink: 0;">{{ chat.unreadCount }}</span>
                                                 {% endif %}
                                             </div>
                                             <div style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                {{ chat.id }}
+                                                {{ chat.id.split('@')[0] }}
                                             </div>
                                         </div>
                                     </div>
@@ -66,7 +67,7 @@
                     {% else %}
                         <div style="padding: 3rem 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;">
                             <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;">📭</div>
-                            Nenhuma conversa ativa recebida desta instância até o momento.
+                            Nenhuma conversa ativa encontrada nesta instância.
                         </div>
                     {% endif %}
                 </div>
@@ -79,16 +80,195 @@
         {% endif %}
     </div>
 
-    <!-- right side: placeholder / preview -->
-    <div class="card" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(99,102,241,0.02); border: 1px dashed rgba(99,102,241,0.2);">
-        <div style="font-size: 4rem; opacity: 0.4; margin-bottom: 1.5rem;">📱</div>
-        <h3 style="color: var(--text-primary); margin: 0 0 0.75rem; font-weight: 700; font-size: 1.5rem;">WhatSeller Inbox</h3>
-        <p style="color: var(--text-muted); max-width: 350px; text-align: center; font-size: 0.95rem; line-height: 1.6;">
-            A sua caixa de entrada já está pronta para visualizar suas campanhas ativas. 
-            No futuro, você receberá e responderá mensagens através daqui.
-        </p>
+    <!-- right side: conversation viewer -->
+    <div class="card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;" id="chat-panel">
+        <!-- empty state (shown when no chat is selected) -->
+        <div id="chat-empty" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(99,102,241,0.02); border-radius: 12px;">
+            <div style="font-size: 4rem; opacity: 0.4; margin-bottom: 1.5rem;">📱</div>
+            <h3 style="color: var(--text-primary); margin: 0 0 0.75rem; font-weight: 700; font-size: 1.5rem;">WhatSeller Inbox</h3>
+            <p style="color: var(--text-muted); max-width: 350px; text-align: center; font-size: 0.95rem; line-height: 1.6;">
+                Selecione uma conversa ao lado para visualizar as mensagens.
+            </p>
+        </div>
+
+        <!-- active chat view (hidden by default) -->
+        <div id="chat-active" style="display: none; flex: 1; flex-direction: column; overflow: hidden;">
+            <!-- chat header -->
+            <div id="chat-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; flex-shrink: 0;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(99,102,241,0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                    <span style="font-size: 1.2rem;">👤</span>
+                </div>
+                <div>
+                    <div id="chat-header-name" style="font-weight: 700; font-size: 1rem; color: var(--text-primary);"></div>
+                    <div id="chat-header-jid" style="font-size: 0.8rem; color: var(--text-muted);"></div>
+                </div>
+            </div>
+
+            <!-- messages container -->
+            <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <!-- messages injected here by JS -->
+            </div>
+
+            <!-- loading indicator -->
+            <div id="chat-loading" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted);">
+                <div class="spinner" style="width: 24px; height: 24px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 8px;"></div>
+                Carregando mensagens...
+            </div>
+        </div>
     </div>
 
 </div>
+
+<style>
+.chat-item.active-chat {
+    background: rgba(99, 102, 241, 0.08) !important;
+    border-left: 3px solid var(--primary);
+}
+.msg-bubble {
+    max-width: 70%;
+    padding: 0.6rem 1rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+    position: relative;
+}
+.msg-bubble.sent {
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: var(--text-primary);
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.msg-bubble.received {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+.msg-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-align: right;
+}
+.msg-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+</style>
+
+<script>
+let currentChatJid = null;
+
+// search filter
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('chat-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.chat-item');
+            items.forEach(item => {
+                const name = (item.dataset.name || '').toLowerCase();
+                const jid = (item.dataset.jid || '').toLowerCase();
+                item.style.display = (name.includes(query) || jid.includes(query)) ? '' : 'none';
+            });
+        });
+    }
+
+    // auto-open a chat if open_jid query param was provided (from contacts/groups pages)
+    const openJid = '{{ open_jid }}';
+    if (openJid) {
+        const instanceId = {{ selected_instance.id if selected_instance else 0 }};
+        // try to find the chat in the list first
+        const chatItem = document.querySelector(`.chat-item[data-jid="${openJid}"]`);
+        const chatName = chatItem ? chatItem.dataset.name : openJid.split('@')[0];
+        // open the chat (works even if not in the list)
+        openChat(openJid, chatName, instanceId);
+    }
+});
+
+async function openChat(jid, name, instanceId) {
+    currentChatJid = jid;
+
+    // highlight active chat
+    document.querySelectorAll('.chat-item').forEach(item => {
+        item.classList.remove('active-chat');
+        item.style.background = 'transparent';
+    });
+    const activeItem = document.querySelector(`.chat-item[data-jid="${jid}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active-chat');
+    }
+
+    // show chat panel
+    document.getElementById('chat-empty').style.display = 'none';
+    document.getElementById('chat-active').style.display = 'flex';
+    document.getElementById('chat-header-name').textContent = name;
+    document.getElementById('chat-header-jid').textContent = jid.split('@')[0];
+    
+    const messagesDiv = document.getElementById('chat-messages');
+    const loadingDiv = document.getElementById('chat-loading');
+    
+    messagesDiv.innerHTML = '';
+    loadingDiv.style.display = 'block';
+
+    try {
+        const response = await fetch(`/chats/messages?jid=${encodeURIComponent(jid)}&instance_id=${instanceId}`);
+        const data = await response.json();
+        loadingDiv.style.display = 'none';
+
+        if (data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+                const bubble = document.createElement('div');
+                bubble.className = `msg-bubble ${msg.fromMe ? 'sent' : 'received'}`;
+
+                let content = '';
+                
+                // type badge for non-text messages
+                if (msg.type !== 'text' && msg.type) {
+                    const typeLabelMap = { image: '📷 Imagem', video: '🎥 Vídeo', audio: '🎙️ Áudio', document: '📄 Documento', sticker: '🎨 Figurinha' };
+                    content += `<div class="msg-type-badge">${typeLabelMap[msg.type] || msg.type}</div>`;
+                }
+                
+                if (msg.text) {
+                    content += `<div>${msg.text.replace(/\n/g, '<br>')}</div>`;
+                } else if (msg.type !== 'text') {
+                    // show type label if no text
+                } else {
+                    content += `<div style="opacity: 0.5; font-style: italic;">mensagem sem conteúdo de texto</div>`;
+                }
+
+                // sender name for group chats (received messages)
+                if (!msg.fromMe && msg.pushName && jid.includes('@g.us')) {
+                    content = `<div style="font-size: 0.78rem; font-weight: 700; color: var(--primary); margin-bottom: 2px;">${msg.pushName}</div>` + content;
+                }
+
+                // timestamp
+                const ts = msg.timestamp ? new Date(msg.timestamp * 1000) : null;
+                const timeStr = ts ? `${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '';
+                content += `<div class="msg-meta">${timeStr}</div>`;
+
+                bubble.innerHTML = content;
+                messagesDiv.appendChild(bubble);
+            });
+
+            // scroll to bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        } else {
+            messagesDiv.innerHTML = '<div style="padding: 3rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;"><div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>Nenhuma mensagem encontrada nesta conversa.</div>';
+        }
+    } catch (err) {
+        loadingDiv.style.display = 'none';
+        messagesDiv.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--danger);">Erro ao carregar mensagens: ${err.message}</div>`;
+    }
+}
+</script>
 
 {% endblock %}
