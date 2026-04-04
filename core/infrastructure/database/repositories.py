@@ -310,12 +310,20 @@ class SQLTargetRepository:
         now = now_sp()
         for t in targets:
             # handle both group and contact formats from Evolution API
-            jid = t.get("id") or t.get("remoteJid", "")
+            remote_jid = t.get("remoteJid") or t.get("jid")
+            if not remote_jid and "chat" in t and isinstance(t["chat"], dict):
+                remote_jid = t["chat"].get("remoteJid") or t["chat"].get("id")
+            
+            jid = remote_jid or t.get("id") or ""
             if not jid:
                 continue
 
             # groups use 'subject', contacts use 'name' or 'pushName'
-            name = t.get("subject") or t.get("name") or t.get("pushName") or jid.split("@")[0]
+            push_name = t.get("subject") or t.get("name") or t.get("pushName")
+            if not push_name and "chat" in t and isinstance(t["chat"], dict):
+                push_name = t["chat"].get("name") or t["chat"].get("contact", {}).get("pushName")
+                
+            name = push_name or jid.split("@")[0]
             phone = jid.split("@")[0] if "@s.whatsapp.net" in jid else None
             target_type = "group" if "@g.us" in jid else "chat"
 
