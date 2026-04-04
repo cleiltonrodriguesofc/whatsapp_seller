@@ -206,15 +206,31 @@ class EvolutionWhatsAppService(NotificationService):
     async def send_group_text(self, group_jid: str, message: str) -> bool:
         return await self.send_text(group_jid, message)
 
-    async def get_contacts(self) -> list:
-        url = f"{self.base_url}/chat/fetchAllChats/{self.instance}"
+    async def get_active_chats(self) -> list:
+        """Fetches recent open chats/conversations."""
+        url = f"{self.base_url}/chat/findChats/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(url, headers=self._headers())
+                response = await client.post(url, json={}, headers=self._headers())
+                if response.status_code == 404:  # fallback for older versions
+                    url_fallback = f"{self.base_url}/chat/fetchAllChats/{self.instance}"
+                    response = await client.get(url_fallback, headers=self._headers())
                 response.raise_for_status()
                 return response.json()
         except Exception as exc:
-            logger.error("Failed to fetch WhatsApp contacts: %s", exc)
+            logger.error("Failed to fetch active chats: %s", exc)
+            return []
+
+    async def get_phonebook_contacts(self) -> list:
+        """Fetches the real phone contact list from the device."""
+        url = f"{self.base_url}/chat/findContacts/{self.instance}"
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(url, json={}, headers=self._headers())
+                response.raise_for_status()
+                return response.json()
+        except Exception as exc:
+            logger.error("Failed to fetch WhatsApp phonebook contacts: %s", exc)
             return []
 
     async def get_groups(self) -> list:
