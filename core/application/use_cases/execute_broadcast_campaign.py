@@ -99,7 +99,9 @@ class ExecuteBroadcastCampaignUseCase:
 
             # Personalization + Spintax
             content = campaign.message
-            content = content.replace("{nome}", first_name)
+            for placeholder in ["{nome}", "{{nome}}", "{nome_do_contato}", "{{nome_do_contato}}"]:
+                content = content.replace(placeholder, first_name)
+            
             content = parse_spintax(content)
 
             logger.info("[broadcast] sending to %s (%s) [%d/%d]", jid, "group" if is_group else "contact", i + 1, len(targets))
