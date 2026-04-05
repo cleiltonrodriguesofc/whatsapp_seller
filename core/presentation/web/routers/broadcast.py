@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 
-from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
+from core.infrastructure.database.models import (
+    UserModel,
+    InstanceModel,
+    WhatsAppTargetModel,
+)
 from core.infrastructure.database.session import get_db
 from core.infrastructure.database.repositories import (
     SQLTargetRepository,
@@ -17,11 +21,14 @@ from core.infrastructure.database.repositories import (
 )
 from core.domain.entities import BroadcastList, BroadcastCampaign, ActivityLog
 from core.presentation.web.dependencies import login_required, templates
-from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.notifications.evolution_whatsapp import (
+    EvolutionWhatsAppService,
+)
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.utils.timezone import now_sp, to_sp
 
 router = APIRouter(prefix="/broadcast", tags=["broadcast"])
+
 
 @router.get("/", response_class=HTMLResponse)
 async def broadcast_dashboard(
@@ -32,12 +39,12 @@ async def broadcast_dashboard(
     list_repo = SQLBroadcastListRepository(db)
     campaign_repo = SQLBroadcastCampaignRepository(db)
     target_repo = SQLTargetRepository(db)
-    
+
     contacts = target_repo.list_contacts(current_user.id)
     groups = target_repo.list_groups(current_user.id)
     lists = list_repo.list_all(current_user.id)
     campaigns = campaign_repo.list_all(current_user.id)
-    
+
     return templates.TemplateResponse(
         request=request,
         name="broadcast_dashboard.html",
@@ -52,6 +59,7 @@ async def broadcast_dashboard(
         },
     )
 
+
 @router.get("/contacts", response_class=HTMLResponse)
 async def broadcast_contacts(
     request: Request,
@@ -65,7 +73,7 @@ async def broadcast_contacts(
 
     target_repo = SQLTargetRepository(db)
     contacts = target_repo.list_contacts(current_user.id, valid_instance_id)
-    
+
     instance_repo = SQLInstanceRepository(db)
     instances = instance_repo.list_by_user(current_user.id)
 
@@ -81,6 +89,7 @@ async def broadcast_contacts(
         },
     )
 
+
 @router.get("/groups", response_class=HTMLResponse)
 async def broadcast_groups(
     request: Request,
@@ -94,7 +103,7 @@ async def broadcast_groups(
 
     target_repo = SQLTargetRepository(db)
     groups = target_repo.list_groups(current_user.id, valid_instance_id)
-    
+
     instance_repo = SQLInstanceRepository(db)
     instances = instance_repo.list_by_user(current_user.id)
 
@@ -109,6 +118,7 @@ async def broadcast_groups(
             "selected_instance_id": valid_instance_id,
         },
     )
+
 
 @router.post("/sync")
 async def sync_broadcast_targets(
@@ -134,15 +144,21 @@ async def sync_broadcast_targets(
 
     for inst in instances:
         if not inst.name or not inst.apikey:
-            sync_logger.warning("skipping instance with missing name/apikey: id=%s", inst.id)
+            sync_logger.warning(
+                "skipping instance with missing name/apikey: id=%s", inst.id
+            )
             continue
 
-        whatsapp_service = EvolutionWhatsAppService(instance=inst.name, apikey=inst.apikey)
+        whatsapp_service = EvolutionWhatsAppService(
+            instance=inst.name, apikey=inst.apikey
+        )
 
         # Sync groups
         try:
             groups = await whatsapp_service.get_groups()
-            sync_logger.info("fetched %d groups from instance %s", len(groups or []), inst.name)
+            sync_logger.info(
+                "fetched %d groups from instance %s", len(groups or []), inst.name
+            )
             if groups:
                 target_repo.upsert_sync(groups, current_user.id, instance_id=inst.id)
                 total_groups += len(groups)
@@ -154,7 +170,9 @@ async def sync_broadcast_targets(
         # Sync contacts
         try:
             contacts = await whatsapp_service.get_contacts()
-            sync_logger.info("fetched %d contacts from instance %s", len(contacts or []), inst.name)
+            sync_logger.info(
+                "fetched %d contacts from instance %s", len(contacts or []), inst.name
+            )
             if contacts:
                 target_repo.upsert_sync(contacts, current_user.id, instance_id=inst.id)
                 total_contacts += len(contacts)
@@ -165,19 +183,22 @@ async def sync_broadcast_targets(
 
     sync_logger.info(
         "sync complete: %d groups, %d contacts synced for user %s",
-        total_groups, total_contacts, current_user.id
+        total_groups,
+        total_contacts,
+        current_user.id,
     )
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="broadcast_sync", 
-        description=f"Synced targets from active instances: {total_contacts} contacts and {total_groups} groups found"
-    ))
-    
-    return RedirectResponse(url=redirect_to, status_code=303)
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="broadcast_sync",
+            description=f"Synced targets from active instances: {total_contacts} contacts and {total_groups} groups found",
+        )
+    )
 
+    return RedirectResponse(url=redirect_to, status_code=303)
 
 
 # ── Broadcast Lists ───────────────────────────────────────────────────────────
@@ -222,6 +243,7 @@ async def new_broadcast_list(
         },
     )
 
+
 @router.get("/api/targets")
 async def api_targets(
     instance_id: int,
@@ -234,10 +256,9 @@ async def api_targets(
         items = target_repo.list_contacts(current_user.id, instance_id)
     else:
         items = target_repo.list_groups(current_user.id, instance_id)
-    return JSONResponse([
-        {"jid": item.jid, "name": item.name or "Sem Nome"}
-        for item in items
-    ])
+    return JSONResponse(
+        [{"jid": item.jid, "name": item.name or "Sem Nome"} for item in items]
+    )
 
 
 @router.post("/lists/new")
@@ -259,43 +280,46 @@ async def create_broadcast_list(
     members = []
     instance_ids_found = set()
     for jid in jids:
-        model = db.query(WhatsAppTargetModel).filter_by(user_id=current_user.id, jid=jid).first()
+        model = (
+            db.query(WhatsAppTargetModel)
+            .filter_by(user_id=current_user.id, jid=jid)
+            .first()
+        )
         if model:
             if model.instance_id:
                 instance_ids_found.add(model.instance_id)
-            members.append({
-                "jid": jid,
-                "name": model.name,
-                "type": model.type
-            })
+            members.append({"jid": jid, "name": model.name, "type": model.type})
 
     if len(instance_ids_found) > 1:
         from fastapi.responses import HTMLResponse
+
         return HTMLResponse(
             "<b>Erro de Segurança Anti-Ban:</b> Você selecionou contatos pertencentes a instâncias (números) diferentes. "
             "Uma Lista de Transmissão só pode conter clientes de uma única Instância de origem. <a href='javascript:history.back()'>Voltar</a>",
-            status_code=400
+            status_code=400,
         )
 
     inferred_instance_id = list(instance_ids_found)[0] if instance_ids_found else None
 
     list_repo = SQLBroadcastListRepository(db)
     new_list = BroadcastList(
-        user_id=current_user.id, 
+        user_id=current_user.id,
         instance_id=inferred_instance_id,
-        name=name, 
-        description=description
+        name=name,
+        description=description,
     )
     new_list = list_repo.save(new_list)
     list_repo.set_members(new_list.id, members)
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="broadcast_list_create", 
-        description=f"Created broadcast list: {name}"
-    ))
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="broadcast_list_create",
+            description=f"Created broadcast list: {name}",
+        )
+    )
 
     return RedirectResponse(url="/broadcast/lists", status_code=303)
 
@@ -308,17 +332,18 @@ async def delete_broadcast_list(
 ):
     list_repo = SQLBroadcastListRepository(db)
     list_repo.delete(list_id, current_user.id)
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="broadcast_list_delete", 
-        description=f"Deleted broadcast list ID: {list_id}"
-    ))
-    
-    return RedirectResponse(url="/broadcast/lists", status_code=303)
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="broadcast_list_delete",
+            description=f"Deleted broadcast list ID: {list_id}",
+        )
+    )
 
+    return RedirectResponse(url="/broadcast/lists", status_code=303)
 
 
 # ── Broadcast Campaigns ──────────────────────────────────────────────────────
@@ -353,10 +378,10 @@ async def new_broadcast_campaign(
 ):
     instance_repo = SQLInstanceRepository(db)
     instances = instance_repo.list_by_user(current_user.id)
-    
+
     list_repo = SQLBroadcastListRepository(db)
     broadcast_lists = list_repo.list_all(current_user.id)
-    
+
     target_repo = SQLTargetRepository(db)
     contacts = target_repo.list_contacts(current_user.id)
     groups = target_repo.list_groups(current_user.id)
@@ -432,17 +457,27 @@ async def view_broadcast_campaign(
 
     target_names = []
     target_repo = SQLTargetRepository(db)
-    
+
     if campaign.target_type == "list" and campaign.list_id:
         from core.infrastructure.database.models import BroadcastListMemberModel
-        members = target_repo.db.query(BroadcastListMemberModel).filter_by(list_id=campaign.list_id).all()
+
+        members = (
+            target_repo.db.query(BroadcastListMemberModel)
+            .filter_by(list_id=campaign.list_id)
+            .all()
+        )
         target_names = [m.target_name for m in members]
     else:
         jids = campaign.target_jids or []
-            
+
         from core.infrastructure.database.models import WhatsAppTargetModel
+
         for jid in jids:
-            tm = db.query(WhatsAppTargetModel).filter_by(user_id=current_user.id, jid=jid).first()
+            tm = (
+                db.query(WhatsAppTargetModel)
+                .filter_by(user_id=current_user.id, jid=jid)
+                .first()
+            )
             if tm and tm.name:
                 target_names.append(tm.name)
             else:
@@ -480,10 +515,10 @@ async def duplicate_broadcast_campaign(
 
     instance_repo = SQLInstanceRepository(db)
     instances = instance_repo.list_by_user(current_user.id)
-    
+
     list_repo = SQLBroadcastListRepository(db)
     broadcast_lists = list_repo.list_all(current_user.id)
-    
+
     target_repo = SQLTargetRepository(db)
     contacts = target_repo.list_contacts(current_user.id)
     groups = target_repo.list_groups(current_user.id)
@@ -575,23 +610,23 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     is_recurring = form_data.get("is_recurring") == "true"
     recurrence_days = ",".join(form_data.getlist("recurrence_days"))
     send_time = form_data.get("send_time")
-    
+
     product_link = form_data.get("product_link", "").strip()
     product_price = form_data.get("product_price", "").strip()
-    
+
     # Se o usuário preencheu link e/ou preço, não permitimos duplicar se já existirem
     # Mas anexamos ao final caso não existam no texto.
     if product_price and product_price not in message:
         message += f"\n\n💰 *Valor:* {product_price}"
     if product_link and product_link not in message:
         message += f"\n🔗 *Acesse:* {product_link}"
-    
+
     # Save mode (draft vs schedule)
     save_mode = form_data.get("save_mode", "schedule")
     orig_status = form_data.get("status", "scheduled")
-    is_now = (orig_status == "sending")
-    
-    status = "scheduled" 
+    is_now = orig_status == "sending"
+
+    status = "scheduled"
     if save_mode == "draft":
         status = "draft"
 
@@ -599,6 +634,7 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     image_file = form_data.get("image")
     if hasattr(image_file, "filename") and image_file.filename:
         from core.presentation.web.routers.products import _save_uploaded_image
+
         image_url = await _save_uploaded_image(image_file, current_user.id)
 
     target_jids = []
@@ -613,17 +649,17 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
             scheduled_at = to_sp(dt_raw)
         except Exception:
             pass
-    
+
     if is_now and not scheduled_at:
         scheduled_at = now_sp()
 
     campaign_repo = SQLBroadcastCampaignRepository(db)
-    
+
     if campaign_id:
         campaign = campaign_repo.get_by_id(campaign_id, current_user.id)
         if not campaign:
             return RedirectResponse(url="/broadcast/campaigns", status_code=303)
-        
+
         campaign.title = title
         campaign.instance_id = instance_id
         campaign.target_type = target_type
@@ -654,17 +690,19 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
             send_time=send_time,
             status=status,
         )
-    
+
     campaign_repo.save(campaign)
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="broadcast_campaign_save", 
-        description=f"Saved broadcast campaign: {campaign.title} (Status: {campaign.status})"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="broadcast_campaign_save",
+            description=f"Saved broadcast campaign: {campaign.title} (Status: {campaign.status})",
+        )
+    )
+
     return RedirectResponse(url="/broadcast/campaigns", status_code=303)
 
 
@@ -676,13 +714,15 @@ async def delete_broadcast_campaign(
 ):
     campaign_repo = SQLBroadcastCampaignRepository(db)
     campaign_repo.delete(campaign_id, current_user.id)
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="broadcast_campaign_delete", 
-        description=f"Deleted broadcast campaign ID: {campaign_id}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="broadcast_campaign_delete",
+            description=f"Deleted broadcast campaign ID: {campaign_id}",
+        )
+    )
+
     return RedirectResponse(url="/broadcast/campaigns", status_code=303)

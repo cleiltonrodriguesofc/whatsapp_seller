@@ -19,7 +19,9 @@ class SupabaseStorageService:
         else:
             self.client = create_client(self.url, self.key)
 
-    async def upload_image(self, file_content: bytes, filename: str, content_type: str = "image/jpeg") -> Optional[str]:
+    async def upload_image(
+        self, file_content: bytes, filename: str, content_type: str = "image/jpeg"
+    ) -> Optional[str]:
         """
         Uploads image bytes to Supabase Storage and returns the UNIQUE PATH (filename).
         Uses a private bucket approach where we don't expose public URLs.
@@ -34,7 +36,9 @@ class SupabaseStorageService:
 
             # Suapbase python client storage is sync
             res = self.client.storage.from_(self.bucket_name).upload(
-                path=unique_name, file=file_content, file_options={"content-type": content_type}
+                path=unique_name,
+                file=file_content,
+                file_options={"content-type": content_type},
             )
 
             # If storage service returns an error dict/response
@@ -76,7 +80,10 @@ class SupabaseStorageService:
             except Exception:
                 continue
 
-        logger.error("Failed to download image from Supabase path '%s' via multiple buckets", path)
+        logger.error(
+            "Failed to download image from Supabase path '%s' via multiple buckets",
+            path,
+        )
         return None
 
     def get_signed_url(self, path: str, expires_in: int = 3600) -> Optional[str]:
@@ -87,7 +94,9 @@ class SupabaseStorageService:
             return None
         try:
             clean_path = path.replace("supabase://", "")
-            res = self.client.storage.from_(self.bucket_name).create_signed_url(clean_path, expires_in)
+            res = self.client.storage.from_(self.bucket_name).create_signed_url(
+                clean_path, expires_in
+            )
             # res might be a string directly or a dict depending on library version
             if isinstance(res, dict):
                 return res.get("signedURL")
