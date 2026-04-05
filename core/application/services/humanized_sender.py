@@ -23,7 +23,9 @@ class HumanizedSender:
         self.min_delay = 30  # seconds
         self.max_delay = 120  # seconds
 
-    async def send_campaign_humanized(self, targets: List[str], content: str, media_url: Optional[str] = None):
+    async def send_campaign_humanized(
+        self, targets: List[str], content: str, media_url: Optional[str] = None
+    ):
         """
         Sends a message to a list of targets with human-like delays and spintax variations.
         """
@@ -45,7 +47,9 @@ class HumanizedSender:
                 try:
                     # We set a random typing duration between 3 and 10 seconds
                     typing_duration = random.uniform(3, 10)
-                    await self.svc.set_presence(target, "composing", delay=int(typing_duration * 1000))
+                    await self.svc.set_presence(
+                        target, "composing", delay=int(typing_duration * 1000)
+                    )
                     await asyncio.sleep(typing_duration)
                 except Exception as e:
                     logger.warning("Failed to set presence for %s: %s", target, e)
@@ -56,7 +60,9 @@ class HumanizedSender:
             # 3. Send the message
             success = False
             if optimized_media:
-                success = await self.svc.send_image(target, optimized_media, personalized_content)
+                success = await self.svc.send_image(
+                    target, optimized_media, personalized_content
+                )
             else:
                 success = await self.svc.send_text(target, personalized_content)
 

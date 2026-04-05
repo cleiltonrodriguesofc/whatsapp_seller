@@ -16,15 +16,17 @@ import string
 import random
 
 from core.infrastructure.database.models import (
-    InstanceModel, 
-    UserModel, 
-    SubscriptionModel, 
-    PlanModel, 
-    ReferralCodeModel, 
-    ReferralConversionModel
+    InstanceModel,
+    UserModel,
+    SubscriptionModel,
+    PlanModel,
+    ReferralCodeModel,
+    ReferralConversionModel,
 )
 from core.infrastructure.database.session import get_db
-from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.notifications.evolution_whatsapp import (
+    EvolutionWhatsAppService,
+)
 from core.infrastructure.database.repositories import SQLActivityRepository
 from core.domain.entities import ActivityLog
 from core.presentation.web.dependencies import auth_service, templates, get_current_user
@@ -37,7 +39,9 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login"})
+    return templates.TemplateResponse(
+        request=request, name="login.html", context={"title": "Login"}
+    )
 
 
 @router.post("/login")
@@ -57,10 +61,16 @@ async def login_action(
         )
 
     access_token = auth_service.create_access_token(data={"sub": user.email})
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(user_id=user.id, event_type="login", description=f"User logged in from {request.client.host if request.client else 'unknown'}"))
+    activity_repo.save(
+        ActivityLog(
+            user_id=user.id,
+            event_type="login",
+            description=f"User logged in from {request.client.host if request.client else 'unknown'}",
+        )
+    )
 
     response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
     is_prod = os.environ.get("RENDER") == "true"
@@ -76,7 +86,9 @@ async def login_action(
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse(request=request, name="register.html", context={"title": "Register"})
+    return templates.TemplateResponse(
+        request=request, name="register.html", context={"title": "Register"}
+    )
 
 
 @router.post("/register")
@@ -93,7 +105,10 @@ async def register_action(
         return templates.TemplateResponse(
             request=request,
             name="register.html",
-            context={"error": "Você precisa aceitar os Termos de Uso.", "title": "Register"},
+            context={
+                "error": "Você precisa aceitar os Termos de Uso.",
+                "title": "Register",
+            },
         )
 
     existing_user = db.query(UserModel).filter(UserModel.email == email).first()
@@ -105,13 +120,13 @@ async def register_action(
         )
 
     admin_email = os.environ.get("ADMIN_EMAIL")
-    is_admin = (email == admin_email)
+    is_admin = email == admin_email
 
     new_user = UserModel(
-        email=email, 
+        email=email,
         hashed_password=auth_service.hash_password(password),
         agreed_to_terms_at=datetime.utcnow(),
-        is_admin=is_admin
+        is_admin=is_admin,
     )
     db.add(new_user)
     db.commit()
@@ -120,29 +135,37 @@ async def register_action(
     # 1. generate referral code for the new user
     def generate_code(length=8):
         chars = string.ascii_uppercase + string.digits
-        return ''.join(random.choice(chars) for _ in range(length))
-    
+        return "".join(random.choice(chars) for _ in range(length))
+
     unique_code = generate_code()
-    while db.query(ReferralCodeModel).filter(ReferralCodeModel.code == unique_code).first():
+    while (
+        db.query(ReferralCodeModel)
+        .filter(ReferralCodeModel.code == unique_code)
+        .first()
+    ):
         unique_code = generate_code()
-        
+
     user_ref_code = ReferralCodeModel(user_id=new_user.id, code=unique_code)
     db.add(user_ref_code)
     db.commit()
     db.refresh(user_ref_code)
-    
+
     new_user.referral_code_id = user_ref_code.id
     db.commit()
 
     # 2. handle referral from another user
     ref_code = request.query_params.get("ref")
     if ref_code:
-        referrer_code_obj = db.query(ReferralCodeModel).filter(ReferralCodeModel.code == ref_code).first()
+        referrer_code_obj = (
+            db.query(ReferralCodeModel)
+            .filter(ReferralCodeModel.code == ref_code)
+            .first()
+        )
         if referrer_code_obj and referrer_code_obj.user_id != new_user.id:
             conversion = ReferralConversionModel(
                 referrer_id=referrer_code_obj.user_id,
                 referred_id=new_user.id,
-                status="pending"
+                status="pending",
             )
             db.add(conversion)
             db.commit()
@@ -157,7 +180,7 @@ async def register_action(
             display_name="Starter",
             price_brl=97.00,
             max_instances=1,
-            has_ai=False
+            has_ai=False,
         )
         db.add(starter_plan)
         db.commit()
@@ -167,20 +190,28 @@ async def register_action(
         user_id=new_user.id,
         plan_id=starter_plan.id,
         status="trialing",
-        trial_ends_at=datetime.utcnow() + timedelta(days=3)
+        trial_ends_at=datetime.utcnow() + timedelta(days=3),
     )
     db.add(trial_subscription)
     db.commit()
 
     # 4. log registration activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(user_id=new_user.id, event_type="register", description=f"User registered (Admin: {is_admin})"))
+    activity_repo.save(
+        ActivityLog(
+            user_id=new_user.id,
+            event_type="register",
+            description=f"User registered (Admin: {is_admin})",
+        )
+    )
 
     # provision whitatsapp instance
     try:
         instance_name = business_name.lower().replace(" ", "_") + "_" + str(new_user.id)
         whatsapp_service = EvolutionWhatsAppService()
-        instance_data = await whatsapp_service.create_instance(instance_name, display_name=business_name)
+        instance_data = await whatsapp_service.create_instance(
+            instance_name, display_name=business_name
+        )
 
         if instance_data and isinstance(instance_data, dict):
             hash_data = instance_data.get("hash")
@@ -206,7 +237,9 @@ async def register_action(
                 type(instance_data),
             )
     except Exception as e:
-        logger.error("post-registration instance provisioning failed: %s", e, exc_info=True)
+        logger.error(
+            "post-registration instance provisioning failed: %s", e, exc_info=True
+        )
 
     access_token = auth_service.create_access_token(data={"sub": new_user.email})
     response = RedirectResponse(url="/whatsapp/connect", status_code=HTTP_303_SEE_OTHER)
@@ -225,16 +258,18 @@ async def register_action(
 async def logout(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_user),
 ):
     if current_user:
         # Log activity
         activity_repo = SQLActivityRepository(db)
-        activity_repo.save(ActivityLog(
-            user_id=current_user.id, 
-            event_type="logout", 
-            description="User logged out"
-        ))
+        activity_repo.save(
+            ActivityLog(
+                user_id=current_user.id,
+                event_type="logout",
+                description="User logged out",
+            )
+        )
 
     response = RedirectResponse(url="/login")
     response.delete_cookie("access_token")

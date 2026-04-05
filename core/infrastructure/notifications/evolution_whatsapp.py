@@ -52,15 +52,30 @@ class EvolutionWhatsAppService(NotificationService):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
                 if response.status_code >= 500:
-                    logger.error("Evolution API Server Error (%s): %s", response.status_code, response.text)
+                    logger.error(
+                        "Evolution API Server Error (%s): %s",
+                        response.status_code,
+                        response.text,
+                    )
                     return False
                 if response.status_code >= 400:
-                    logger.warning("Evolution API Response %s (delivery may happen): %s", response.status_code, response.text)
-                
-                logger.info("Text sent successfully (http %s) to %s", response.status_code, payload["number"])
+                    logger.warning(
+                        "Evolution API Response %s (delivery may happen): %s",
+                        response.status_code,
+                        response.text,
+                    )
+
+                logger.info(
+                    "Text sent successfully (http %s) to %s",
+                    response.status_code,
+                    payload["number"],
+                )
                 return True
         except httpx.TimeoutException:
-            logger.warning("sendText timed out to %s, assuming delivery in progress", payload["number"])
+            logger.warning(
+                "sendText timed out to %s, assuming delivery in progress",
+                payload["number"],
+            )
             return True
         except Exception as exc:
             logger.error("evolution-api send failed: %s", exc)
@@ -107,27 +122,42 @@ class EvolutionWhatsAppService(NotificationService):
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     if files:
                         # For multipart, do NOT set Content-Type, httpx will do it
-                        res = await client.post(url, data=payload, files=files, headers=headers)
+                        res = await client.post(
+                            url, data=payload, files=files, headers=headers
+                        )
                     else:
                         # For JSON, set it
                         headers["Content-Type"] = "application/json"
                         res = await client.post(url, json=payload, headers=headers)
 
                     if res.status_code >= 500:
-                        logger.error("Media Server Error (%s): %s", res.status_code, res.text)
+                        logger.error(
+                            "Media Server Error (%s): %s", res.status_code, res.text
+                        )
                         return False
-                    
+
                     if res.status_code >= 400:
-                        logger.warning("Media API Response %s (delivery may still happen): %s", res.status_code, res.text)
-                    
-                    logger.info("Media sent successfully (http %s) to %s", res.status_code, phone)
+                        logger.warning(
+                            "Media API Response %s (delivery may still happen): %s",
+                            res.status_code,
+                            res.text,
+                        )
+
+                    logger.info(
+                        "Media sent successfully (http %s) to %s",
+                        res.status_code,
+                        phone,
+                    )
                     return True
             except httpx.TimeoutException:
-                logger.warning("sendMedia timed out to %s, assuming delivery in progress", phone)
+                logger.warning(
+                    "sendMedia timed out to %s, assuming delivery in progress", phone
+                )
                 return True
             except Exception as e:
                 logger.error("sendMedia failed: %r", e)
                 return False
+
     async def send_status(
         self,
         content: str,
@@ -206,17 +236,28 @@ class EvolutionWhatsAppService(NotificationService):
     async def send_group_text(self, group_jid: str, message: str) -> bool:
         return await self.send_text(group_jid, message)
 
-    async def get_active_chats(self) -> list:
-        """Fetches recent open chats/conversations."""
-        url = f"{self.base_url}/chat/findChats/{self.instance}"
+    async def get_contacts(self) -> list:
+        """
+        Fetches all contacts from Evolution API v2.
+        Uses POST /chat/findContacts which returns remoteJid for each contact.
+        Filters to only @s.whatsapp.net JIDs (real phone contacts).
+        """
+        url = f"{self.base_url}/chat/findContacts/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json={}, headers=self._headers())
-                if response.status_code == 404:  # fallback for older versions
-                    url_fallback = f"{self.base_url}/chat/fetchAllChats/{self.instance}"
-                    response = await client.get(url_fallback, headers=self._headers())
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if not isinstance(data, list):
+                    return []
+                # only return real phone contacts (not groups, not LID, not status)
+                return [
+                    c
+                    for c in data
+                    if isinstance(c, dict)
+                    and c.get("remoteJid", "").endswith("@s.whatsapp.net")
+                    and c.get("remoteJid") != "0@s.whatsapp.net"
+                ]
         except Exception as exc:
             logger.error("Failed to fetch active chats: %s", exc)
             return []
@@ -307,7 +348,11 @@ class EvolutionWhatsAppService(NotificationService):
                 response.raise_for_status()
                 data = response.json()
                 if not isinstance(data, dict):
-                    return {"status": "error", "connected": False, "error": "Invalid response type"}
+                    return {
+                        "status": "error",
+                        "connected": False,
+                        "error": "Invalid response type",
+                    }
 
                 # Robustly get state
                 instance_data = data.get("instance")
@@ -316,14 +361,18 @@ class EvolutionWhatsAppService(NotificationService):
                 elif isinstance(instance_data, str):
                     state = instance_data
                 else:
-                    state = data.get("state", "unknown")  # Fallback for different API versions
+                    state = data.get(
+                        "state", "unknown"
+                    )  # Fallback for different API versions
 
                 return {"status": state, "connected": state in ["open", "CONNECTED"]}
         except Exception as exc:
             logger.error("Failed to get WhatsApp status: %s", exc)
             return {"status": "error", "connected": False}
 
-    async def create_instance(self, name: str, display_name: str = None) -> Optional[dict]:
+    async def create_instance(
+        self, name: str, display_name: str = None
+    ) -> Optional[dict]:
         """
         Creates a new WhatsApp instance.
         """
@@ -342,7 +391,11 @@ class EvolutionWhatsAppService(NotificationService):
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
                 if response.status_code >= 400:
-                    logger.error("Evolution Create Instance Error (%s): %s", response.status_code, response.text)
+                    logger.error(
+                        "Evolution Create Instance Error (%s): %s",
+                        response.status_code,
+                        response.text,
+                    )
                 response.raise_for_status()
                 data = response.json()
                 if isinstance(data, dict):
@@ -374,7 +427,11 @@ class EvolutionWhatsAppService(NotificationService):
                 elif response.status_code == 403:
                     logger.info("Instance %s already exists.", self.instance)
                     return True
-                logger.warning("Unexpected status during instance ensure: %s - %s", response.status_code, response.text)
+                logger.warning(
+                    "Unexpected status during instance ensure: %s - %s",
+                    response.status_code,
+                    response.text,
+                )
                 return False
         except Exception as exc:
             logger.error("Failed to ensure WhatsApp instance exists: %s", exc)
@@ -402,7 +459,9 @@ class EvolutionWhatsAppService(NotificationService):
             logger.error("Failed to fetch WhatsApp QR Code: %s", exc)
             return ""
 
-    async def set_presence(self, phone: str, presence: str = "composing", delay: int = 1200) -> bool:
+    async def set_presence(
+        self, phone: str, presence: str = "composing", delay: int = 1200
+    ) -> bool:
         """
         Simulates "Typing..." or "Recording..." presence.
         presences: 'composing', 'recording', 'paused'
@@ -431,7 +490,11 @@ class EvolutionWhatsAppService(NotificationService):
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.delete(url, headers=self._headers())
                 if response.status_code >= 400:
-                    logger.error("Evolution Delete Instance Error (%s): %s", response.status_code, response.text)
+                    logger.error(
+                        "Evolution Delete Instance Error (%s): %s",
+                        response.status_code,
+                        response.text,
+                    )
                 return response.status_code in [200, 201]
         except Exception as exc:
             logger.error("Failed to delete WhatsApp instance: %s", exc)
@@ -443,7 +506,11 @@ class EvolutionWhatsAppService(NotificationService):
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.delete(url, headers=self._headers())
                 if response.status_code >= 400:
-                    logger.error("Evolution Logout Error (%s): %s", response.status_code, response.text)
+                    logger.error(
+                        "Evolution Logout Error (%s): %s",
+                        response.status_code,
+                        response.text,
+                    )
                 return response.status_code in [200, 201]
         except Exception as exc:
             logger.error("Failed to logout WhatsApp instance: %s", exc)
@@ -454,8 +521,12 @@ class EvolutionWhatsAppService(NotificationService):
     ) -> bool:
         return await self.send_text(group_jid, message)
 
-    async def send_payment_reminder(self, number: str, product_name: str, message: str, affiliate_link: str) -> bool:
+    async def send_payment_reminder(
+        self, number: str, product_name: str, message: str, affiliate_link: str
+    ) -> bool:
         return await self.send_text(number, message)
 
-    async def send_prize_notification(self, number: str, product_name: str, message: str, affiliate_link: str) -> bool:
+    async def send_prize_notification(
+        self, number: str, product_name: str, message: str, affiliate_link: str
+    ) -> bool:
         return await self.send_text(number, message)

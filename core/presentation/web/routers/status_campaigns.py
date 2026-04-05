@@ -9,7 +9,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from core.domain.entities import StatusCampaign, CampaignStatus, ActivityLog
-from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
+from core.infrastructure.database.models import (
+    UserModel,
+    InstanceModel,
+    WhatsAppTargetModel,
+)
 from core.infrastructure.database.repositories import (
     SQLStatusCampaignRepository,
     SQLInstanceRepository,
@@ -38,7 +42,11 @@ async def list_status_campaigns(
     return templates.TemplateResponse(
         request=request,
         name="status_list.html",
-        context={"campaigns": campaigns, "user": current_user, "title": "Status Automático"},
+        context={
+            "campaigns": campaigns,
+            "user": current_user,
+            "title": "Status Automático",
+        },
     )
 
 
@@ -105,7 +113,9 @@ async def create_status_campaign(
 
     image_url = None
     if image_file and image_file.filename:
-        image_url = await _save_uploaded_image(image_file, quality=90, max_size=(1080, 1920), bucket="images")
+        image_url = await _save_uploaded_image(
+            image_file, quality=90, max_size=(1080, 1920), bucket="images"
+        )
     elif existing_image_url:
         image_url = existing_image_url
 
@@ -124,7 +134,9 @@ async def create_status_campaign(
         status=status,
         target_contacts=targets,
         is_recurring=is_recurring,
-        recurrence_days=",".join(recurrence_days) if is_recurring and recurrence_days else None,
+        recurrence_days=(
+            ",".join(recurrence_days) if is_recurring and recurrence_days else None
+        ),
         send_time=send_time if is_recurring else None,
     )
     repo.save(campaign)
@@ -132,12 +144,15 @@ async def create_status_campaign(
     # Log activity
     from core.infrastructure.database.repositories import SQLActivityRepository
     from core.domain.entities import ActivityLog
+
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="status_campaign_create", 
-        description=f"Created status campaign: {title}"
-    ))
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="status_campaign_create",
+            description=f"Created status campaign: {title}",
+        )
+    )
 
     return RedirectResponse(url="/status_campaigns", status_code=303)
 
@@ -216,7 +231,9 @@ async def update_status_campaign(
             storage_svc = SupabaseStorageService(bucket_name="images")
             storage_svc.delete_image(campaign.image_url)
 
-        image_url = await _save_uploaded_image(image_file, quality=90, max_size=(1080, 1920), bucket="images")
+        image_url = await _save_uploaded_image(
+            image_file, quality=90, max_size=(1080, 1920), bucket="images"
+        )
         if image_url:
             campaign.image_url = image_url
 
@@ -229,12 +246,19 @@ async def update_status_campaign(
     campaign.instance_id = instance_id
     campaign.target_contacts = targets
     campaign.is_recurring = is_recurring
-    campaign.recurrence_days = ",".join(recurrence_days) if is_recurring and recurrence_days else None
+    campaign.recurrence_days = (
+        ",".join(recurrence_days) if is_recurring and recurrence_days else None
+    )
     campaign.send_time = send_time if is_recurring else None
 
     if save_mode == "draft":
         campaign.status = CampaignStatus.DRAFT
-    elif campaign.status in [CampaignStatus.SENT, CampaignStatus.FAILED, CampaignStatus.SENDING, CampaignStatus.DRAFT]:
+    elif campaign.status in [
+        CampaignStatus.SENT,
+        CampaignStatus.FAILED,
+        CampaignStatus.SENDING,
+        CampaignStatus.DRAFT,
+    ]:
         campaign.status = CampaignStatus.SCHEDULED
 
     repo.save(campaign)
@@ -242,12 +266,15 @@ async def update_status_campaign(
     # Log activity
     from core.infrastructure.database.repositories import SQLActivityRepository
     from core.domain.entities import ActivityLog
+
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="status_campaign_edit", 
-        description=f"Updated status campaign: {title}"
-    ))
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="status_campaign_edit",
+            description=f"Updated status campaign: {title}",
+        )
+    )
 
     return RedirectResponse(url="/status_campaigns", status_code=303)
 
@@ -306,15 +333,17 @@ async def delete_status_campaign(
     success = repo.delete(campaign_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
-        
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="status_campaign_delete", 
-        description=f"Deleted status campaign: {campaign.title}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="status_campaign_delete",
+            description=f"Deleted status campaign: {campaign.title}",
+        )
+    )
+
     return RedirectResponse(url="/status_campaigns", status_code=303)
 
 
@@ -349,7 +378,6 @@ async def improve_status_caption(
     return {"improved_text": improved_text}
 
 
-
 @router.get("/status_campaigns/{campaign_id}", response_class=HTMLResponse)
 async def view_status_campaign(
     campaign_id: int,
@@ -367,8 +395,12 @@ async def view_status_campaign(
     target_names = []
     if campaign.target_contacts:
 
-        for jid in (campaign.target_contacts or []):
-            tm = db.query(WhatsAppTargetModel).filter_by(user_id=current_user.id, jid=jid).first()
+        for jid in campaign.target_contacts or []:
+            tm = (
+                db.query(WhatsAppTargetModel)
+                .filter_by(user_id=current_user.id, jid=jid)
+                .first()
+            )
             if tm and tm.name:
                 target_names.append(tm.name)
             else:

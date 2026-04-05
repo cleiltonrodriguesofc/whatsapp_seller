@@ -36,7 +36,9 @@ async def serve_private_image(
 
     image_bytes = storage_svc.download_image(clean_path)
     if not image_bytes:
-        raise HTTPException(status_code=404, detail="Image not found in private storage")
+        raise HTTPException(
+            status_code=404, detail="Image not found in private storage"
+        )
 
     ext = os.path.splitext(clean_path)[1].lower()
     content_types = {

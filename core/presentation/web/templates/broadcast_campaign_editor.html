@@ -119,6 +119,19 @@
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Para envios a <strong>Contatos</strong>, use <code>{nome}</code> para personalizar com o primeiro nome salvo.</p>
         </div>
 
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+            <div class="form-group" style="flex: 1;">
+                <label class="form-label">Link de Ação (Opcional)</label>
+                <input type="url" name="product_link" class="form-input" placeholder="https://..." value="{{ target_config.product_link if target_config else '' }}">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Será anexado ao final da mensagem</p>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label class="form-label">Preço / Valor (Opcional)</label>
+                <input type="text" name="product_price" class="form-input" placeholder="Ex: R$ 97,00" value="{{ target_config.product_price if target_config else '' }}">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Será anexado ao final da mensagem</p>
+            </div>
+        </div>
+
         <!-- Agendamento AVANÇADO -->
         <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); margin-top: 2rem;">
             <label class="form-label" style="font-size: 1rem; color: var(--text-primary); margin-bottom: 1.5rem; display: block;">Tipo de Agendamento</label>

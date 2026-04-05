@@ -16,7 +16,10 @@ from core.domain.entities import Product
 from core.infrastructure.database.models import UserModel
 from core.infrastructure.database.session import get_db
 from core.infrastructure.services.supabase_storage import SupabaseStorageService
-from core.infrastructure.database.repositories import SQLProductRepository, SQLActivityRepository
+from core.infrastructure.database.repositories import (
+    SQLProductRepository,
+    SQLActivityRepository,
+)
 from core.domain.entities import ActivityLog
 from core.presentation.web.dependencies import login_required, templates
 
@@ -29,7 +32,10 @@ _MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 async def _save_uploaded_image(
-    image_file: UploadFile, quality: int = 85, max_size: tuple = (1080, 1920), bucket: str = "produtos"
+    image_file: UploadFile,
+    quality: int = 85,
+    max_size: tuple = (1080, 1920),
+    bucket: str = "produtos",
 ) -> str:
     """
     Validates, resizes and uploads an image to Supabase Storage.
@@ -96,7 +102,9 @@ async def _save_uploaded_image(
         public_url = None
 
     if not public_url:
-        logger.error("supabase upload failed, falling back to local storage (ephemeral)")
+        logger.error(
+            "supabase upload failed, falling back to local storage (ephemeral)"
+        )
         upload_dir = os.path.join("core", "presentation", "web", "static", "uploads")
         os.makedirs(upload_dir, exist_ok=True)
         upload_path = os.path.join(upload_dir, unique_filename)
@@ -153,11 +161,13 @@ async def create_product(
 
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="product_create", 
-        description=f"Created product: {name}"
-    ))
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="product_create",
+            description=f"Created product: {name}",
+        )
+    )
 
     return RedirectResponse(url="/products", status_code=303)
 
@@ -234,7 +244,9 @@ async def update_product(
                 )
                 if migrated_url:
                     final_image_url = migrated_url
-                    logger.info("lazy-migrated legacy image to supabase: %s", migrated_url)
+                    logger.info(
+                        "lazy-migrated legacy image to supabase: %s", migrated_url
+                    )
             except Exception as e:
                 logger.error("lazy migration failed: %s", e)
 
@@ -249,11 +261,13 @@ async def update_product(
 
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="product_edit", 
-        description=f"Updated product: {name}"
-    ))
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="product_edit",
+            description=f"Updated product: {name}",
+        )
+    )
 
     return RedirectResponse(url="/products", status_code=303)
 
@@ -267,19 +281,25 @@ async def delete_product(
     product_repo = SQLProductRepository(db)
     product = product_repo.get_by_id(product_id, user_id=current_user.id)
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found or not owned by user")
-    
+        raise HTTPException(
+            status_code=404, detail="Product not found or not owned by user"
+        )
+
     name = product.name
     success = product_repo.delete(product_id, user_id=current_user.id)
     if not success:
-        raise HTTPException(status_code=404, detail="Product not found or not owned by user")
-        
+        raise HTTPException(
+            status_code=404, detail="Product not found or not owned by user"
+        )
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="product_delete", 
-        description=f"Deleted product: {name}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="product_delete",
+            description=f"Deleted product: {name}",
+        )
+    )
+
     return RedirectResponse(url="/products", status_code=303)
