@@ -10,7 +10,9 @@ from core.application.use_cases.send_daily_greeting import SendDailyGreeting
 # Load environment variables
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 

@@ -50,7 +50,9 @@ class UserModel(Base):
 
     products = relationship("ProductModel", back_populates="user")
     instances = relationship("InstanceModel", back_populates="user")
-    subscription = relationship("SubscriptionModel", back_populates="user", uselist=False)
+    subscription = relationship(
+        "SubscriptionModel", back_populates="user", uselist=False
+    )
     referral_code = relationship("ReferralCodeModel", foreign_keys=[referral_code_id])
 
 
@@ -103,7 +105,9 @@ class CampaignModel(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
     title = Column(String, nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"))
-    instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)  # Link to specific instance
+    instance_id = Column(
+        Integer, ForeignKey("instances.id"), nullable=True
+    )  # Link to specific instance
     scheduled_at = Column(DateTime)
     status = Column(String, default="pending", index=True)
     custom_message = Column(Text, nullable=True)
@@ -114,7 +118,9 @@ class CampaignModel(Base):
     is_recurring = Column(Boolean, default=False, index=True)
     recurrence_days = Column(String, nullable=True)  # "mon,tue,wed,thu,fri,sat,sun"
     send_time = Column(String, nullable=True)  # "HH:MM"
-    last_run_at = Column(DateTime, nullable=True)  # To prevent double-send in the same day
+    last_run_at = Column(
+        DateTime, nullable=True
+    )  # To prevent double-send in the same day
     target_config = Column(
         Text, nullable=True
     )  # JSON stored as string: {"status": "07:00", "groups": ["08:00", "12:00"]}
@@ -144,7 +150,9 @@ class StatusCampaignModel(Base):
     instance_id = Column(Integer, ForeignKey("instances.id"), nullable=True)
     scheduled_at = Column(DateTime)
     status = Column(String, default="pending", index=True)
-    target_contacts = Column(Text, nullable=True)  # JSON or comma-separated list of jids
+    target_contacts = Column(
+        Text, nullable=True
+    )  # JSON or comma-separated list of jids
     created_at = Column(DateTime, default=now_sp)
     sent_at = Column(DateTime, nullable=True)
 
@@ -167,14 +175,18 @@ class BroadcastListModel(Base):
     created_at = Column(DateTime, default=now_sp)
 
     members = relationship(
-        "BroadcastListMemberModel", back_populates="broadcast_list", cascade="all, delete-orphan"
+        "BroadcastListMemberModel",
+        back_populates="broadcast_list",
+        cascade="all, delete-orphan",
     )
 
 
 class BroadcastListMemberModel(Base):
     __tablename__ = "broadcast_list_members"
     id = Column(Integer, primary_key=True, index=True)
-    list_id = Column(Integer, ForeignKey("broadcast_lists.id", ondelete="CASCADE"), nullable=False)
+    list_id = Column(
+        Integer, ForeignKey("broadcast_lists.id", ondelete="CASCADE"), nullable=False
+    )
     target_jid = Column(String, nullable=False)
     target_name = Column(String, nullable=True)
     target_type = Column(String, nullable=False)  # 'chat' | 'group'
@@ -193,7 +205,9 @@ class BroadcastCampaignModel(Base):
     # target
     target_type = Column(String, nullable=False)  # 'contacts' | 'groups' | 'list'
     target_jids = Column(Text, nullable=True)  # JSON array
-    list_id = Column(Integer, ForeignKey("broadcast_lists.id", ondelete="SET NULL"), nullable=True)
+    list_id = Column(
+        Integer, ForeignKey("broadcast_lists.id", ondelete="SET NULL"), nullable=True
+    )
 
     # content
     message = Column(Text, nullable=False)
@@ -236,10 +250,14 @@ class SubscriptionModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
-    status = Column(String, default="trialing")  # "trialing", "active", "canceled", "past_due"
+    status = Column(
+        String, default="trialing"
+    )  # "trialing", "active", "canceled", "past_due"
     trial_ends_at = Column(DateTime, nullable=True)
     current_period_end = Column(DateTime, nullable=True)
-    mp_preapproval_id = Column(String, nullable=True)  # ID da assinatura no Mercado Pago
+    mp_preapproval_id = Column(
+        String, nullable=True
+    )  # ID da assinatura no Mercado Pago
     created_at = Column(DateTime, default=now_sp)
 
     user = relationship("UserModel", back_populates="subscription")
@@ -257,8 +275,12 @@ class ReferralCodeModel(Base):
 class ReferralConversionModel(Base):
     __tablename__ = "referral_conversions"
     id = Column(Integer, primary_key=True, index=True)
-    referrer_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # quem indicou
-    referred_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # quem se cadastrou
+    referrer_id = Column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )  # quem indicou
+    referred_id = Column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )  # quem se cadastrou
     status = Column(String, default="pending")  # "pending", "converted", "rewarded"
     reward_brl = Column(Float, default=0.0)
     rewarded_at = Column(DateTime, nullable=True)
