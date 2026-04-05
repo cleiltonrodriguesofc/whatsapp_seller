@@ -574,6 +574,8 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     scheduled_at_str = form_data.get("scheduled_at")
     is_recurring = form_data.get("is_recurring") == "true"
     recurrence_days = ",".join(form_data.getlist("recurrence_days"))
+    send_time = form_data.get("send_time")
+    
     product_link = form_data.get("product_link", "").strip()
     product_price = form_data.get("product_price", "").strip()
     

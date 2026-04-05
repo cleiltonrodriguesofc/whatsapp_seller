@@ -207,12 +207,26 @@ class EvolutionWhatsAppService(NotificationService):
         return await self.send_text(group_jid, message)
 
     async def get_contacts(self) -> list:
-        url = f"{self.base_url}/chat/fetchAllChats/{self.instance}"
+        """
+        Fetches all contacts from Evolution API v2.
+        Uses POST /chat/findContacts which returns remoteJid for each contact.
+        Filters to only @s.whatsapp.net JIDs (real phone contacts).
+        """
+        url = f"{self.base_url}/chat/findContacts/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(url, headers=self._headers())
+                response = await client.post(url, json={}, headers=self._headers())
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if not isinstance(data, list):
+                    return []
+                # only return real phone contacts (not groups, not LID, not status)
+                return [
+                    c for c in data
+                    if isinstance(c, dict)
+                    and c.get("remoteJid", "").endswith("@s.whatsapp.net")
+                    and c.get("remoteJid") != "0@s.whatsapp.net"
+                ]
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp contacts: %s", exc)
             return []
