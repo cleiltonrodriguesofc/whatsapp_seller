@@ -313,11 +313,15 @@ async def sync_whatsapp_targets(
     groups = await whatsapp_service.get_groups()
     chats = await whatsapp_service.get_contacts()
 
-    targets = []
-    for g in groups:
-        targets.append({"id": g.get("id"), "subject": g.get("subject") or g.get("name")})
-    for c in chats:
-        targets.append({"id": c.get("id"), "subject": c.get("name") or c.get("id")})
+    # Passa as listas puras para o upsert_sync que já tem uma heurística avançada
+    # Assegura que sejam tratadas em formato de lista (pode vir dit como {"data": [...]})
+    g_list = groups.get("data", groups) if isinstance(groups, dict) else groups
+    c_list = chats.get("data", chats) if isinstance(chats, dict) else chats
+
+    if not isinstance(g_list, list): g_list = []
+    if not isinstance(c_list, list): c_list = []
+
+    targets = g_list + c_list
 
     if targets:
         target_repo.upsert_sync(targets, user_id=current_user.id, instance_id=instance_model.id)
