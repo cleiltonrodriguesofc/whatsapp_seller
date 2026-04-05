@@ -276,6 +276,107 @@ body {
     box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
+.form-select option {
+    background-color: #1f2937 !important; /* Fixed dark gray for contrast */
+    color: #ffffff !important;           /* Fixed white text */
+    padding: 12px !important;
+}
+
+/* ── New Target Grid Layout ── */
+/* ── Audience Selector (Campaign Editor) ── */
+.target-selector-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 0.5rem !important;
+    max-height: 350px !important;
+    overflow-y: scroll !important; /* Force scrollbar track to always exist to prevent width shifts */
+    overflow-x: hidden !important;
+    padding: 0.65rem 1rem 0.65rem 0.65rem !important; /* Extra padding on the right so cards don't touch the clipping edge */
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    justify-items: stretch !important;
+    align-content: start !important;
+}
+
+/* Custom Scrollbar for selector grid */
+.target-selector-grid::-webkit-scrollbar {
+    width: 8px; /* Slightly wider track */
+}
+.target-selector-grid::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0; /* Keeps track slightly detached from top/bottom */
+}
+.target-selector-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    border: 2px solid transparent; /* padding effect */
+    background-clip: padding-box;
+}
+.target-selector-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Standalone Pages (Full Screen) */
+.target-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+/* Compact Card Styles */
+.compact-card {
+    padding: 0.5rem 0.65rem !important;
+    min-height: 60px !important;
+    box-sizing: border-box !important;
+}
+
+.compact-card .avatar-circle {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.85rem !important;
+    flex-shrink: 0;
+}
+
+/* Campaign Editor Target Chips */
+.target-chip {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    box-sizing: border-box !important;
+    min-width: 0; /* Prevents flex children from blowing out container */
+}
+
+.target-chip:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary);
+}
+
+.target-chip.selected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+@media (max-width: 850px) {
+    .target-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .target-grid-3 { grid-template-columns: 1fr; }
+    .target-selector-grid { grid-template-columns: 1fr !important; }
+}
+
+
+
 /* Buttons */
 .btn {
     padding: 0.85rem 1.75rem;
