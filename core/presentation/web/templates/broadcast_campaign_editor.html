@@ -54,7 +54,7 @@
         <!-- ===== PÚBLICO-ALVO (só no Broadcast) ===== -->
         <div class="form-group" style="margin-top: 1.5rem;">
             <label class="form-label">Público-Alvo</label>
-            <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem;">
                 <label style="flex: 1; cursor: pointer;" class="target-type-card" id="card-contacts">
                     <input type="radio" name="target_type" value="contacts" {% if not campaign or campaign.target_type == 'contacts' %}checked{% endif %} style="display:none;" onchange="onTargetTypeChange()">
                     <div class="target-type-inner">👥 Contatos</div>
@@ -69,13 +69,27 @@
                 </label>
             </div>
 
+            <!-- Pesquisa de Alvos -->
+            <div id="search-container" style="margin-bottom: 1rem; display: none;">
+                <div style="position: relative;">
+                    <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+                    <input type="text" id="target-search" class="form-input" placeholder="Pesquisar por nome ou JID..." style="padding-left: 35px; font-size: 0.9rem; background: rgba(255,255,255,0.05);">
+                </div>
+            </div>
+
             <!-- Contatos -->
             <div id="ui-contacts" class="target-picker" style="display: none;">
-                <div class="target-chip-grid">
+                <div class="target-selector-grid">
                     {% for c in contacts %}
-                    <label class="target-chip" data-instance-id="{{ c.instance_id }}">
-                        <input type="checkbox" name="target_jids" value="{{ c.jid }}" {% if campaign and c.jid in campaign.target_jids %}checked{% endif %}>
-                        <span>👤 {{ c.name or c.jid }}</span>
+                    <label class="target-chip compact-card" data-instance-id="{{ c.instance_id }}" data-target-name="{{ c.name|lower or c.jid|lower }}">
+                        <input type="checkbox" name="target_jids" value="{{ c.jid }}" {% if campaign and c.jid in campaign.target_jids %}checked{% endif %} style="display: none;" onchange="this.parentElement.classList.toggle('selected', this.checked)">
+                        <div class="avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: white; flex-shrink: 0;">
+                            {{ c.name[0].upper() if c.name else '?' }}
+                        </div>
+                        <div style="overflow: hidden; flex-grow: 1;">
+                            <div style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.name or "Sem Nome" }}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); font-family: monospace;">{{ c.phone or c.jid.split('@')[0] }}</div>
+                        </div>
                     </label>
                     {% else %}
                     <span style="color: var(--text-muted); font-size: 0.85rem;">Nenhum contato. <a href="/broadcast/sync" style="color:var(--primary);">Sincronizar</a></span>
@@ -85,11 +99,17 @@
 
             <!-- Grupos -->
             <div id="ui-groups" class="target-picker" style="display: none;">
-                <div class="target-chip-grid">
+                <div class="target-selector-grid">
                     {% for g in groups %}
-                    <label class="target-chip" data-instance-id="{{ g.instance_id }}">
-                        <input type="checkbox" name="target_jids" value="{{ g.jid }}" {% if campaign and g.jid in campaign.target_jids %}checked{% endif %}>
-                        <span>🏢 {{ g.name or g.jid }}</span>
+                    <label class="target-chip compact-card" data-instance-id="{{ g.instance_id }}" data-target-name="{{ g.name|lower or g.jid|lower }}">
+                        <input type="checkbox" name="target_jids" value="{{ g.jid }}" {% if campaign and g.jid in campaign.target_jids %}checked{% endif %} style="display: none;" onchange="this.parentElement.classList.toggle('selected', this.checked)">
+                        <div class="avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: white; flex-shrink: 0;">
+                            {{ g.name[0].upper() if g.name else '?' }}
+                        </div>
+                        <div style="overflow: hidden; flex-grow: 1;">
+                            <div style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ g.name or "Sem Nome" }}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ g.jid }}</div>
+                        </div>
                     </label>
                     {% else %}
                     <span style="color: var(--text-muted); font-size: 0.85rem;">Nenhum grupo. <a href="/broadcast/sync" style="color:var(--primary);">Sincronizar</a></span>
@@ -99,7 +119,7 @@
 
             <!-- Lista de Transmissão -->
             <div id="ui-list" class="target-picker" style="display: none;">
-                <select name="list_id" id="list_select" class="form-select" style="font-size: 1.1rem; padding: 0.75rem;">
+                <select name="list_id" id="list_select" class="form-select" style="font-size: 1rem; padding: 0.65rem; border-radius: 10px; background-color: rgba(255,255,255,0.05);">
                     <option value="">-- Escolha uma lista --</option>
                     {% for lst in lists %}
                     <option class="list-option" data-instance-id="{{ lst.instance_id }}" value="{{ lst.id }}" {% if (selected_list_id and selected_list_id|int == lst.id|int) or (campaign and campaign.list_id == lst.id) %}selected{% endif %}>{{ lst.name }} ({{ lst.member_count }} contatos)</option>
@@ -108,6 +128,7 @@
             </div>
         </div>
         <!-- ===== FIM PÚBLICO-ALVO ===== -->
+
 
         <!-- Legenda (Caption / Mensagem) -->
         <div class="form-group" style="margin-top: 1.5rem;">
@@ -377,9 +398,20 @@
 
     function onTargetTypeChange() {
         const type = document.querySelector('input[name="target_type"]:checked')?.value;
+        const searchContainer = document.getElementById('search-container');
         document.querySelectorAll('.target-picker').forEach(el => el.style.display = 'none');
-        if (type) document.getElementById(`ui-${type}`).style.display = 'block';
+        if (type) {
+            document.getElementById(`ui-${type}`).style.display = 'block';
+            if (type === 'contacts' || type === 'groups') {
+                searchContainer.style.display = 'block';
+            } else {
+                searchContainer.style.display = 'none';
+            }
+        } else {
+            searchContainer.style.display = 'none';
+        }
     }
+
 
     function setScheduleType(type) {
         const once = document.getElementById('section-once');
@@ -499,7 +531,36 @@
         else if (hasSch) setScheduleType('once');
         else setScheduleType('now');
 
+        // === SEARCH FILTER LOGIC ===
+        const searchInput = document.getElementById('target-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                const activeType = document.querySelector('input[name="target_type"]:checked')?.value;
+                if (activeType !== 'contacts' && activeType !== 'groups') return;
+
+                const grid = document.querySelector(`#ui-${activeType} .target-selector-grid`);
+                if (!grid) return;
+
+                const chips = grid.querySelectorAll('.target-chip');
+                const instanceId = document.getElementById('instance_select').value;
+
+                chips.forEach(chip => {
+                    const name = chip.dataset.targetName || "";
+                    const matchesSearch = name.includes(query);
+                    const matchesInstance = chip.dataset.instanceId === instanceId;
+                    
+                    if (matchesSearch && matchesInstance) {
+                        chip.style.display = 'flex';
+                    } else {
+                        chip.style.display = 'none';
+                    }
+                });
+            });
+        }
+
         // === On-the-fly campaign: read pre-selected contacts/groups from localStorage ===
+
         const customJidsRaw = localStorage.getItem('broadcast_selected_custom_jids');
         if (customJidsRaw) {
             try {
