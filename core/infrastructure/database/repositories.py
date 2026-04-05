@@ -47,7 +47,11 @@ class SQLProductRepository(ProductRepository):
 
     def save(self, product: Product) -> Product:
         if product.id:
-            model = self.db.query(ProductModel).filter(ProductModel.id == product.id).first()
+            model = (
+                self.db.query(ProductModel)
+                .filter(ProductModel.id == product.id)
+                .first()
+            )
             if model:
                 model.name = product.name
                 model.description = product.description
@@ -91,7 +95,9 @@ class SQLProductRepository(ProductRepository):
 
     def delete(self, product_id: int, user_id: int) -> bool:
         model = (
-            self.db.query(ProductModel).filter(ProductModel.id == product_id, ProductModel.user_id == user_id).first()
+            self.db.query(ProductModel)
+            .filter(ProductModel.id == product_id, ProductModel.user_id == user_id)
+            .first()
         )
         if model:
             # Soft delete: mark as inactive to prevent FK violations in campaigns
@@ -100,8 +106,12 @@ class SQLProductRepository(ProductRepository):
             return True
         return False
 
-    def get_by_id(self, product_id: int, user_id: Optional[int] = None) -> Optional[Product]:
-        query = self.db.query(ProductModel).filter(ProductModel.id == product_id, ProductModel.is_active)
+    def get_by_id(
+        self, product_id: int, user_id: Optional[int] = None
+    ) -> Optional[Product]:
+        query = self.db.query(ProductModel).filter(
+            ProductModel.id == product_id, ProductModel.is_active
+        )
         if user_id:
             query = query.filter(ProductModel.user_id == user_id)
         model = query.first()
@@ -117,7 +127,9 @@ class SQLProductRepository(ProductRepository):
         return [self._to_entity(m) for m in models]
 
     def increment_clicks(self, product_id: int):
-        model = self.db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        model = (
+            self.db.query(ProductModel).filter(ProductModel.id == product_id).first()
+        )
         if model:
             model.click_count += 1
             self.db.commit()
@@ -144,7 +156,11 @@ class SQLCampaignRepository(CampaignRepository):
 
     def save(self, campaign: Campaign) -> Campaign:
         if campaign.id:
-            model = self.db.query(CampaignModel).filter(CampaignModel.id == campaign.id).first()
+            model = (
+                self.db.query(CampaignModel)
+                .filter(CampaignModel.id == campaign.id)
+                .first()
+            )
             if model:
                 model.title = campaign.title
                 model.product_id = campaign.product.id
@@ -157,14 +173,26 @@ class SQLCampaignRepository(CampaignRepository):
                 model.send_time = campaign.send_time
                 model.is_ai_generated = campaign.is_ai_generated
                 model.sent_at = campaign.sent_at
-                model.target_config = json.dumps(campaign.target_config) if campaign.target_config else None
+                model.target_config = (
+                    json.dumps(campaign.target_config)
+                    if campaign.target_config
+                    else None
+                )
 
                 # Sync target groups (association table)
                 if campaign.target_groups is not None:
                     # Clear existing and add new
-                    self.db.execute(campaign_groups.delete().where(campaign_groups.c.campaign_id == model.id))
+                    self.db.execute(
+                        campaign_groups.delete().where(
+                            campaign_groups.c.campaign_id == model.id
+                        )
+                    )
                     for jid in campaign.target_groups:
-                        self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
+                        self.db.execute(
+                            campaign_groups.insert().values(
+                                campaign_id=model.id, group_jid=jid
+                            )
+                        )
             else:
                 model = CampaignModel(
                     title=campaign.title,
@@ -178,7 +206,11 @@ class SQLCampaignRepository(CampaignRepository):
                     recurrence_days=campaign.recurrence_days,
                     send_time=campaign.send_time,
                     is_ai_generated=campaign.is_ai_generated,
-                    target_config=(json.dumps(campaign.target_config) if campaign.target_config else None),
+                    target_config=(
+                        json.dumps(campaign.target_config)
+                        if campaign.target_config
+                        else None
+                    ),
                 )
                 self.db.add(model)
                 self.db.flush()  # Get ID
@@ -186,7 +218,11 @@ class SQLCampaignRepository(CampaignRepository):
                 # Sync target groups
                 if campaign.target_groups:
                     for jid in campaign.target_groups:
-                        self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
+                        self.db.execute(
+                            campaign_groups.insert().values(
+                                campaign_id=model.id, group_jid=jid
+                            )
+                        )
         else:
             model = CampaignModel(
                 title=campaign.title,
@@ -200,7 +236,11 @@ class SQLCampaignRepository(CampaignRepository):
                 recurrence_days=campaign.recurrence_days,
                 send_time=campaign.send_time,
                 is_ai_generated=campaign.is_ai_generated,
-                target_config=(json.dumps(campaign.target_config) if campaign.target_config else None),
+                target_config=(
+                    json.dumps(campaign.target_config)
+                    if campaign.target_config
+                    else None
+                ),
             )
             self.db.add(model)
             self.db.flush()
@@ -208,7 +248,11 @@ class SQLCampaignRepository(CampaignRepository):
             # Sync target groups
             if campaign.target_groups:
                 for jid in campaign.target_groups:
-                    self.db.execute(campaign_groups.insert().values(campaign_id=model.id, group_jid=jid))
+                    self.db.execute(
+                        campaign_groups.insert().values(
+                            campaign_id=model.id, group_jid=jid
+                        )
+                    )
 
         self.db.commit()
         self.db.refresh(model)
@@ -223,13 +267,19 @@ class SQLCampaignRepository(CampaignRepository):
         )
         if model:
             # remove association table rows first to avoid fk violation
-            self.db.execute(campaign_groups.delete().where(campaign_groups.c.campaign_id == model.id))
+            self.db.execute(
+                campaign_groups.delete().where(
+                    campaign_groups.c.campaign_id == model.id
+                )
+            )
             self.db.delete(model)
             self.db.commit()
             return True
         return False
 
-    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[Campaign]:
+    def get_by_id(
+        self, campaign_id: int, user_id: Optional[int] = None
+    ) -> Optional[Campaign]:
         query = self.db.query(CampaignModel).filter(CampaignModel.id == campaign_id)
         if user_id:
             query = query.filter(CampaignModel.user_id == user_id)
@@ -262,7 +312,9 @@ class SQLCampaignRepository(CampaignRepository):
         # Load target groups from association table
         target_jids = [
             r[0]
-            for r in self.db.query(campaign_groups.c.group_jid).filter(campaign_groups.c.campaign_id == model.id).all()
+            for r in self.db.query(campaign_groups.c.group_jid)
+            .filter(campaign_groups.c.campaign_id == model.id)
+            .all()
         ]
 
         campaign_entity = Campaign(
@@ -290,7 +342,11 @@ class SQLCampaignRepository(CampaignRepository):
             try:
                 campaign_entity.target_config = json.loads(model.target_config)
             except (json.JSONDecodeError, TypeError) as exc:
-                logger.warning("failed to deserialise target_config for campaign %s: %s", model.id, exc)
+                logger.warning(
+                    "failed to deserialise target_config for campaign %s: %s",
+                    model.id,
+                    exc,
+                )
                 campaign_entity.target_config = {}
 
         return campaign_entity
@@ -310,12 +366,22 @@ class SQLTargetRepository:
         now = now_sp()
         for t in targets:
             # handle both group and contact formats from Evolution API
-            jid = t.get("id") or t.get("remoteJid", "")
+            remote_jid = t.get("remoteJid") or t.get("jid")
+            if not remote_jid and "chat" in t and isinstance(t["chat"], dict):
+                remote_jid = t["chat"].get("remoteJid") or t["chat"].get("id")
+
+            jid = remote_jid or t.get("id") or ""
             if not jid:
                 continue
 
             # groups use 'subject', contacts use 'name' or 'pushName'
-            name = t.get("subject") or t.get("name") or t.get("pushName") or jid.split("@")[0]
+            push_name = t.get("subject") or t.get("name") or t.get("pushName")
+            if not push_name and "chat" in t and isinstance(t["chat"], dict):
+                push_name = t["chat"].get("name") or t["chat"].get("contact", {}).get(
+                    "pushName"
+                )
+
+            name = push_name or jid.split("@")[0]
             phone = jid.split("@")[0] if "@s.whatsapp.net" in jid else None
             target_type = "group" if "@g.us" in jid else "chat"
 
@@ -327,18 +393,22 @@ class SQLTargetRepository:
                 WhatsAppTargetModel.jid == jid,
                 WhatsAppTargetModel.user_id == user_id,
             )
-            
+
             # Buscando se já temos esse JID para a Instância solicitada OU se é um registro legado sem instância
             existing = None
             if instance_id is not None:
                 # Tenta achar exato
-                existing = query.filter(WhatsAppTargetModel.instance_id == instance_id).first()
+                existing = query.filter(
+                    WhatsAppTargetModel.instance_id == instance_id
+                ).first()
                 if not existing:
                     # Tenta achar legado sem instancia para reaproveitar e fixar
-                    existing = query.filter(WhatsAppTargetModel.instance_id.is_(None)).first()
+                    existing = query.filter(
+                        WhatsAppTargetModel.instance_id.is_(None)
+                    ).first()
             else:
                 existing = query.first()
-            
+
             if existing:
                 existing.name = name
                 existing.type = target_type
@@ -360,8 +430,9 @@ class SQLTargetRepository:
                 self.db.add(new_target)
         self.db.commit()
 
-
-    def list_contacts(self, user_id: int, instance_id: Optional[int] = None) -> List[WhatsAppTargetModel]:
+    def list_contacts(
+        self, user_id: int, instance_id: Optional[int] = None
+    ) -> List[WhatsAppTargetModel]:
         query = self.db.query(WhatsAppTargetModel).filter(
             WhatsAppTargetModel.user_id == user_id,
             WhatsAppTargetModel.type == "chat",
@@ -369,10 +440,14 @@ class SQLTargetRepository:
         )
         if instance_id is not None:
             query = query.filter(WhatsAppTargetModel.instance_id == instance_id)
-            return query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
-            
+            return query.order_by(
+                WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()
+            ).all()
+
         # Deduplication for 'All Instances' View
-        results = query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+        results = query.order_by(
+            WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()
+        ).all()
         seen = set()
         unique_results = []
         for r in results:
@@ -381,7 +456,9 @@ class SQLTargetRepository:
                 unique_results.append(r)
         return unique_results
 
-    def list_groups(self, user_id: int, instance_id: Optional[int] = None) -> List[WhatsAppTargetModel]:
+    def list_groups(
+        self, user_id: int, instance_id: Optional[int] = None
+    ) -> List[WhatsAppTargetModel]:
         query = self.db.query(WhatsAppTargetModel).filter(
             WhatsAppTargetModel.user_id == user_id,
             WhatsAppTargetModel.type == "group",
@@ -389,10 +466,14 @@ class SQLTargetRepository:
         )
         if instance_id is not None:
             query = query.filter(WhatsAppTargetModel.instance_id == instance_id)
-            return query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
-            
+            return query.order_by(
+                WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()
+            ).all()
+
         # Deduplication for 'All Instances' View
-        results = query.order_by(WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()).all()
+        results = query.order_by(
+            WhatsAppTargetModel.name.asc(), WhatsAppTargetModel.jid.asc()
+        ).all()
         seen = set()
         unique_results = []
         for r in results:
@@ -440,14 +521,19 @@ class SQLUserRepository(UserRepository):
                 is_admin=user.is_admin,
             )
             self.db.add(model)
-        
+
         self.db.commit()
         self.db.refresh(model)
         user.id = model.id
         return user
 
     def list_all(self, limit: int = 100) -> List[User]:
-        models = self.db.query(UserModel).order_by(UserModel.created_at.desc()).limit(limit).all()
+        models = (
+            self.db.query(UserModel)
+            .order_by(UserModel.created_at.desc())
+            .limit(limit)
+            .all()
+        )
         return [self._to_entity(m) for m in models]
 
     def _to_entity(self, model: UserModel) -> User:
@@ -478,14 +564,18 @@ class SQLActivityRepository(ActivityRepository):
         activity.id = model.id
         return activity
 
-    def list_all(self, limit: int = 100, user_id: Optional[int] = None) -> List[ActivityLog]:
-        query = self.db.query(ActivityLogModel, UserModel.email).outerjoin(
-            UserModel, ActivityLogModel.user_id == UserModel.id
-        ).order_by(ActivityLogModel.timestamp.desc())
-        
+    def list_all(
+        self, limit: int = 100, user_id: Optional[int] = None
+    ) -> List[ActivityLog]:
+        query = (
+            self.db.query(ActivityLogModel, UserModel.email)
+            .outerjoin(UserModel, ActivityLogModel.user_id == UserModel.id)
+            .order_by(ActivityLogModel.timestamp.desc())
+        )
+
         if user_id:
             query = query.filter(ActivityLogModel.user_id == user_id)
-        
+
         results = query.limit(limit).all()
         return [
             ActivityLog(
@@ -494,7 +584,7 @@ class SQLActivityRepository(ActivityRepository):
                 event_type=m.event_type,
                 description=m.description,
                 timestamp=m.timestamp,
-                user_email=email
+                user_email=email,
             )
             for m, email in results
         ]
@@ -505,7 +595,9 @@ class SQLInstanceRepository:
         self.db = db
 
     def list_by_user(self, user_id: int) -> List[InstanceModel]:
-        return self.db.query(InstanceModel).filter(InstanceModel.user_id == user_id).all()
+        return (
+            self.db.query(InstanceModel).filter(InstanceModel.user_id == user_id).all()
+        )
 
     def save(self, instance: InstanceModel) -> InstanceModel:
         if instance.id:
@@ -523,7 +615,11 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
 
     def save(self, campaign: StatusCampaign) -> StatusCampaign:
         if campaign.id:
-            model = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign.id).first()
+            model = (
+                self.db.query(StatusCampaignModel)
+                .filter(StatusCampaignModel.id == campaign.id)
+                .first()
+            )
             if model:
                 model.title = campaign.title
                 model.image_url = campaign.image_url
@@ -531,11 +627,19 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 model.link = campaign.link
                 model.price = campaign.price
                 model.scheduled_at = campaign.scheduled_at
-                logger.info("Updating StatusCampaign %s to status %s", campaign.id, campaign.status.value)
+                logger.info(
+                    "Updating StatusCampaign %s to status %s",
+                    campaign.id,
+                    campaign.status.value,
+                )
                 model.status = campaign.status.value
                 model.instance_id = campaign.instance_id
                 model.user_id = campaign.user_id
-                model.target_contacts = json.dumps(campaign.target_contacts) if campaign.target_contacts else None
+                model.target_contacts = (
+                    json.dumps(campaign.target_contacts)
+                    if campaign.target_contacts
+                    else None
+                )
                 model.sent_at = campaign.sent_at
                 model.is_recurring = campaign.is_recurring
                 model.recurrence_days = campaign.recurrence_days
@@ -553,7 +657,11 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
                 status=campaign.status.value,
                 instance_id=campaign.instance_id,
                 user_id=campaign.user_id,
-                target_contacts=json.dumps(campaign.target_contacts) if campaign.target_contacts else None,
+                target_contacts=(
+                    json.dumps(campaign.target_contacts)
+                    if campaign.target_contacts
+                    else None
+                ),
                 sent_at=campaign.sent_at,
                 is_recurring=campaign.is_recurring,
                 recurrence_days=campaign.recurrence_days,
@@ -569,8 +677,12 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         campaign.id = model.id
         return campaign
 
-    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[StatusCampaign]:
-        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id)
+    def get_by_id(
+        self, campaign_id: int, user_id: Optional[int] = None
+    ) -> Optional[StatusCampaign]:
+        query = self.db.query(StatusCampaignModel).filter(
+            StatusCampaignModel.id == campaign_id
+        )
         if user_id:
             query = query.filter(StatusCampaignModel.user_id == user_id)
         model = query.first()
@@ -586,7 +698,9 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
         return [self._to_entity(m) for m in models]
 
     def list_pending(self, user_id: Optional[int] = None) -> List[StatusCampaign]:
-        query = self.db.query(StatusCampaignModel).filter(StatusCampaignModel.status == "scheduled")
+        query = self.db.query(StatusCampaignModel).filter(
+            StatusCampaignModel.status == "scheduled"
+        )
         if user_id:
             query = query.filter(StatusCampaignModel.user_id == user_id)
         models = query.all()
@@ -595,7 +709,10 @@ class SQLStatusCampaignRepository(StatusCampaignRepository):
     def delete(self, campaign_id: int, user_id: int) -> bool:
         model = (
             self.db.query(StatusCampaignModel)
-            .filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == user_id)
+            .filter(
+                StatusCampaignModel.id == campaign_id,
+                StatusCampaignModel.user_id == user_id,
+            )
             .first()
         )
         if model:
@@ -668,7 +785,9 @@ class SQLBroadcastListRepository(BroadcastListRepository):
     def get_by_id(
         self, list_id: int, user_id: Optional[int] = None
     ) -> Optional[BroadcastList]:
-        query = self.db.query(BroadcastListModel).filter(BroadcastListModel.id == list_id)
+        query = self.db.query(BroadcastListModel).filter(
+            BroadcastListModel.id == list_id
+        )
         if user_id:
             query = query.filter(BroadcastListModel.user_id == user_id)
         model = query.first()
@@ -721,7 +840,9 @@ class SQLBroadcastListRepository(BroadcastListRepository):
     def delete(self, list_id: int, user_id: int) -> bool:
         model = (
             self.db.query(BroadcastListModel)
-            .filter(BroadcastListModel.id == list_id, BroadcastListModel.user_id == user_id)
+            .filter(
+                BroadcastListModel.id == list_id, BroadcastListModel.user_id == user_id
+            )
             .first()
         )
         if model:
@@ -816,8 +937,12 @@ class SQLBroadcastCampaignRepository(BroadcastCampaignRepository):
         campaign.created_at = model.created_at
         return campaign
 
-    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[BroadcastCampaign]:
-        query = self.db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id)
+    def get_by_id(
+        self, campaign_id: int, user_id: Optional[int] = None
+    ) -> Optional[BroadcastCampaign]:
+        query = self.db.query(BroadcastCampaignModel).filter(
+            BroadcastCampaignModel.id == campaign_id
+        )
         if user_id is not None:
             query = query.filter(BroadcastCampaignModel.user_id == user_id)
         model = query.first()

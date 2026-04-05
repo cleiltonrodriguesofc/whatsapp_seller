@@ -20,7 +20,9 @@ from core.infrastructure.database.models import (
     Base,
 )
 from core.infrastructure.database.session import engine
-from core.presentation.web.dependencies import templates  # noqa: F401 — registers template helpers
+from core.presentation.web.dependencies import (
+    templates,
+)  # noqa: F401 — registers template helpers
 from core.presentation.web.routers import (
     auth,
     campaigns,
@@ -51,20 +53,76 @@ Base.metadata.create_all(bind=engine)
 try:
     with engine.connect() as conn:
         migrations = [
-            ("products", "click_count", "ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;"),
-            ("status_campaigns", "link", "ALTER TABLE status_campaigns ADD COLUMN link TEXT;"),
-            ("status_campaigns", "price", "ALTER TABLE status_campaigns ADD COLUMN price FLOAT;"),
-            ("status_campaigns", "target_contacts", "ALTER TABLE status_campaigns ADD COLUMN target_contacts TEXT;"),
-            ("whatsapp_targets", "phone", "ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;"),
-            ("broadcast_campaigns", "target_type", "ALTER TABLE broadcast_campaigns ADD COLUMN target_type TEXT DEFAULT 'contacts';"),
-            ("broadcast_campaigns", "target_jids", "ALTER TABLE broadcast_campaigns ADD COLUMN target_jids TEXT;"),
-            ("broadcast_campaigns", "list_id", "ALTER TABLE broadcast_campaigns ADD COLUMN list_id INTEGER;"),
-            ("whatsapp_targets", "instance_id", "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
-            ("broadcast_lists", "instance_id", "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;"),
-            ("users", "referral_balance", "ALTER TABLE users ADD COLUMN referral_balance FLOAT DEFAULT 0.0;"),
-            ("users", "referral_code_id", "ALTER TABLE users ADD COLUMN referral_code_id INTEGER;"),
-            ("users", "agreed_to_terms_at", "ALTER TABLE users ADD COLUMN agreed_to_terms_at TIMESTAMP;"),
-            ("users", "is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;"),
+            (
+                "products",
+                "click_count",
+                "ALTER TABLE products ADD COLUMN click_count INTEGER DEFAULT 0;",
+            ),
+            (
+                "status_campaigns",
+                "link",
+                "ALTER TABLE status_campaigns ADD COLUMN link TEXT;",
+            ),
+            (
+                "status_campaigns",
+                "price",
+                "ALTER TABLE status_campaigns ADD COLUMN price FLOAT;",
+            ),
+            (
+                "status_campaigns",
+                "target_contacts",
+                "ALTER TABLE status_campaigns ADD COLUMN target_contacts TEXT;",
+            ),
+            (
+                "whatsapp_targets",
+                "phone",
+                "ALTER TABLE whatsapp_targets ADD COLUMN phone TEXT;",
+            ),
+            (
+                "broadcast_campaigns",
+                "target_type",
+                "ALTER TABLE broadcast_campaigns ADD COLUMN target_type TEXT DEFAULT 'contacts';",
+            ),
+            (
+                "broadcast_campaigns",
+                "target_jids",
+                "ALTER TABLE broadcast_campaigns ADD COLUMN target_jids TEXT;",
+            ),
+            (
+                "broadcast_campaigns",
+                "list_id",
+                "ALTER TABLE broadcast_campaigns ADD COLUMN list_id INTEGER;",
+            ),
+            (
+                "whatsapp_targets",
+                "instance_id",
+                "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;",
+            ),
+            (
+                "broadcast_lists",
+                "instance_id",
+                "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;",
+            ),
+            (
+                "users",
+                "referral_balance",
+                "ALTER TABLE users ADD COLUMN referral_balance FLOAT DEFAULT 0.0;",
+            ),
+            (
+                "users",
+                "referral_code_id",
+                "ALTER TABLE users ADD COLUMN referral_code_id INTEGER;",
+            ),
+            (
+                "users",
+                "agreed_to_terms_at",
+                "ALTER TABLE users ADD COLUMN agreed_to_terms_at TIMESTAMP;",
+            ),
+            (
+                "users",
+                "is_admin",
+                "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;",
+            ),
         ]
 
         for table, column, stmt in migrations:
@@ -74,7 +132,7 @@ try:
                         "SELECT column_name FROM information_schema.columns "
                         "WHERE table_name = :table_name AND column_name = :column_name;"
                     ),
-                    {"table_name": table, "column_name": column}
+                    {"table_name": table, "column_name": column},
                 )
                 if not res.fetchone():
                     conn.execute(text(stmt))
@@ -107,7 +165,7 @@ app = FastAPI(
     title="WhatSeller Pro",
     debug=os.environ.get("DEBUG", "false") == "true",
     docs_url="/api-docs",
-    redoc_url="/api-redoc"
+    redoc_url="/api-redoc",
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -132,7 +190,9 @@ async def add_security_headers(request: Request, call_next):
         "connect-src 'self' https:;"
     )
     if os.environ.get("RENDER"):
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
     return response
 
 
