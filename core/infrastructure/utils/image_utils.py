@@ -6,14 +6,18 @@ from PIL import Image
 from core.infrastructure.services.supabase_storage import SupabaseStorageService
 
 
-async def get_optimized_base64(path_or_url: str, max_size: tuple = (400, 400), quality: int = 70) -> str:
+async def get_optimized_base64(
+    path_or_url: str, max_size: tuple = (400, 400), quality: int = 70
+) -> str:
     """
     Downloads or reads an image, resizes it, compresses it and returns a Base64 string.
     """
     if path_or_url.startswith(("http://", "https://")):
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             # Mask user-agent to bypass basic CDN hotlink protections
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
             response = await client.get(path_or_url, headers=headers)
             response.raise_for_status()
             img_data = response.content
@@ -22,7 +26,9 @@ async def get_optimized_base64(path_or_url: str, max_size: tuple = (400, 400), q
         storage_svc = SupabaseStorageService()
         img_data = storage_svc.download_image(path_or_url)
         if not img_data:
-            raise ValueError(f"Failed to download private image from Supabase: {path_or_url}")
+            raise ValueError(
+                f"Failed to download private image from Supabase: {path_or_url}"
+            )
     elif path_or_url.startswith("data:"):
         # It's a Base64 Data URI stored in the DB
         base64_str = path_or_url.split(",", 1)[-1]
@@ -34,10 +40,14 @@ async def get_optimized_base64(path_or_url: str, max_size: tuple = (400, 400), q
             # The path starts with /static/, which maps to core/presentation/web/static/
             # We remove the /static/ prefix before joining
             relative_path = path_or_url.replace("/static/", "", 1).lstrip("/")
-            local_path = os.path.join("core", "presentation", "web", "static", relative_path)
+            local_path = os.path.join(
+                "core", "presentation", "web", "static", relative_path
+            )
 
         if not os.path.exists(local_path):
-            raise FileNotFoundError(f"Local image not found: {local_path} (original: {path_or_url})")
+            raise FileNotFoundError(
+                f"Local image not found: {local_path} (original: {path_or_url})"
+            )
 
         with open(local_path, "rb") as f:
             img_data = f.read()

@@ -24,7 +24,9 @@ from core.infrastructure.database.repositories import (
     SQLActivityRepository,
 )
 from core.infrastructure.database.session import get_db
-from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.notifications.evolution_whatsapp import (
+    EvolutionWhatsAppService,
+)
 from core.presentation.web.dependencies import (
     get_current_user,
     login_required,
@@ -49,22 +51,39 @@ async def home(
     current_user: Optional[UserModel] = Depends(get_current_user),
 ):
     if not current_user:
-        return templates.TemplateResponse(request=request, name="landing.html", context={"title": "Welcome"})
+        return templates.TemplateResponse(
+            request=request, name="landing.html", context={"title": "Welcome"}
+        )
 
     # Estatísticas focadas em Status
-    status_campaigns = db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == current_user.id).all()
+    status_campaigns = (
+        db.query(StatusCampaignModel)
+        .filter(StatusCampaignModel.user_id == current_user.id)
+        .all()
+    )
     sent_count = (
         db.query(StatusCampaignModel)
-        .filter(StatusCampaignModel.user_id == current_user.id, StatusCampaignModel.status == "sent")
+        .filter(
+            StatusCampaignModel.user_id == current_user.id,
+            StatusCampaignModel.status == "sent",
+        )
         .count()
     )
 
     # Buscar assinatura e dados de referral
-    subscription = db.query(SubscriptionModel).filter(SubscriptionModel.user_id == current_user.id).first()
-    
+    subscription = (
+        db.query(SubscriptionModel)
+        .filter(SubscriptionModel.user_id == current_user.id)
+        .first()
+    )
+
     # Calcular dias restantes se for trial
     days_left = 0
-    if subscription and subscription.status == "trialing" and subscription.trial_ends_at:
+    if (
+        subscription
+        and subscription.status == "trialing"
+        and subscription.trial_ends_at
+    ):
         delta = subscription.trial_ends_at - datetime.utcnow()
         days_left = max(0, delta.days)
 
@@ -93,20 +112,22 @@ async def delete_campaign(
     campaign = campaign_repo.get_by_id(campaign_id, user_id=current_user.id)
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     title = campaign.title
     success = campaign_repo.delete(campaign_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Campaign not found")
-        
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="campaign_delete", 
-        description=f"Deleted campaign: {title}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="campaign_delete",
+            description=f"Deleted campaign: {title}",
+        )
+    )
+
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -117,7 +138,9 @@ async def new_campaign_form(
     current_user: UserModel = Depends(login_required),
 ):
     product_repo = SQLProductRepository(db)
-    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    instances = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    )
     products = product_repo.list_all(user_id=current_user.id)
 
     return templates.TemplateResponse(
@@ -150,14 +173,18 @@ async def create_campaign(
 ):
     campaign_repo = SQLCampaignRepository(db)
     product_repo = SQLProductRepository(db)
-    instance_model = db.query(InstanceModel).filter(InstanceModel.id == instance_id).first()
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.id == instance_id).first()
+    )
     whatsapp_service = EvolutionWhatsAppService(
         instance=instance_model.name if instance_model else None,
         apikey=instance_model.apikey if instance_model else None,
     )
     ai_service = OpenAIService()
 
-    scheduler = ScheduleCampaign(campaign_repo, product_repo, whatsapp_service, ai_service)
+    scheduler = ScheduleCampaign(
+        campaign_repo, product_repo, whatsapp_service, ai_service
+    )
 
     dt_scheduled = None
     if scheduled_at:
@@ -188,11 +215,13 @@ async def create_campaign(
 
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="campaign_create", 
-        description=f"Created campaign: {title} (Draft: {save_as_draft})"
-    ))
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="campaign_create",
+            description=f"Created campaign: {title} (Draft: {save_as_draft})",
+        )
+    )
 
     return RedirectResponse(url="/", status_code=303)
 
@@ -212,7 +241,9 @@ async def edit_campaign_form(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     products = product_repo.list_all(user_id=current_user.id)
-    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    instances = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -264,7 +295,9 @@ async def update_campaign(
 
     if scheduled_at:
         try:
-            campaign.scheduled_at = datetime.fromisoformat(scheduled_at.replace("Z", ""))
+            campaign.scheduled_at = datetime.fromisoformat(
+                scheduled_at.replace("Z", "")
+            )
         except ValueError as exc:
             logger.warning(
                 "invalid scheduled_at value '%s': %s — keeping existing value",
@@ -273,15 +306,17 @@ async def update_campaign(
             )
 
     campaign_repo.save(campaign)
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="campaign_edit", 
-        description=f"Updated campaign: {title}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="campaign_edit",
+            description=f"Updated campaign: {title}",
+        )
+    )
+
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -321,7 +356,9 @@ async def rewrite_campaign_message(
     prompt += "Use emojis, bullet points e uma chamada para ação clara. "
     prompt += "Não use markdown links (como [texto](url)).\n\n"
 
-    link = product.affiliate_link if product else (text if "http" in (text or "") else "")
+    link = (
+        product.affiliate_link if product else (text if "http" in (text or "") else "")
+    )
     prompt += f"Link que DEVE estar na mensagem: {link}\n\n"
 
     if text:
