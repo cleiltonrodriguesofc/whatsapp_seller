@@ -120,7 +120,9 @@ class StatusCampaign:
     caption: Optional[str] = None
     link: Optional[str] = None
     price: Optional[float] = None
-    target_contacts: List[str] = field(default_factory=list)  # Empty means allContacts=True
+    target_contacts: List[str] = field(
+        default_factory=list
+    )  # Empty means allContacts=True
     user_id: Optional[int] = None
     instance_id: Optional[int] = None
     status: CampaignStatus = CampaignStatus.PENDING

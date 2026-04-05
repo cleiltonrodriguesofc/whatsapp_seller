@@ -12,11 +12,16 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from core.application.use_cases.sales_agent_campaign import SalesAgentCampaignUseCase
-from core.infrastructure.database.repositories import SQLTargetRepository, SQLActivityRepository
+from core.infrastructure.database.repositories import (
+    SQLTargetRepository,
+    SQLActivityRepository,
+)
 from core.infrastructure.database.models import UserModel, InstanceModel
 from core.domain.entities import ActivityLog
 from core.infrastructure.database.session import get_db
-from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.notifications.evolution_whatsapp import (
+    EvolutionWhatsAppService,
+)
 from core.presentation.web.dependencies import login_required, templates
 
 logger = logging.getLogger(__name__)
@@ -30,16 +35,18 @@ async def connect_whatsapp_page(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(login_required),
 ):
-    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    instances = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    )
     return templates.TemplateResponse(
         request=request,
-        name="connect_whatsapp.html", 
+        name="connect_whatsapp.html",
         context={
-            "request": request, 
-            "instances": instances, 
+            "request": request,
+            "instances": instances,
             "user": current_user,
-            "title": "Configuração WhatsApp"
-        }
+            "title": "Configuração WhatsApp",
+        },
     )
 
 
@@ -72,15 +79,17 @@ async def create_new_instance(
         )
         db.add(new_instance)
         db.commit()
-        
+
         # Log activity
         activity_repo = SQLActivityRepository(db)
-        activity_repo.save(ActivityLog(
-            user_id=current_user.id, 
-            event_type="instance_create", 
-            description=f"Created new WhatsApp instance: {name} ({full_name})"
-        ))
-        
+        activity_repo.save(
+            ActivityLog(
+                user_id=current_user.id,
+                event_type="instance_create",
+                description=f"Created new WhatsApp instance: {name} ({full_name})",
+            )
+        )
+
         return {"success": True, "instance_id": new_instance.id}
 
     logger.error("failed to create instance. response type: %s", type(instance_data))
@@ -98,7 +107,9 @@ async def get_whatsapp_qr(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
         .first()
     )
     if not instance_model:
@@ -119,7 +130,9 @@ async def get_global_whatsapp_status(
     current_user: UserModel = Depends(login_required),
     db: Session = Depends(get_db),
 ):
-    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    instances = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    )
     if not instances:
         return {"connected": False}
 
@@ -143,7 +156,9 @@ async def get_whatsapp_status(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
         .first()
     )
     if not instance_model:
@@ -167,7 +182,9 @@ async def delete_whatsapp(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
         .first()
     )
     if not instance_model:
@@ -180,15 +197,17 @@ async def delete_whatsapp(
     await whatsapp_service.delete_instance()
     db.delete(instance_model)
     db.commit()
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="instance_delete", 
-        description=f"Deleted WhatsApp instance: {instance_model.display_name}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="instance_delete",
+            description=f"Deleted WhatsApp instance: {instance_model.display_name}",
+        )
+    )
+
     return {"success": True}
 
 
@@ -201,7 +220,9 @@ async def rename_whatsapp(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
         .first()
     )
     if not instance_model:
@@ -209,15 +230,17 @@ async def rename_whatsapp(
 
     instance_model.display_name = new_name
     db.commit()
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="instance_rename", 
-        description=f"Renamed WhatsApp instance to: {new_name}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="instance_rename",
+            description=f"Renamed WhatsApp instance to: {new_name}",
+        )
+    )
+
     return {"success": True}
 
 
@@ -229,7 +252,9 @@ async def logout_whatsapp(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
         .first()
     )
     if not instance_model:
@@ -251,15 +276,17 @@ async def logout_whatsapp(
 
     instance_model.status = "disconnected"
     db.commit()
-    
+
     # Log activity
     activity_repo = SQLActivityRepository(db)
-    activity_repo.save(ActivityLog(
-        user_id=current_user.id, 
-        event_type="instance_logout", 
-        description=f"Logged out from WhatsApp instance: {instance_model.display_name}"
-    ))
-    
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="instance_logout",
+            description=f"Logged out from WhatsApp instance: {instance_model.display_name}",
+        )
+    )
+
     return {"success": True}
 
 
@@ -271,7 +298,9 @@ async def get_whatsapp_groups(
 ):
     instance_model = (
         db.query(InstanceModel)
-        .filter(InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
         .first()
     )
     if not instance_model:
@@ -288,10 +317,9 @@ async def get_whatsapp_groups(
 
     target_map = {}
     for g in groups:
-        jid = g.get("id")
-        if jid:
-            target_map[jid] = {"id": jid, "subject": g.get("subject") or g.get("name") or jid}
-            
+        targets.append(
+            {"id": g.get("id"), "subject": g.get("subject") or g.get("name")}
+        )
     for c in chats:
         jid = c.get("id")
         if jid and jid not in target_map:
@@ -316,7 +344,9 @@ async def sync_whatsapp_targets(
     current_user: UserModel = Depends(login_required),
 ):
     """Force a sync from Evolution API to the local database."""
-    instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
     if not instance_model:
         return {"success": False, "error": "No instance provisioned"}
 
@@ -330,29 +360,22 @@ async def sync_whatsapp_targets(
     chats = await whatsapp_service.get_active_chats()
     phonebook = await whatsapp_service.get_phonebook_contacts()
 
-    target_map = {}
-    for g in groups:
-        jid = g.get("id")
-        if jid:
-            target_map[jid] = {"id": jid, "subject": g.get("subject") or g.get("name") or jid}
-            
-    for c in chats:
-        jid = c.get("id")
-        if jid and jid not in target_map:
-            target_map[jid] = {"id": jid, "subject": c.get("name") or jid}
-            
-    for p in phonebook:
-        jid = p.get("id") or p.get("remoteJid")
-        if not jid:
-            continue
-        name = p.get("name") or p.get("pushName") or p.get("notify") or jid
-        if jid not in target_map or target_map[jid]["subject"] == jid:
-            target_map[jid] = {"id": jid, "subject": name}
-            
-    targets = list(target_map.values())
+    # Passa as listas puras para o upsert_sync que já tem uma heurística avançada
+    # Assegura que sejam tratadas em formato de lista (pode vir dit como {"data": [...]})
+    g_list = groups.get("data", groups) if isinstance(groups, dict) else groups
+    c_list = chats.get("data", chats) if isinstance(chats, dict) else chats
+
+    if not isinstance(g_list, list):
+        g_list = []
+    if not isinstance(c_list, list):
+        c_list = []
+
+    targets = g_list + c_list
 
     if targets:
-        target_repo.upsert_sync(targets, user_id=current_user.id, instance_id=instance_model.id)
+        target_repo.upsert_sync(
+            targets, user_id=current_user.id, instance_id=instance_model.id
+        )
 
     return {"success": True, "count": len(targets)}
 
@@ -364,22 +387,26 @@ async def send_test_message(
     current_user: UserModel = Depends(login_required),
     db: Session = Depends(get_db),
 ):
-    instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).first()
+    )
     whatsapp_service = EvolutionWhatsAppService(
         instance=instance_model.name if instance_model else None,
         apikey=instance_model.apikey if instance_model else None,
     )
     success = await whatsapp_service.send_text(phone, message)
-    
+
     if success:
         # Log activity
         activity_repo = SQLActivityRepository(db)
-        activity_repo.save(ActivityLog(
-            user_id=current_user.id, 
-            event_type="whatsapp_test", 
-            description=f"Sent test message to: {phone}"
-        ))
-        
+        activity_repo.save(
+            ActivityLog(
+                user_id=current_user.id,
+                event_type="whatsapp_test",
+                description=f"Sent test message to: {phone}",
+            )
+        )
+
     return {"success": success}
 
 
@@ -408,7 +435,9 @@ async def whatsapp_webhook_trigger(
 
     if action == "campaign":
         use_case = SalesAgentCampaignUseCase(whatsapp_service)
-        success = await use_case.execute(jid, message or "Olá! Esta é uma mensagem automática.")
+        success = await use_case.execute(
+            jid, message or "Olá! Esta é uma mensagem automática."
+        )
         return {"status": "success" if success else "failed", "action": action}
 
     if action == "pulse":
