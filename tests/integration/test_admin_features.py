@@ -5,6 +5,7 @@ from core.infrastructure.database.session import get_db
 from core.application.services.auth_service import AuthService
 from core.infrastructure.database.models import UserModel, ActivityLogModel
 
+
 @pytest.fixture
 def client(override_get_db):
     app.dependency_overrides[get_db] = override_get_db
@@ -12,11 +13,12 @@ def client(override_get_db):
         yield c
     app.dependency_overrides.clear()
 
+
 def test_deactivated_user_access_denied(client, db_session):
     """Users with is_active=False must be rejected and redirected to login."""
     auth = AuthService()
     user = UserModel(
-        email="deactivated@test.com", 
+        email="deactivated@test.com",
         hashed_password=auth.hash_password("password"),
         is_active=False
     )
@@ -32,10 +34,11 @@ def test_deactivated_user_access_denied(client, db_session):
     assert response.status_code in (302, 303)
     assert "/login" in response.headers.get("Location", "")
 
+
 def test_activity_log_system_event_null_user(db_session):
     """ActivityLog must support null user_id for system-level events."""
     from datetime import datetime
-    
+
     log = ActivityLogModel(
         user_id=None,
         event_type="system_startup",
@@ -44,17 +47,18 @@ def test_activity_log_system_event_null_user(db_session):
     )
     db_session.add(log)
     db_session.commit()
-    
+
     saved_log = db_session.query(ActivityLogModel).filter_by(event_type="system_startup").first()
     assert saved_log is not None
     assert saved_log.user_id is None
     assert "System started" in saved_log.description
 
+
 def test_admin_dashboard_vision_2_0_rendering(client, db_session):
     """Admin dashboard must render with Vision 2.0 design tokens."""
     auth = AuthService()
     admin = UserModel(
-        email="admin@vision.com", 
+        email="admin@vision.com",
         hashed_password=auth.hash_password("adminpass"),
         is_admin=True,
         is_active=True
@@ -70,15 +74,16 @@ def test_admin_dashboard_vision_2_0_rendering(client, db_session):
     # Check for Vision 2.0 specific design tokens/text
     assert "Visão do Administrador" in response.text
     assert "admin-card" in response.text
-    assert "Glassmorphism" not in response.text # (it's in CSS, not HTML text)
+    assert "Glassmorphism" not in response.text  # (it's in CSS, not HTML text)
     assert "Audit Logs" in response.text
     assert "stat-premium" in response.text
+
 
 def test_admin_users_page_renders_without_500(client, db_session):
     """Admin users page must load without internal server error."""
     auth = AuthService()
     admin = UserModel(
-        email="admin_users@test.com", 
+        email="admin_users@test.com",
         hashed_password=auth.hash_password("pass"),
         is_admin=True,
         is_active=True

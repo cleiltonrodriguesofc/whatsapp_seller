@@ -317,14 +317,20 @@ async def get_whatsapp_groups(
 
     target_map = {}
     for g in groups:
-        targets.append(
-            {"id": g.get("id"), "subject": g.get("subject") or g.get("name")}
-        )
+        gid = g.get("id")
+        if gid:
+            target_map[gid] = {
+                "id": gid,
+                "subject": g.get("subject") or g.get("name"),
+            }
     for c in chats:
         jid = c.get("remoteJid") or c.get("id")
         if jid and jid not in target_map:
-            target_map[jid] = {"id": jid, "subject": c.get("name") or c.get("pushName") or jid}
-            
+            target_map[jid] = {
+                "id": jid,
+                "subject": c.get("name") or c.get("pushName") or jid,
+            }
+
     for p in phonebook:
         jid = p.get("remoteJid") or p.get("id")
         if not jid:
@@ -332,7 +338,7 @@ async def get_whatsapp_groups(
         name = p.get("name") or p.get("pushName") or p.get("notify") or jid
         if jid not in target_map or target_map[jid]["subject"] == jid:
             target_map[jid] = {"id": jid, "subject": name}
-            
+
     targets = list(target_map.values())
 
     return {"success": True, "groups": targets}
@@ -358,10 +364,8 @@ async def sync_whatsapp_targets(
 
     groups = await whatsapp_service.get_groups()
     chats = await whatsapp_service.get_contacts()
-    phonebook = await whatsapp_service.get_phonebook_contacts()
 
-    # Passa as listas puras para o upsert_sync que já tem uma heurística avançada
-    # Assegura que sejam tratadas em formato de lista (pode vir dit como {"data": [...]})
+    # normalize lists (api may return {"data": [...]})
     g_list = groups.get("data", groups) if isinstance(groups, dict) else groups
     c_list = chats.get("data", chats) if isinstance(chats, dict) else chats
 
@@ -458,10 +462,10 @@ async def view_whatsapp_chats(
     WhatsApp inbox view - loads active chats from Evolution API.
     """
     instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
-    
+
     selected_instance = None
     chats = []
-    
+
     if instances:
         if instance_id:
             selected_instance = db.query(InstanceModel).filter(
@@ -470,7 +474,7 @@ async def view_whatsapp_chats(
             ).first()
         if not selected_instance:
             selected_instance = instances[0]
-        
+
         if selected_instance:
             whatsapp_service = EvolutionWhatsAppService(
                 instance=selected_instance.name,
@@ -491,7 +495,7 @@ async def view_whatsapp_chats(
                     })
             # sort by most recent message
             chats.sort(key=lambda x: x.get("lastMsgTimestamp", 0), reverse=True)
-    
+
     return templates.TemplateResponse(
         request=request,
         name="chats.html",
@@ -521,16 +525,16 @@ async def get_chat_messages_api(
         InstanceModel.id == instance_id,
         InstanceModel.user_id == current_user.id,
     ).first()
-    
+
     if not instance:
         raise HTTPException(status_code=404, detail="Instance not found")
-    
+
     whatsapp_service = EvolutionWhatsAppService(
         instance=instance.name,
         apikey=instance.apikey,
     )
     messages = await whatsapp_service.get_chat_messages(jid, limit=50)
-    
+
     # normalize message data
     normalized = []
     for msg in messages:
@@ -545,7 +549,7 @@ async def get_chat_messages_api(
                 message_content.get("videoMessage", {}).get("caption") or
                 ""
             ) if isinstance(message_content, dict) else str(message_content) if message_content else ""
-            
+
             # detect message type
             msg_type = "text"
             if isinstance(message_content, dict):
@@ -559,7 +563,7 @@ async def get_chat_messages_api(
                     msg_type = "document"
                 elif "stickerMessage" in message_content:
                     msg_type = "sticker"
-            
+
             normalized.append({
                 "id": key.get("id", ""),
                 "fromMe": key.get("fromMe", False),
@@ -569,9 +573,8 @@ async def get_chat_messages_api(
                 "timestamp": msg.get("messageTimestamp") or msg.get("messageTimestamp", 0),
                 "pushName": msg.get("pushName", ""),
             })
-    
+
     # sort by timestamp ascending (oldest first)
     normalized.sort(key=lambda x: x.get("timestamp", 0))
-    
-    return {"messages": normalized}
 
+    return {"messages": normalized}

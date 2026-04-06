@@ -25,7 +25,7 @@ def login_user(client, db_session, email="frontend@test.com"):
     user = UserModel(email=email, hashed_password=auth.hash_password("mock_auth_val_x9"))
     db_session.add(user)
     db_session.commit()
-    
+
     # Inject access_token cookie directly
     access_token = auth.create_access_token(data={"sub": email})
     client.cookies.set("access_token", access_token)

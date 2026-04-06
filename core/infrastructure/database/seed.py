@@ -31,7 +31,8 @@ def seed():
         price=3068.07,
         affiliate_link="https://divulgador.magalu.com/-GhxL_3w",
         image_url=(
-            "https://a-static.mlcdn.com.br/800x560/notebook-asus-vivobook-go-15-intel-core-i3-n305-8gb-256gb-ssd-156-full-hd-windows-11/"
+            "https://a-static.mlcdn.com.br/800x560/"
+            "notebook-asus-vivobook-go-15-intel-core-i3-n305-8gb-256gb-ssd-156-full-hd-windows-11/"
             "magasul/237194600/6e7a5c5c0c6e8e8e8e8e8e8e8e8e8e8e.jpg"
         ),
         category="Informática",

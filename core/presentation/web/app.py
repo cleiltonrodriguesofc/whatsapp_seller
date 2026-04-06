@@ -20,9 +20,7 @@ from core.infrastructure.database.models import (
     Base,
 )
 from core.infrastructure.database.session import engine
-from core.presentation.web.dependencies import (
-    templates,
-)  # noqa: F401 — registers template helpers
+from core.presentation.web.dependencies import templates  # noqa: F401 - registers template helpers
 from core.presentation.web.routers import (
     auth,
     campaigns,
@@ -96,12 +94,14 @@ try:
             (
                 "whatsapp_targets",
                 "instance_id",
-                "ALTER TABLE whatsapp_targets ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;",
+                "ALTER TABLE whatsapp_targets ADD COLUMN instance_id"
+                " INTEGER REFERENCES instances(id) ON DELETE SET NULL;",
             ),
             (
                 "broadcast_lists",
                 "instance_id",
-                "ALTER TABLE broadcast_lists ADD COLUMN instance_id INTEGER REFERENCES instances(id) ON DELETE SET NULL;",
+                "ALTER TABLE broadcast_lists ADD COLUMN instance_id"
+                " INTEGER REFERENCES instances(id) ON DELETE SET NULL;",
             ),
             (
                 "users",

@@ -91,6 +91,8 @@ def test_unauthenticated_access_to_status_redirects(client):
     response = client.get("/status_campaigns", follow_redirects=False)
     # either a redirect or a login page response is acceptable
     assert response.status_code in (302, 303, 200)
+
+
 def test_api_targets_endpoint_auth(client, db_session):
     from core.infrastructure.database.models import UserModel, InstanceModel, WhatsAppTargetModel
     from datetime import datetime
@@ -106,16 +108,18 @@ def test_api_targets_endpoint_auth(client, db_session):
     db_session.commit()
 
     db_session.add(WhatsAppTargetModel(
-        user_id=user.id, instance_id=instance.id, jid="api1@s.whatsapp.net", name="Contact 1", type="chat", last_synced_at=datetime.utcnow(), is_active=True
+        user_id=user.id, instance_id=instance.id, jid="api1@s.whatsapp.net",
+        name="Contact 1", type="chat", last_synced_at=datetime.utcnow(), is_active=True
     ))
     db_session.add(WhatsAppTargetModel(
-        user_id=user.id, instance_id=instance.id, jid="api2@g.us", name="Group 1", type="group", last_synced_at=datetime.utcnow(), is_active=True
+        user_id=user.id, instance_id=instance.id, jid="api2@g.us",
+        name="Group 1", type="group", last_synced_at=datetime.utcnow(), is_active=True
     ))
     db_session.commit()
 
     # Login
     client.post("/login", data={"username": "api_test@test.com", "password": "pass"})
-    
+
     # Test contacts
     res_chat = client.get(f"/broadcast/api/targets?instance_id={instance.id}&target_type=chat")
     assert res_chat.status_code == 200
