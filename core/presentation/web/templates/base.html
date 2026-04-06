@@ -32,9 +32,11 @@
             <a href="/broadcast" class="nav-item {{ 'active' if is_broadcast else '' }}">
                 <span class="nav-item-icon">📢</span> Broadcast
             </a>
+            {# hidden: chat feature not ready for production
             <a href="/chats" class="nav-item {{ 'active' if '/chats' in request.url.path else '' }}">
                 <span class="nav-item-icon">💬</span> Conversas
             </a>
+            #}
             <a href="/broadcast/contacts" class="nav-item {{ 'active' if is_contacts else '' }}">
                 <span class="nav-item-icon">👥</span> Contatos
             </a>
