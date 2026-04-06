@@ -30,7 +30,11 @@ def test_registration_flow(client, db_session):
 
         response = client.post(
             "/register",
-            data={"email": "api_test@test.com", "password": "mock_auth_val_x9", "business_name": "API Business", "terms_accepted": "on"},
+            data={
+                "email": "api_test@test.com",
+                "password": "mock_auth_val_x9",
+                "business_name": "API Business",
+                "terms_accepted": "on"},
             follow_redirects=True,
         )
 

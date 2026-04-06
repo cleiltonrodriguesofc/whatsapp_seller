@@ -5,6 +5,7 @@ from core.infrastructure.database.session import get_db
 from core.application.services.auth_service import AuthService
 from core.infrastructure.database.models import UserModel
 
+
 @pytest.fixture
 def client(override_get_db):
     app.dependency_overrides[get_db] = override_get_db
@@ -12,14 +13,16 @@ def client(override_get_db):
         yield c
     app.dependency_overrides.clear()
 
+
 def login_user(client, db_session, email="pro_test@test.com"):
     auth = AuthService()
     user = UserModel(email=email, hashed_password=auth.hash_password("genpass123"))
     db_session.add(user)
     db_session.commit()
-    
+
     client.post("/login", data={"username": email, "password": "genpass123"})
     return user
+
 
 def test_login_page_identity(client):
     """Verify that the login page renders the WhatSeller Pro identity and banner."""
@@ -38,6 +41,7 @@ def test_login_page_identity(client):
     assert 'name="username"' in response.text
     assert 'name="password"' in response.text
 
+
 def test_register_page_identity(client):
     """Verify that the register page renders the identity and registration fields."""
     response = client.get("/register")
@@ -52,12 +56,13 @@ def test_register_page_identity(client):
     assert 'name="password"' in response.text
     assert 'name="terms_accepted"' in response.text
 
+
 def test_sidebar_hides_beta_features(client, db_session):
     """Verify that 'Faturamento' and 'Indicação' are NOT visible in the sidebar."""
     login_user(client, db_session)
     response = client.get("/")
     assert response.status_code == 200
-    
+
     # These should be commented out or removed from DOM
     assert "Faturamento" not in response.text
     assert "Indicação" not in response.text
@@ -65,6 +70,7 @@ def test_sidebar_hides_beta_features(client, db_session):
     assert "Painel" in response.text
     assert "Status Auto" in response.text
     assert "Broadcast" in response.text
+
 
 def test_auth_pages_suppress_base_mobile_header(client):
     """Verify that the duplicate mobile header from base.html is suppressed."""
@@ -74,6 +80,7 @@ def test_auth_pages_suppress_base_mobile_header(client):
     assert ".mobile-header { display: none !important; }" in response.text
     # Our specific auth mobile header should be present
     assert "auth-mobile-header" in response.text
+
 
 def test_login_submission_works_with_new_ui(client, db_session):
     """Verify that the login form remains functional after the UI redesign."""
@@ -89,9 +96,8 @@ def test_login_submission_works_with_new_ui(client, db_session):
     user = UserModel(email=email, hashed_password=auth.hash_password(password))
     db_session.add(user)
     db_session.commit()
-    
+
     response = client.post("/login", data={"username": email, "password": password}, follow_redirects=True)
     assert response.status_code == 200, f"Failed with {response.status_code}: {response.text}"
     # Should land on dashboard
     assert "Dashboard" in response.text or "Painel" in response.text
-

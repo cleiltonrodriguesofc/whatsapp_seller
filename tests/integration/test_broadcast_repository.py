@@ -20,12 +20,12 @@ def db_session():
 def test_broadcast_list_repository_save_and_get(db_session):
     repo = SQLBroadcastListRepository(db_session)
     blist = BroadcastList(user_id=1, instance_id=2, name="Integration Test List", description="Testing repo")
-    
+
     # Save
     saved_list = repo.save(blist)
     assert saved_list.id is not None
     assert saved_list.instance_id == 2
-    
+
     # Get
     retrieved = repo.get_by_id(saved_list.id, user_id=1)
     assert retrieved.name == "Integration Test List"
@@ -45,11 +45,11 @@ def test_broadcast_campaign_repository_save_and_list(db_session):
         scheduled_at=datetime.utcnow(),
         status="scheduled"
     )
-    
+
     # Save
     saved = repo.save(campaign)
     assert saved.id is not None
-    
+
     # List
     all_campaigns = repo.list_all(user_id=1)
     assert len(all_campaigns) == 1
@@ -67,7 +67,7 @@ def test_broadcast_campaign_repository_delete(db_session):
         scheduled_at=datetime.utcnow()
     )
     saved = repo.save(campaign)
-    
+
     success = repo.delete(saved.id, user_id=1)
     assert success is True
     assert repo.get_by_id(saved.id) is None

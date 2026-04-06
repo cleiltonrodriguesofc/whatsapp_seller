@@ -10,6 +10,7 @@ from core.infrastructure.database.models import (
     UserModel,
     InstanceModel,
     WhatsAppTargetModel,
+    BroadcastListMemberModel,
 )
 from core.infrastructure.database.session import get_db
 from core.infrastructure.database.repositories import (
@@ -194,8 +195,10 @@ async def sync_broadcast_targets(
     activity_repo.save(
         ActivityLog(
             user_id=current_user.id,
-            event_type="broadcast_sync",
-            description=f"Synced targets from active instances: {total_contacts} contacts and {total_groups} groups found",
+            description=(
+                f"Synced targets from active instances: {total_contacts} contacts "
+                f"and {total_groups} groups found"
+            ),
         )
     )
 
@@ -295,8 +298,9 @@ async def create_broadcast_list(
         from fastapi.responses import HTMLResponse
 
         return HTMLResponse(
-            "<b>Erro de Segurança Anti-Ban:</b> Você selecionou contatos pertencentes a instâncias (números) diferentes. "
-            "Uma Lista de Transmissão só pode conter clientes de uma única Instância de origem. <a href='javascript:history.back()'>Voltar</a>",
+            "<b>Erro de Segurança Anti-Ban:</b> Você selecionou contatos pertencentes a instâncias "
+            "(números) diferentes. Uma Lista de Transmissão só pode conter clientes de uma única "
+            "Instância de origem. <a href='javascript:history.back()'>Voltar</a>",
             status_code=400,
         )
 
@@ -346,6 +350,7 @@ async def delete_broadcast_list(
 
     return RedirectResponse(url="/broadcast/lists", status_code=303)
 
+
 @router.post("/lists/{list_id}/import")
 async def import_broadcast_contacts(
     list_id: int,
@@ -372,7 +377,7 @@ async def import_broadcast_contacts(
         if parsed_contacts:
             target_repo = SQLTargetRepository(db)
             instance_repo = SQLInstanceRepository(db)
-            
+
             # Upsert them to global targets too, assigning to first instance if any
             default_inst = instance_repo.list_by_user(current_user.id)
             inst_id = default_inst[0].id if default_inst else None
@@ -382,7 +387,7 @@ async def import_broadcast_contacts(
 
             existing_jids = set(list_repo.get_member_jids(list_id))
             added_count = 0
-            
+
             for c in parsed_contacts:
                 jid = f"{c['phone']}@s.whatsapp.net"
                 if jid not in existing_jids:
@@ -394,19 +399,18 @@ async def import_broadcast_contacts(
                     )
                     db.add(new_member)
                     added_count += 1
-            
+
             db.commit()
-            
+
             # Log activity
             activity_repo = SQLActivityRepository(db)
             activity_repo.save(ActivityLog(
-                user_id=current_user.id, 
-                event_type="broadcast_list_import", 
+                user_id=current_user.id,
+                event_type="broadcast_list_import",
                 description=f"Imported {added_count} new contacts to list ID: {list_id}"
             ))
 
     return RedirectResponse(url=f"/broadcast/lists/{list_id}", status_code=303)
-
 
 
 # ── Broadcast Campaigns ──────────────────────────────────────────────────────
@@ -635,7 +639,8 @@ async def improve_broadcast_caption(
         f"1. {context_instr}\n"
         f"2. Use emojis de forma estratégica.\n"
         f"3. Responda APENAS E DIRETAMENTE com o CONTEÚDO da mensagem gerada.\n"
-        f"4. NUNCA escreva PREFIXOS, nem repita Assunto/Título (exemplo: NÃO comece com 'Assunto:', nem 'Título:', etc).\n"
+        f"4. NUNCA escreva PREFIXOS, nem repita Assunto/Título (exemplo: NÃO comece com 'Assunto:', "
+        f"nem 'Título:', etc).\n"
     )
 
     improved_text = await ai_service.chat(prompt)
