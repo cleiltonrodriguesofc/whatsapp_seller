@@ -1,6 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from core.domain.entities import User, Product, Campaign, StatusCampaign, BroadcastList, BroadcastCampaign, ActivityLog
+from core.domain.entities import (
+    User,
+    Product,
+    Campaign,
+    StatusCampaign,
+    BroadcastList,
+    BroadcastCampaign,
+    ActivityLog,
+)
 
 
 class ProductRepository(ABC):
@@ -9,7 +17,9 @@ class ProductRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, product_id: int, user_id: Optional[int] = None) -> Optional[Product]:
+    def get_by_id(
+        self, product_id: int, user_id: Optional[int] = None
+    ) -> Optional[Product]:
         pass
 
     @abstractmethod
@@ -23,7 +33,9 @@ class CampaignRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[Campaign]:
+    def get_by_id(
+        self, campaign_id: int, user_id: Optional[int] = None
+    ) -> Optional[Campaign]:
         pass
 
     @abstractmethod
@@ -41,7 +53,9 @@ class StatusCampaignRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, campaign_id: int, user_id: Optional[int] = None) -> Optional[StatusCampaign]:
+    def get_by_id(
+        self, campaign_id: int, user_id: Optional[int] = None
+    ) -> Optional[StatusCampaign]:
         pass
 
     @abstractmethod
@@ -63,7 +77,9 @@ class BroadcastListRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, list_id: int, user_id: Optional[int] = None) -> Optional[BroadcastList]:
+    def get_by_id(
+        self, list_id: int, user_id: Optional[int] = None
+    ) -> Optional[BroadcastList]:
         pass
 
     @abstractmethod
@@ -129,5 +145,7 @@ class ActivityRepository(ABC):
         pass
 
     @abstractmethod
-    def list_all(self, limit: int = 100, user_id: Optional[int] = None) -> List[ActivityLog]:
+    def list_all(
+        self, limit: int = 100, user_id: Optional[int] = None
+    ) -> List[ActivityLog]:
         pass

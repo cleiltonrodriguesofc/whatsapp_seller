@@ -56,8 +56,8 @@
 </div>
 
 <!-- New Instance Modal -->
-<div id="new-instance-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-    <div class="card animate-scale-up" style="width: 400px; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);">
+<div id="new-instance-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1.5rem; overflow-y: auto;">
+    <div class="card animate-scale-up" style="width: 100%; max-width: 400px; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(99, 102, 241, 0.2); max-height: 90vh; overflow-y: auto;">
         <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Nova Instância WhatsApp</h2>
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Dê um nome amigável para esta conexão (ex: 'Comercial 01').</p>
         <form id="new-inst-form" onsubmit="event.preventDefault(); createInstance();">
@@ -74,8 +74,8 @@
 </div>
 
 <!-- Instance Details Modal -->
-<div id="details-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1002; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-    <div class="card animate-scale-up" style="width: 450px; border: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.5);">
+<div id="details-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1.5rem; overflow-y: auto;">
+    <div class="card animate-scale-up" style="width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h2 style="font-size: 1.25rem; color: white;">Configurações da Instância</h2>
             <button onclick="hideDetailsModal()" class="btn btn-ghost btn-sm">Fechar</button>
@@ -99,8 +99,8 @@
 </div>
 
 <!-- Targets Modal -->
-<div id="targets-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1001; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-    <div class="card" style="width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+<div id="targets-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1.5rem; overflow-y: auto;">
+    <div class="card" style="width: 100%; max-width: 600px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h2 id="targets-title">Buscando Destinos...</h2>
             <button onclick="hideTargetsModal()" class="btn btn-ghost btn-sm">Fechar</button>
@@ -113,7 +113,7 @@
 
 <!-- Custom Confirm Modal -->
 <div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center;">
-    <div style="background: #1e1e2f; padding: 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+    <div style="background: #1e1e2f; padding: 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 400px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
         <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
         <h3 style="color: #ffffff; margin-bottom: 1rem; font-size: 1.4rem; font-weight: 600;">Confirmar Ação</h3>
         <p id="confirm-message" style="color: #e5e7eb; margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.6; font-weight: 400;"></p>
@@ -398,17 +398,64 @@ async function fetchGroups(id) {
         if (data.success && data.groups) {
             title.innerText = 'Destinos Disponíveis';
             container.innerHTML = '';
-            data.groups.forEach(g => {
+            
+            const groups = data.groups.filter(g => g.id.endsWith('@g.us')).sort((a, b) => 
+                (a.subject || '').localeCompare(b.subject || '', undefined, {numeric: true, sensitivity: 'base'})
+            );
+            const contacts = data.groups.filter(g => !g.id.endsWith('@g.us')).sort((a, b) => {
+                const hasA = a.subject && a.subject !== a.id;
+                const hasB = b.subject && b.subject !== b.id;
+                if (hasA && !hasB) return -1;
+                if (!hasA && hasB) return 1;
+                return (a.subject || '').localeCompare(b.subject || '', undefined, {numeric: true, sensitivity: 'base'});
+            });
+
+            const renderCard = (g, type) => {
                 const item = document.createElement('div');
-                item.style = 'padding: 0.75rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;';
+                const isGroup = type === 'group';
+                
+                const hasFriendlyName = g.subject && g.subject !== g.id;
+                const displayName = hasFriendlyName ? g.subject : (isGroup ? "Grupo Sem Nome" : "Sem Nome");
+                const displaySub = isGroup ? "" : (g.id.split('@')[0]);
+                
+                const initials = (hasFriendlyName ? g.subject : "?")[0].toUpperCase();
+                const avatarBg = isGroup ? 'var(--secondary)' : 'linear-gradient(135deg, var(--primary), #8b5cf6)';
+                
+                item.className = 'compact-card animate-fade-in';
+                item.style = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.75rem; padding: 0.85rem; display: flex; align-items: center; gap: 0.85rem;';
+                
                 item.innerHTML = `
-                    <div>
-                        <div style="font-weight: 600; font-size: 0.9rem; color: white;">${g.subject}</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted);">${g.id}</div>
+                    <div class="avatar-circle" style="width: 36px; height: 36px; border-radius: 50%; background: ${avatarBg}; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 700; color: white; flex-shrink: 0;">
+                        ${initials}
+                    </div>
+                    <div style="overflow: hidden; flex-grow: 1;">
+                        <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</h3>
+                        ${displaySub ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0; font-family: monospace;">${displaySub}</p>` : ''}
                     </div>
                 `;
-                container.appendChild(item);
-            });
+                return item;
+            };
+
+            const createSectionHeader = (text) => {
+                const h = document.createElement('div');
+                h.style = 'padding: 1.25rem 0.5rem 0.75rem 0.25rem; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; display: flex; align-items: center; gap: 10px;';
+                h.innerHTML = `<span>${text}</span><div style="flex-grow: 1; height: 1px; background: var(--border);"></div>`;
+                return h;
+            };
+
+            if (groups.length > 0) {
+                container.appendChild(createSectionHeader('Grupos'));
+                groups.forEach(g => container.appendChild(renderCard(g, 'group')));
+            }
+
+            if (contacts.length > 0) {
+                container.appendChild(createSectionHeader('Contatos'));
+                contacts.forEach(c => container.appendChild(renderCard(c, 'contact')));
+            }
+
+            if (groups.length === 0 && contacts.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum destino encontrado.</p>';
+            }
         }
     } catch (e) { container.innerHTML = '<p style="color: #ef4444;">Erro ao buscar grupos.</p>'; }
 }
@@ -417,6 +464,13 @@ function hideTargetsModal() { document.getElementById('targets-modal').style.dis
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
+    // Move modals out of stacking context traps
+    const modals = ['new-instance-modal', 'details-modal', 'targets-modal', 'confirm-modal'];
+    modals.forEach(id => {
+        const m = document.getElementById(id);
+        if (m) document.body.appendChild(m);
+    });
+
     {% for inst in instances %}
     checkInstanceStatus({{ inst.id }});
     {% endfor %}

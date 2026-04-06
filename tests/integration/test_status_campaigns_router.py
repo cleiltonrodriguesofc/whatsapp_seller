@@ -25,7 +25,7 @@ def get_auth_headers(client, db_session, email="test@example.com"):
     user = UserModel(email=email, hashed_password=auth.hash_password("test_password_placeholder"))
     db_session.add(user)
     db_session.commit()
-    
+
     # Inject access_token cookie directly to bypass fragile POST /login in tests
     access_token = auth.create_access_token(data={"sub": email})
     client.cookies.set("access_token", access_token)
@@ -96,7 +96,7 @@ def test_create_status_preserves_existing_image_url(client, db_session):
         follow_redirects=False,
     )
     assert response.status_code == 303
-    
+
     # Force SQLAlchemy to update its local cache from the DB
     db_session.expire_all()
 

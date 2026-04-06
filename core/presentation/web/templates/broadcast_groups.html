@@ -4,13 +4,16 @@
 {% block page_subtitle %}Lista de grupos sincronizados do seu WhatsApp.{% endblock %}
 
 {% block content %}
-<div class="card animate-fade-in" style="padding: 2.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <div style="display: flex; gap: 1rem; align-items: center;">
+<div class="card animate-fade-in" style="">
+    <!-- CABEÇALHO FIXO -->
+    <div style="position: sticky; top: 0; background: linear-gradient(var(--bg-card), var(--bg-card)), var(--bg-main); z-index: 40; margin: 0; padding: 0.75rem 0; border-radius: var(--border-radius) var(--border-radius) 0 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div class="mobile-stack" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
             <div id="selection-count" style="display: none; background: var(--secondary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">
                 0 selecionados
             </div>
-            <button id="btn-create-list" class="btn btn-ghost" style="display: none; border-color: #f59e0b; color: #f59e0b;">➕ Criar Lista de Transmissão</button>
+            <button id="btn-create-list" class="btn btn-ghost" style="display: none; border-color: #f59e0b; color: #f59e0b; padding: 0.65rem 1rem; border-radius: 10px;">➕ Criar Lista</button>
+            <button id="btn-create-campaign" class="btn btn-primary" style="display: none; font-weight: 700; padding: 0.65rem 1rem; border-radius: 10px; background: linear-gradient(135deg, var(--secondary) 0%, #10b981 100%);">🚀 Criar Campanha</button>
         </div>
         
         <div style="display: flex; gap: 1rem; align-items: center;">
@@ -30,108 +33,150 @@
         </div>
     </div>
 
-    <div class="table-container">
-        <table class="table" style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="text-align: left; border-bottom: 2px solid var(--border);">
-                    <th style="padding: 1rem;"><input type="checkbox" id="select-all" style="width: 18px; height: 18px; cursor: pointer;"></th>
-                    <th style="padding: 1rem;">Nome do Grupo</th>
-                    <th style="padding: 1rem;">JID</th>
-                    <th style="padding: 1rem;">Sincronizado</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for group in groups %}
-                <tr style="border-bottom: 1px solid var(--border); transition: var(--transition);" class="table-row" data-instance-id="{{ group.instance_id or '' }}">
-                    <td style="padding: 1rem;">
-                        <input type="checkbox" class="group-checkbox" data-jid="{{ group.jid }}" data-name="{{ group.name }}" style="width: 18px; height: 18px; cursor: pointer;">
-                    </td>
-                    <td style="padding: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--secondary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;">
-                                {{ group.name[0].upper() if group.name else '?' }}
-                            </div>
-                            <span style="font-weight: 600;">{{ group.name or "Sem Nome" }}</span>
-                        </div>
-                    </td>
-                    <td style="padding: 1rem; color: var(--text-secondary); font-family: monospace; font-size: 0.85rem;">
-                        {{ group.jid }}
-                    </td>
-                    <td style="padding: 1rem; color: var(--text-muted); font-size: 0.9rem;">
-                        {{ group.last_synced_at.strftime('%d/%m/%Y %H:%M') }}
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="4" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
-                        Nenhum grupo encontrado. Clique em Sincronizar para carregar seus grupos.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Barra de Pesquisa de Grupos -->
+    <div style="margin-bottom: 0;">
+        <div style="position: relative; max-width: 500px;">
+            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+            <input type="text" id="search-input" placeholder="Pesquisar grupos por nome..." style="width: 100%; padding: 0.85rem 1rem 0.85rem 2.8rem; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 0.95rem; color: white;">
+        </div>
+    </div>
+    </div>
+    <!-- FIM CABEÇALHO FIXO -->
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;" id="groups-grid">
+        {% for group in groups %}
+        <div class="group-card compact-card animate-fade-in" data-jid="{{ group.jid }}" data-name="{{ group.name or 'Sem Nome' }}" data-instance-id="{{ group.instance_id or '' }}" 
+             style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; transition: var(--transition); position: relative; cursor: pointer; display: flex; align-items: center; gap: 0.85rem;"
+             onclick="const cb = this.querySelector('.group-checkbox'); cb.checked = !cb.checked; updateSelection();">
+            
+            <input type="checkbox" class="group-checkbox" data-jid="{{ group.jid }}" data-name="{{ group.name or 'Sem Nome' }}" 
+                   style="position: absolute; top: 50%; right: 0.75rem; transform: translateY(-50%); width: 24px; height: 24px; cursor: pointer; z-index: 10; accent-color: var(--secondary);" 
+                   onclick="event.stopPropagation(); updateSelection()">
+            
+            <div class="avatar-circle" style="width: 36px; height: 36px; border-radius: 50%; background: var(--secondary); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 700; color: white; flex-shrink: 0;">
+                {{ group.name[0].upper() if group.name else '?' }}
+            </div>
+            
+            <div style="overflow: hidden; flex-grow: 1; padding-right: 2rem;">
+                <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ group.name or "Sem Nome" }}</h3>
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin: 2px 0 0; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ group.jid }}</p>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase;">Sinc: {{ group.last_synced_at.strftime('%d/%m/%Y') }}</p>
+            </div>
+        </div>
+        {% else %}
+        <div style="grid-column: 1 / -1; padding: 4rem; text-align: center; color: var(--text-secondary);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
+            Nenhum grupo encontrado. Sincronize sua lista para começar.
+        </div>
+        {% endfor %}
     </div>
 </div>
 
 <style>
-.table-container { 
-    overflow-x: auto;
-    border-radius: 12px;
+.group-card:hover {
+    border-color: var(--secondary) !important;
+    background: rgba(16, 185, 129, 0.08) !important;
+    transform: translateY(-1px);
 }
-.table-row:hover {
-    background: rgba(255, 255, 255, 0.02);
+.group-card.selected {
+    border-color: var(--secondary) !important;
+    background: rgba(16, 185, 129, 0.12) !important;
 }
 #page-title { margin-bottom: 0.25rem !important; }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const selectAll = document.getElementById('select-all');
+function updateSelection() {
     const checkboxes = document.querySelectorAll('.group-checkbox');
     const selectionCount = document.getElementById('selection-count');
     const btnCreateList = document.getElementById('btn-create-list');
+    const btnCreateCampaign = document.getElementById('btn-create-campaign');
+    
+    const selectedElements = Array.from(checkboxes).filter(cb => cb.checked);
+    const selected = selectedElements.length;
 
-    function updateSelection() {
-        const selected = Array.from(checkboxes).filter(cb => cb.checked).length;
-        if (selected > 0) {
-            selectionCount.style.display = 'block';
-            selectionCount.innerText = `${selected} selecionados`;
-            btnCreateList.style.display = 'block';
+    checkboxes.forEach(cb => {
+        const card = cb.closest('.group-card');
+        if (cb.checked) {
+            card.classList.add('selected');
+            card.style.borderColor = 'var(--secondary)';
         } else {
-            selectionCount.style.display = 'none';
-            btnCreateList.style.display = 'none';
+            card.classList.remove('selected');
+            card.style.borderColor = 'var(--border)';
         }
-    }
-
-    selectAll.addEventListener('change', () => {
-        checkboxes.forEach(cb => {
-            cb.checked = selectAll.checked;
-        });
-        updateSelection();
     });
 
-    btnCreateList.addEventListener('click', () => {
-        const selectedElements = Array.from(checkboxes).filter(cb => cb.checked);
+    if (selected > 0) {
+        selectionCount.style.display = 'block';
+        selectionCount.innerText = `${selected} selecionado${selected > 1 ? 's' : ''}`;
+        btnCreateList.style.display = 'block';
+        if (selected >= 2) btnCreateCampaign.style.display = 'block';
+        else btnCreateCampaign.style.display = 'none';
+    } else {
+        selectionCount.style.display = 'none';
+        btnCreateList.style.display = 'none';
+        btnCreateCampaign.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const selectAll = document.getElementById('select-all');
+    const searchInput = document.getElementById('search-input');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.group-card');
+            cards.forEach(card => {
+                const name = card.dataset.name.toLowerCase();
+                const jid = card.dataset.jid.toLowerCase();
+                card.style.display = (name.includes(query) || jid.includes(query)) ? 'flex' : 'none';
+            });
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            document.querySelectorAll('.group-checkbox').forEach(cb => cb.checked = selectAll.checked);
+            updateSelection();
+        });
+    }
+
+    document.getElementById('btn-create-list')?.addEventListener('click', () => {
+        const selectedElements = Array.from(document.querySelectorAll('.group-checkbox')).filter(cb => cb.checked);
         if (selectedElements.length > 0) {
-            // Validate if all selected belong to the same instance for UI feedback
             const instancesRef = new Set();
-            for(let cb of selectedElements) {
-                const row = cb.closest('.table-row');
-                if (row.dataset.instanceId) instancesRef.add(row.dataset.instanceId);
-            }
+            selectedElements.forEach(cb => {
+                const card = cb.closest('.group-card');
+                if (card.dataset.instanceId) instancesRef.add(card.dataset.instanceId);
+            });
             if (instancesRef.size > 1) {
-                alert('Erro Anti-Ban: Você não pode criar uma lista unindo contatos/grupos de instâncias diferentes. Por favor, filtre primeiro por uma instância no menu acima.');
+                alert('Anti-Ban: Não misture grupos de contas diferentes.');
                 return;
             }
-
-            const selectedJids = selectedElements.map(cb => cb.dataset.jid);
-            localStorage.setItem('broadcast_selected_jids', JSON.stringify(selectedJids));
+            localStorage.setItem('broadcast_selected_jids', JSON.stringify(selectedElements.map(cb => cb.dataset.jid)));
             window.location.href = '/broadcast/lists/new';
-        } else {
-            alert('Por favor, selecione ao menos um grupo.');
+        }
+    });
+
+    document.getElementById('btn-create-campaign')?.addEventListener('click', () => {
+        const selectedElements = Array.from(document.querySelectorAll('.group-checkbox')).filter(cb => cb.checked);
+        if (selectedElements.length >= 2) {
+            const instancesRef = new Set();
+            selectedElements.forEach(cb => {
+                const card = cb.closest('.group-card');
+                if (card.dataset.instanceId) instancesRef.add(card.dataset.instanceId);
+            });
+            if (instancesRef.size > 1) {
+                alert('Anti-Ban: Não misture grupos de contas diferentes.');
+                return;
+            }
+            localStorage.setItem('broadcast_selected_custom_jids', JSON.stringify(selectedElements.map(cb => ({ jid: cb.dataset.jid, name: cb.dataset.name }))));
+            window.location.href = '/broadcast/campaigns/new';
         }
     });
 });
 </script>
+
 {% endblock %}
+

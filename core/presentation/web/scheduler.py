@@ -27,7 +27,9 @@ from core.infrastructure.database.repositories import (
     SQLTargetRepository,
 )
 from core.infrastructure.database.session import SessionLocal
-from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.notifications.evolution_whatsapp import (
+    EvolutionWhatsAppService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,12 @@ async def execute_campaign_task(campaign_id: int) -> None:
         domain_campaign = campaign_repo._to_entity(model)
         await send_campaign(domain_campaign, db)
     except Exception as e:
-        logger.error("error in background campaign task for %s: %s", campaign_id, e, exc_info=True)
+        logger.error(
+            "error in background campaign task for %s: %s",
+            campaign_id,
+            e,
+            exc_info=True,
+        )
     finally:
         db.close()
 
@@ -63,7 +70,11 @@ async def send_campaign(campaign: Campaign, db) -> None:
     logger.info("sending campaign: %s", campaign.title)
     campaign_repo = SQLCampaignRepository(db)
 
-    instance_model = db.query(InstanceModel).filter(InstanceModel.user_id == campaign.user_id).first()
+    instance_model = (
+        db.query(InstanceModel)
+        .filter(InstanceModel.user_id == campaign.user_id)
+        .first()
+    )
     instance_name = instance_model.name if instance_model else None
 
     whatsapp_service = EvolutionWhatsAppService(
@@ -91,21 +102,29 @@ async def send_campaign(campaign: Campaign, db) -> None:
             content=message,
             media_url=campaign.product.image_url,
         )
-        campaign.status = DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED
+        campaign.status = (
+            DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED
+        )
     except Exception as e:
         logger.error("error during humanized campaign send: %s", e, exc_info=True)
         campaign.status = DomainCampaignStatus.FAILED
 
     campaign.sent_at = now_sp()
     campaign_repo.save(campaign)
-    logger.info("campaign '%s' finished with status: %s", campaign.title, campaign.status.name)
+    logger.info(
+        "campaign '%s' finished with status: %s", campaign.title, campaign.status.name
+    )
 
 
 async def execute_status_campaign_task(campaign_id: int) -> None:
     db = SessionLocal()
     try:
         logger.info("executing background task for status campaign id %s", campaign_id)
-        model = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id).first()
+        model = (
+            db.query(StatusCampaignModel)
+            .filter(StatusCampaignModel.id == campaign_id)
+            .first()
+        )
         if not model:
             logger.error("status campaign %s not found", campaign_id)
             return
@@ -114,21 +133,30 @@ async def execute_status_campaign_task(campaign_id: int) -> None:
         db.expire(model)
         await send_status_campaign(campaign_id, db)
     except Exception as e:
-        logger.error("error in background status task for %s: %s", campaign_id, e, exc_info=True)
+        logger.error(
+            "error in background status task for %s: %s", campaign_id, e, exc_info=True
+        )
         # use a fresh, independent session so a corrupted/rolled-back session
         # never leaves the record permanently stuck in 'sending'
         recovery_db = SessionLocal()
         try:
-            stuck = recovery_db.query(StatusCampaignModel).filter(
-                StatusCampaignModel.id == campaign_id
-            ).first()
+            stuck = (
+                recovery_db.query(StatusCampaignModel)
+                .filter(StatusCampaignModel.id == campaign_id)
+                .first()
+            )
             if stuck:
                 stuck.status = "failed"
                 stuck.sent_at = now_sp()
                 recovery_db.commit()
-                logger.info("status campaign %s force-set to 'failed' via recovery session", campaign_id)
+                logger.info(
+                    "status campaign %s force-set to 'failed' via recovery session",
+                    campaign_id,
+                )
         except Exception as rec_err:
-            logger.error("recovery session also failed for campaign %s: %s", campaign_id, rec_err)
+            logger.error(
+                "recovery session also failed for campaign %s: %s", campaign_id, rec_err
+            )
             recovery_db.rollback()
         finally:
             recovery_db.close()
@@ -142,14 +170,23 @@ async def send_status_campaign(campaign_id: int, db) -> None:
     SQLAlchemy identity-map cache staleness that left records stuck in 'sending'.
     """
     # always reload the model from db to avoid stale identity-map cache
-    model = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id).first()
+    model = (
+        db.query(StatusCampaignModel)
+        .filter(StatusCampaignModel.id == campaign_id)
+        .first()
+    )
     if not model:
-        logger.error("status campaign model %s not found inside send_status_campaign", campaign_id)
+        logger.error(
+            "status campaign model %s not found inside send_status_campaign",
+            campaign_id,
+        )
         return
 
     logger.info("sending status campaign: %s (id=%s)", model.title, campaign_id)
 
-    instance_model = db.query(InstanceModel).filter(InstanceModel.id == model.instance_id).first()
+    instance_model = (
+        db.query(InstanceModel).filter(InstanceModel.id == model.instance_id).first()
+    )
     if not instance_model:
         logger.error("instance not found for status campaign %s", campaign_id)
         model.status = "failed"
@@ -170,15 +207,21 @@ async def send_status_campaign(campaign_id: int, db) -> None:
         media_content = None
         if model.image_url:
             try:
-                media_content = await get_optimized_base64(model.image_url, max_size=(1080, 1920), quality=85)
-                logger.info("status media successfully optimized for campaign %s", campaign_id)
+                media_content = await get_optimized_base64(
+                    model.image_url, max_size=(1080, 1920), quality=85
+                )
+                logger.info(
+                    "status media successfully optimized for campaign %s", campaign_id
+                )
             except Exception as e:
                 logger.error("failed to optimize status media: %s", e)
                 # fallback to raw url if optimization fails and it's an external url
                 if model.image_url.startswith("http"):
                     media_content = model.image_url
                 else:
-                    logger.error("no fallback available for local image — marking as failed")
+                    logger.error(
+                        "no fallback available for local image — marking as failed"
+                    )
                     model.status = "failed"
                     model.sent_at = now_sp()
                     db.commit()
@@ -210,7 +253,12 @@ async def send_status_campaign(campaign_id: int, db) -> None:
     model.status = final_status
     model.sent_at = now_sp()
     db.commit()
-    logger.info("status campaign '%s' (id=%s) finished with status: %s", model.title, campaign_id, final_status)
+    logger.info(
+        "status campaign '%s' (id=%s) finished with status: %s",
+        model.title,
+        campaign_id,
+        final_status,
+    )
 
 
 async def execute_broadcast_campaign_task(campaign_id: int) -> None:
@@ -236,7 +284,12 @@ async def execute_broadcast_campaign_task(campaign_id: int) -> None:
         )
         await use_case.execute(campaign_id)
     except Exception as e:
-        logger.error("error in background broadcast task for %s: %s", campaign_id, e, exc_info=True)
+        logger.error(
+            "error in background broadcast task for %s: %s",
+            campaign_id,
+            e,
+            exc_info=True,
+        )
     finally:
         db.close()
 
@@ -253,9 +306,12 @@ async def campaign_scheduler_loop() -> None:
             # Check if tables exist before querying (basic resilience)
             # This prevents sqlite3.OperationalError: no such table: campaigns
             from sqlalchemy import inspect
+
             inspector = inspect(db.bind)
             if not inspector.has_table("campaigns"):
-                logger.warning("scheduler: 'campaigns' table not found yet. skipping this tick.")
+                logger.warning(
+                    "scheduler: 'campaigns' table not found yet. skipping this tick."
+                )
                 db.close()
                 await asyncio.sleep(10)
                 continue
@@ -276,7 +332,9 @@ async def campaign_scheduler_loop() -> None:
             )
 
             for campaign_model in one_off_campaigns:
-                logger.info("scheduling one-off campaign task: %s", campaign_model.title)
+                logger.info(
+                    "scheduling one-off campaign task: %s", campaign_model.title
+                )
                 campaign_model.status = "sending"
                 campaign_model.last_run_at = now
                 db.add(campaign_model)
@@ -294,7 +352,9 @@ async def campaign_scheduler_loop() -> None:
                 .all()
             )
             for status_model in one_off_statuses:
-                logger.info("scheduling one-off status campaign task: %s", status_model.title)
+                logger.info(
+                    "scheduling one-off status campaign task: %s", status_model.title
+                )
                 status_model.status = "sending"
                 status_model.last_run_at = now
                 db.add(status_model)
@@ -346,12 +406,18 @@ async def campaign_scheduler_loop() -> None:
                             exc,
                         )
 
-                send_times = [t.strip() for t in (campaign_model.send_time or "").split(",") if t.strip()]
+                send_times = [
+                    t.strip()
+                    for t in (campaign_model.send_time or "").split(",")
+                    if t.strip()
+                ]
 
                 if current_time_str in send_times:
-                    if not campaign_model.last_run_at or campaign_model.last_run_at.strftime(
-                        "%Y-%m-%d %H:%M"
-                    ) != now.strftime("%Y-%m-%d %H:%M"):
+                    if (
+                        not campaign_model.last_run_at
+                        or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M")
+                        != now.strftime("%Y-%m-%d %H:%M")
+                    ):
                         logger.info(
                             "executing recurring campaign: %s at %s",
                             campaign_model.title,
@@ -364,11 +430,15 @@ async def campaign_scheduler_loop() -> None:
                         asyncio.create_task(execute_campaign_task(campaign_model.id))
 
                 for target_type, t_schedule in target_config.items():
-                    scheduled_times = [t_schedule] if isinstance(t_schedule, str) else t_schedule
+                    scheduled_times = (
+                        [t_schedule] if isinstance(t_schedule, str) else t_schedule
+                    )
                     if current_time_str in scheduled_times:
-                        if not campaign_model.last_run_at or campaign_model.last_run_at.strftime(
-                            "%Y-%m-%d %H:%M"
-                        ) != now.strftime("%Y-%m-%d %H:%M"):
+                        if (
+                            not campaign_model.last_run_at
+                            or campaign_model.last_run_at.strftime("%Y-%m-%d %H:%M")
+                            != now.strftime("%Y-%m-%d %H:%M")
+                        ):
                             logger.info(
                                 "executing granular campaign (%s): %s at %s",
                                 target_type,
@@ -379,7 +449,9 @@ async def campaign_scheduler_loop() -> None:
                             campaign_model.last_run_at = now
                             db.add(campaign_model)
                             db.commit()
-                            asyncio.create_task(execute_campaign_task(campaign_model.id))
+                            asyncio.create_task(
+                                execute_campaign_task(campaign_model.id)
+                            )
 
             # recurring STATUS campaigns
             # exclude 'sending' to avoid re-dispatching campaigns already in-flight
@@ -397,17 +469,29 @@ async def campaign_scheduler_loop() -> None:
                 if current_day_str not in status_model.recurrence_days.lower():
                     continue
 
-                send_times = [t.strip() for t in (status_model.send_time or "").split(",") if t.strip()]
+                send_times = [
+                    t.strip()
+                    for t in (status_model.send_time or "").split(",")
+                    if t.strip()
+                ]
                 if current_time_str in send_times:
-                    if not status_model.last_run_at or status_model.last_run_at.strftime(
-                        "%Y-%m-%d %H:%M"
-                    ) != now.strftime("%Y-%m-%d %H:%M"):
-                        logger.info("executing recurring status: %s at %s", status_model.title, current_time_str)
+                    if (
+                        not status_model.last_run_at
+                        or status_model.last_run_at.strftime("%Y-%m-%d %H:%M")
+                        != now.strftime("%Y-%m-%d %H:%M")
+                    ):
+                        logger.info(
+                            "executing recurring status: %s at %s",
+                            status_model.title,
+                            current_time_str,
+                        )
                         status_model.status = "sending"
                         status_model.last_run_at = now
                         db.add(status_model)
                         db.commit()
-                        asyncio.create_task(execute_status_campaign_task(status_model.id))
+                        asyncio.create_task(
+                            execute_status_campaign_task(status_model.id)
+                        )
 
             # safety net: auto-recover any status campaign stuck in 'sending' for over 10 minutes
             ten_minutes_ago = now - timedelta(minutes=10)
@@ -445,17 +529,27 @@ async def campaign_scheduler_loop() -> None:
                 if current_day_str not in bc_model.recurrence_days.lower():
                     continue
 
-                send_times = [t.strip() for t in (bc_model.send_time or "").split(",") if t.strip()]
+                send_times = [
+                    t.strip()
+                    for t in (bc_model.send_time or "").split(",")
+                    if t.strip()
+                ]
                 if current_time_str in send_times:
                     if not bc_model.last_run_at or bc_model.last_run_at.strftime(
                         "%Y-%m-%d %H:%M"
                     ) != now.strftime("%Y-%m-%d %H:%M"):
-                        logger.info("executing recurring broadcast: %s at %s", bc_model.title, current_time_str)
+                        logger.info(
+                            "executing recurring broadcast: %s at %s",
+                            bc_model.title,
+                            current_time_str,
+                        )
                         bc_model.status = "sending"
                         bc_model.last_run_at = now
                         db.add(bc_model)
                         db.commit()
-                        asyncio.create_task(execute_broadcast_campaign_task(bc_model.id))
+                        asyncio.create_task(
+                            execute_broadcast_campaign_task(bc_model.id)
+                        )
 
         except Exception as e:
             logger.error("error in scheduler loop: %s", e, exc_info=True)
