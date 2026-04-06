@@ -19,6 +19,7 @@ if not DATABASE_URL:
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def set_admin():
     db = SessionLocal()
     try:
@@ -37,16 +38,18 @@ def set_admin():
             {"email": ADMIN_EMAIL}
         )
         db.commit()
-        
+
         if result.rowcount > 0:
             print(f"Successfully set {ADMIN_EMAIL} as administrator.")
         else:
-            print(f"Warning: No user found with email {ADMIN_EMAIL}. Admin status will be set automatically upon registration.")
-            
+            print(f"Warning: No user found with email {ADMIN_EMAIL}. "
+                  "Admin status will be set automatically upon registration.")
+
     except Exception as e:
         print(f"Error: {e}")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     set_admin()

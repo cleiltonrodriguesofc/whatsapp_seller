@@ -4,14 +4,15 @@
 {% block page_subtitle %}Acompanhe o progresso e o histórico de seus envios direcionados.{% endblock %}
 
 {% block content %}
-<div class="card animate-fade-in" style="padding: 2.5rem;">
+<div class="card animate-fade-in" style="">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h2 style="font-size: 1.5rem; font-weight: 700;">Histórico de Envios</h2>
         <a href="/broadcast/campaigns/new" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 12px;">NOVA CAMPANHA</a>
     </div>
 
     <div class="table-container">
-        <table class="table" style="width: 100%; border-collapse: collapse;">
+        <div class="table-responsive">
+<table class="table" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="text-align: left; border-bottom: 2px solid var(--border);">
                     <th style="padding: 1rem;">Campanha</th>
@@ -98,6 +99,7 @@
                 {% endfor %}
             </tbody>
         </table>
+</div>
     </div>
 </div>
 

@@ -12,8 +12,16 @@
 
 <body>
     <div class="mobile-header">
+        <button class="mobile-menu-toggle" id="mobile-menu-btn" aria-label="Abrir Menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
         <div class="brand-logo-small">What<span class="gradient-text">Seller</span> Pro</div>
     </div>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <aside class="sidebar">
         <a href="/" class="sidebar-logo" style="text-decoration: none;">
             <strong style="font-weight: 700;">What<span class="gradient-text">Seller</span> Pro</strong>
@@ -103,8 +111,37 @@
 
     <script>
         // Set dynamic page title if needed
-        const title = document.querySelector('h1').innerText;
-        document.title = `${title} | WhatSeller Pro`;
+        const titleElement = document.querySelector('h1');
+        if (titleElement) {
+            const title = titleElement.innerText;
+            document.title = `${title} | WhatSeller Pro`;
+        }
+
+        // Mobile Sidebar Toggle Logic
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('open');
+        }
+
+        if (mobileMenuBtn && sidebarOverlay) {
+            mobileMenuBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+            
+            // Close sidebar when clicking a nav item (useful for anchors/SPA in future, but standard for UX)
+            const navItems = document.querySelectorAll('.sidebar .nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    // if it has 'open' class
+                    if(sidebar.classList.contains('open')){
+                        toggleSidebar();
+                    }
+                });
+            });
+        }
     </script>
     <script>
         // Global WhatsApp Status Polling
