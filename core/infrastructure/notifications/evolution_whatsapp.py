@@ -304,7 +304,7 @@ class EvolutionWhatsAppService(NotificationService):
                 response = await client.post(url, json=payload, headers=self._headers())
                 response.raise_for_status()
                 data = response.json()
-                
+
                 # debug: log the raw response structure
                 if isinstance(data, dict):
                     logger.info("findMessages response keys: %s (type=%s)", list(data.keys()), type(data).__name__)
@@ -317,7 +317,13 @@ class EvolutionWhatsAppService(NotificationService):
                             if isinstance(val, list):
                                 logger.info("findMessages found list at key '%s' with %d items", key, len(val))
                                 if val:
-                                    logger.info("findMessages first item keys: %s", list(val[0].keys()) if isinstance(val[0], dict) else type(val[0]))
+                                    logger.info(
+                                        "findMessages first item keys: %s",
+                                        list(
+                                            val[0].keys()) if isinstance(
+                                            val[0],
+                                            dict) else type(
+                                            val[0]))
                                 return val
                             elif isinstance(val, dict) and "records" in val:
                                 logger.info("findMessages found records inside '%s'", key)
@@ -332,7 +338,13 @@ class EvolutionWhatsAppService(NotificationService):
                     elif isinstance(records, list):
                         logger.info("findMessages messages list has %d items", len(records))
                         if records:
-                            logger.info("findMessages first msg keys: %s", list(records[0].keys()) if isinstance(records[0], dict) else type(records[0]))
+                            logger.info(
+                                "findMessages first msg keys: %s",
+                                list(
+                                    records[0].keys()) if isinstance(
+                                    records[0],
+                                    dict) else type(
+                                    records[0]))
                         return records
                     else:
                         logger.warning("findMessages 'messages' is type %s", type(records).__name__)

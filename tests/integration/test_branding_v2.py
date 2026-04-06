@@ -3,12 +3,14 @@ from fastapi.testclient import TestClient
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
 
+
 @pytest.fixture
 def client(override_get_db):
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
 
 def test_global_branding_consistency(client):
     """
@@ -26,6 +28,7 @@ def test_global_branding_consistency(client):
         # Allow either the class or the equivalent inline style for the 'Seller' gradient
         assert ("gradient-text" in response.text or "background: linear-gradient" in response.text)
 
+
 def test_no_rocket_icons(client):
     """
     Assert that the rocket emoji (🚀) has been completely removed
@@ -33,11 +36,12 @@ def test_no_rocket_icons(client):
     """
     targets = ["/", "/login", "/dashboard", "/terms"]
     for path in targets:
-        # Note: We skip Auth check as it redirects if not logged in, 
+        # Note: We skip Auth check as it redirects if not logged in,
         # but we check the rendered content if possible.
         response = client.get(path, follow_redirects=True)
         assert "🚀" not in response.text
-        assert "&#128640;" not in response.text # HTML entity for rocket
+        assert "&#128640;" not in response.text  # HTML entity for rocket
+
 
 def test_public_layout_conditional_navigation(client):
     """
@@ -56,7 +60,8 @@ def test_public_layout_conditional_navigation(client):
     res_terms = client.get("/terms")
     assert "Voltar para o Início" in res_terms.text
     # Marketing links should NOT be present in the legal header
-    assert "Preços" not in res_terms.text 
+    assert "Preços" not in res_terms.text
+
 
 def test_mobile_header_css_classes(client):
     """
