@@ -4,7 +4,7 @@
 {% block page_subtitle %}Gerencie suas listas de transmissão personalizadas.{% endblock %}
 
 {% block content %}
-<div class="card animate-fade-in" style="padding: 2.5rem;">
+<div class="card animate-fade-in" style="">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h2 style="font-size: 1.5rem; font-weight: 700;">Listas de Transmissão</h2>
         <a href="/broadcast/lists/new" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 12px;">➕ NOVA LISTA</a>
@@ -60,7 +60,7 @@
 
 <!-- Import Modal -->
 <div id="importModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
-    <div style="background: var(--bg-surface); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 500px; position: relative;">
+    <div style="background: var(--bg-surface);  border-radius: 16px; width: 100%; max-width: 500px; position: relative;">
         <button onclick="closeImportModal()" style="position: absolute; right: 1.5rem; top: 1.5rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">&times;</button>
         <h3 style="margin: 0 0 0.5rem; font-size: 1.25rem;">📥 Importar Contatos</h3>
         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Injetar leads na lista: <strong id="modalListName" style="color: var(--text-primary);">...</strong></p>

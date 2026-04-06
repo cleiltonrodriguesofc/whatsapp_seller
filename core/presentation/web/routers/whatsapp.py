@@ -319,16 +319,19 @@ async def get_whatsapp_groups(
     for g in groups:
         gid = g.get("id")
         if gid:
+            subject = g.get("subject") or g.get("name")
             target_map[gid] = {
                 "id": gid,
-                "subject": g.get("subject") or g.get("name"),
+                "subject": subject if subject else gid.split("@")[0],
             }
+
     for c in chats:
         jid = c.get("remoteJid") or c.get("id")
         if jid and jid not in target_map:
+            name = c.get("name") or c.get("pushName")
             target_map[jid] = {
                 "id": jid,
-                "subject": c.get("name") or c.get("pushName") or jid,
+                "subject": name if name else jid.split("@")[0],
             }
 
     for p in phonebook:
