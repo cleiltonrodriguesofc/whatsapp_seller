@@ -262,6 +262,24 @@ class EvolutionWhatsAppService(NotificationService):
             logger.error("Failed to fetch active chats: %s", exc)
             return []
 
+    async def get_active_chats(self) -> list:
+        """
+        Fetches all active chats from Evolution API v2.
+        Uses POST /chat/findChats which returns the actual conversation list.
+        """
+        url = f"{self.base_url}/chat/findChats/{self.instance}"
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(url, json={}, headers=self._headers())
+                response.raise_for_status()
+                data = response.json()
+                if not isinstance(data, list):
+                    return []
+                return data
+        except Exception as exc:
+            logger.error("Failed to fetch active chats (findChats): %s", exc)
+            return []
+
     async def get_phonebook_contacts(self) -> list:
         """Fetches the real phone contact list from the device."""
         url = f"{self.base_url}/chat/findContacts/{self.instance}"

@@ -312,7 +312,7 @@ async def get_whatsapp_groups(
     )
 
     groups = await whatsapp_service.get_groups()
-    chats = await whatsapp_service.get_active_chats()
+    chats = await whatsapp_service.get_contacts()
     phonebook = await whatsapp_service.get_phonebook_contacts()
 
     target_map = {}
@@ -321,12 +321,12 @@ async def get_whatsapp_groups(
             {"id": g.get("id"), "subject": g.get("subject") or g.get("name")}
         )
     for c in chats:
-        jid = c.get("id")
+        jid = c.get("remoteJid") or c.get("id")
         if jid and jid not in target_map:
-            target_map[jid] = {"id": jid, "subject": c.get("name") or jid}
+            target_map[jid] = {"id": jid, "subject": c.get("name") or c.get("pushName") or jid}
             
     for p in phonebook:
-        jid = p.get("id") or p.get("remoteJid")
+        jid = p.get("remoteJid") or p.get("id")
         if not jid:
             continue
         name = p.get("name") or p.get("pushName") or p.get("notify") or jid
@@ -357,7 +357,7 @@ async def sync_whatsapp_targets(
     target_repo = SQLTargetRepository(db)
 
     groups = await whatsapp_service.get_groups()
-    chats = await whatsapp_service.get_active_chats()
+    chats = await whatsapp_service.get_contacts()
     phonebook = await whatsapp_service.get_phonebook_contacts()
 
     # Passa as listas puras para o upsert_sync que já tem uma heurística avançada
@@ -480,7 +480,7 @@ async def view_whatsapp_chats(
             # normalize chat data for the template
             for c in raw_chats:
                 if isinstance(c, dict):
-                    chat_id = c.get("id") or c.get("remoteJid") or c.get("jid") or ""
+                    chat_id = c.get("remoteJid") or c.get("id") or c.get("jid") or ""
                     chats.append({
                         "id": chat_id,
                         "name": c.get("name") or c.get("pushName") or c.get("subject") or chat_id.split("@")[0],
