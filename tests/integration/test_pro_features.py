@@ -117,7 +117,7 @@ def test_static_pages_accessibility(client):
 def test_pricing_on_landing_page(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "Escolha o plano ideal" in response.text
-    assert "Starter" in response.text
-    assert "Pro" in response.text
-    assert "Agência" in response.text
+    assert "Automatize" in response.text
+    assert "3.2M" in response.text
+    assert "Capacidades" in response.text
+    assert "Metodologia" in response.text
