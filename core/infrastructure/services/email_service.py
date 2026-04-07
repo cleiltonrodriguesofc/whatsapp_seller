@@ -2,7 +2,7 @@ import os
 import logging
 from email.message import EmailMessage
 import aiosmtplib
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,10 @@ class EmailService:
         if not os.path.exists(template_dir):
             os.makedirs(template_dir, exist_ok=True)
 
-        self.jinja_env = Environment(loader=FileSystemLoader(template_dir))
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(template_dir),
+            autoescape=select_autoescape(["html", "xml"]),
+        )
 
     async def send_password_reset_email(self, to_email: str, reset_link: str):
         """Sends a password recovery email with the reset link."""
