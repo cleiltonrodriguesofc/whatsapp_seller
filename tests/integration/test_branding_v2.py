@@ -54,7 +54,7 @@ def test_public_layout_conditional_navigation(client):
     """
     # 1. Landing Page
     res_landing = client.get("/")
-    assert "Preços" in res_landing.text
+    assert "Engenharia" in res_landing.text
     assert "Entrar" in res_landing.text
     assert "Começar Grátis" in res_landing.text
     assert "Voltar para o Início" not in res_landing.text
@@ -63,7 +63,7 @@ def test_public_layout_conditional_navigation(client):
     res_terms = client.get("/terms")
     assert "Voltar para o Início" in res_terms.text
     # Marketing links should NOT be present in the legal header
-    assert "Preços" not in res_terms.text
+    assert "Engenharia" not in res_terms.text
 
 
 def test_mobile_header_css_classes(client):
