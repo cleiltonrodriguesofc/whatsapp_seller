@@ -1,473 +1,494 @@
 {% extends "public_layout.html" %}
 
-{% block title %}WhatSeller Pro | Automação de Vendas com IA{% endblock %}
+{% block title %}WhatSeller Pro | Automação que Vende por Você{% endblock %}
 {% block nav_classes %}nav-landing mobile-nav{% endblock %}
 
 {% block extra_css %}
+<!-- High-End Typography -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
 <style>
     :root {
-        --glass: rgba(255, 255, 255, 0.03);
-        --glass-border: rgba(255, 255, 255, 0.08);
+        --bg: #0B0C10;
+        --surface: rgba(255, 255, 255, 0.03);
+        --surface-hover: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.08);
+        --primary: #6366f1;
+        --secondary: #a855f7;
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
         --p-grad: linear-gradient(135deg, var(--primary), var(--secondary));
-        --green: #22c55e;
+        --mesh: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
     }
 
-    /* ── Hero ────────────────────────────────────────────────── */
-    .hero {
-        padding: 5rem 0 7rem; text-align: center; position: relative;
+    /* ── BASE & NOISE ── */
+    body {
+        background-color: var(--bg);
+        background-image: var(--mesh);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--text);
+        overflow-x: hidden;
+        line-height: 1.6;
     }
-    .hero::before {
-        content: ''; position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
-        width: 800px; height: 400px;
-        background: radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, transparent 70%);
+
+    body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        opacity: 0.03;
         pointer-events: none;
+        z-index: 9999;
     }
+
+    h1, h2, h3 { font-family: 'Inter', sans-serif; letter-spacing: -0.04em; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* ── HERO ────────────────────────────────────────────────── */
+    .hero {
+        padding: 12rem 0 10rem;
+        text-align: center;
+        position: relative;
+    }
+
     .hero-badge {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3);
-        color: #a5b4fc; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px;
-        padding: 0.4rem 1rem; border-radius: 100px; margin-bottom: 2rem;
-    }
-    .hero-badge::before { content: '●'; color: var(--green); font-size: 0.65rem; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-    .hero-title {
-        font-size: 5rem; font-weight: 900; letter-spacing: -3px; line-height: 1.0; margin-bottom: 1.75rem;
-        background: linear-gradient(to bottom, #ffffff 55%, rgba(255,255,255,0.45));
-        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero-title .accent {
-        background: var(--p-grad);
-        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero-subtitle {
-        font-size: 1.2rem; color: var(--text-muted); max-width: 680px;
-        margin: 0 auto 3rem; line-height: 1.7;
-    }
-    .hero-ctas { display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap; }
-    .hero-mockup {
-        width: 100%; max-width: 1000px; margin: 4.5rem auto 0;
-        border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 60px 120px -20px rgba(0,0,0,0.95), 0 0 0 1px rgba(99,102,241,0.15);
-        transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    .hero-mockup:hover { transform: scale(1.01) translateY(-8px); }
-
-    /* ── Social proof ────────────────────────────────────────── */
-    .stats-strip {
-        padding: 4rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-        background: rgba(255,255,255,0.015);
-        margin: 4rem 0;
-    }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; text-align: center; }
-    .stat-num { font-size: 2.5rem; font-weight: 900; background: var(--p-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
-
-    /* ── Features ────────────────────────────────────────────── */
-    .section-header { text-align: center; padding: 4rem 0 2rem; }
-    .section-tag {
-        background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
-        color: #a5b4fc; font-weight: 700; font-size: 0.75rem; letter-spacing: 2px;
-        text-transform: uppercase; padding: 0.35rem 0.9rem; border-radius: 100px;
-        display: inline-block; margin-bottom: 1.25rem;
-    }
-    .section-title { font-size: 2.75rem; font-weight: 800; letter-spacing: -1.5px; color: white; }
-    .section-sub { color: var(--text-muted); max-width: 600px; margin: 1rem auto 0; font-size: 1.05rem; line-height: 1.65; }
-
-    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin: 3rem 0; }
-    .feat-card {
-        background: var(--surface); border: 1px solid var(--border);
-         border-radius: 24px;
-        transition: all 0.3s ease; cursor: default;
-    }
-    .feat-card:hover { background: rgba(99,102,241,0.06); border-color: rgba(99,102,241,0.4); transform: translateY(-4px); }
-    .feat-icon { font-size: 2.25rem; margin-bottom: 1.25rem; display: block; }
-    .feat-title { font-size: 1.1rem; font-weight: 700; color: white; margin-bottom: 0.75rem; }
-    .feat-desc { color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; }
-
-    /* ── How it works ────────────────────────────────────────── */
-    .how-it-works { padding: 8rem 0; background: rgba(255,255,255,0.015); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 4rem 0; }
-    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3rem; margin-top: 4rem; position: relative; }
-    .step { text-align: center; position: relative; }
-    .step-num {
-        width: 52px; height: 52px; border-radius: 50%;
-        background: var(--p-grad); display: flex; align-items: center; justify-content: center;
-        font-size: 1.25rem; font-weight: 900; color: white; margin: 0 auto 1.5rem;
-        box-shadow: 0 8px 32px rgba(99,102,241,0.4);
-    }
-    .step-title { font-size: 1.1rem; font-weight: 700; color: white; margin-bottom: 0.75rem; }
-    .step-desc { color: var(--text-muted); line-height: 1.6; font-size: 0.95rem; }
-
-    /* ── Testimonials ────────────────────────────────────────── */
-    .testimonials { padding: 4rem 0; }
-    .testi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-    .testi-card {
-        background: var(--surface); border: 1px solid var(--border);
-         border-radius: 24px;
-        transition: border-color 0.3s;
-    }
-    .testi-card:hover { border-color: rgba(99,102,241,0.4); }
-    .testi-stars { color: #fbbf24; font-size: 1rem; margin-bottom: 1.25rem; letter-spacing: 2px; }
-    .testi-text { font-size: 1.05rem; line-height: 1.7; color: rgba(255,255,255,0.85); margin-bottom: 2.5rem; }
-    .testi-author { display: flex; align-items: center; gap: 1rem; }
-    .author-avatar {
-        width: 44px; height: 44px; border-radius: 50%;
-        background: var(--p-grad); display: flex; align-items: center;
-        justify-content: center; font-weight: 800; font-size: 0.9rem; color: white; flex-shrink: 0;
-    }
-    .author-name { font-weight: 700; font-size: 0.95rem; color: white; }
-    .author-role { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
-
-    /* ── FAQ ─────────────────────────────────────────────────── */
-    .faq { padding: 4rem 0; }
-    .faq-inner { max-width: 780px; margin: 0 auto; }
-    .faq-item {
-        border: 1px solid var(--border); border-radius: 16px;
-        margin-bottom: 1rem; overflow: hidden; transition: border-color 0.3s;
+        display: inline-flex;
+        align-items: center;
         background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 0.5rem 1.25rem;
+        border-radius: 100px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 3rem;
+        backdrop-filter: blur(10px);
     }
-    .faq-item.open { border-color: rgba(99,102,241,0.4); }
+
+    .hero-title {
+        font-size: clamp(3.5rem, 12vw, 7.5rem);
+        font-weight: 900;
+        line-height: 1.1; /* Increased to prevent descender clipping (letter 'g') */
+        margin-bottom: 2.5rem;
+        background: linear-gradient(to bottom, #FFFFFF 50%, rgba(255,255,255,0.4));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: var(--text-muted);
+        max-width: 600px;
+        margin: 0 auto 4rem;
+        font-weight: 500;
+    }
+
+    .hero-mockup-container {
+        position: relative;
+        margin-top: 6rem;
+        border-radius: 32px;
+        padding: 1px;
+        background: linear-gradient(to bottom, var(--border), transparent);
+    }
+
+    .hero-mockup {
+        width: 100%;
+        border-radius: 31px;
+        background: #111;
+        box-shadow: 0 100px 200px -50px rgba(0,0,0,0.8);
+    }
+
+    /* ── BENTO GRID ─────────────────────────────────────────── */
+    .bento-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-auto-rows: 200px;
+        gap: 1.5rem;
+        padding: 10rem 0;
+    }
+
+    .bento-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 32px;
+        padding: 3rem;
+        transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .bento-card:hover { border-color: var(--primary); background: var(--surface-hover); transform: translateY(-5px); }
+
+    .bento-large { grid-column: span 8; grid-row: span 2; }
+    .bento-medium { grid-column: span 4; grid-row: span 2; }
+    .bento-small { grid-column: span 6; grid-row: span 1; }
+
+    .bento-icon {
+        width: 40px; height: 40px;
+        color: var(--primary);
+        margin-bottom: 2rem;
+    }
+
+    .bento-title { font-size: 1.75rem; font-weight: 800; color: white; margin-bottom: 1rem; }
+    .bento-desc { color: var(--text-muted); font-size: 1.05rem; }
+
+    /* ── TIMELINE ─────────────────────────────────────────── */
+    .timeline { padding: 10rem 0; background: rgba(255,255,255,0.01); }
+    .section-tag { color: var(--primary); text-transform: uppercase; letter-spacing: 0.3em; font-weight: 900; font-size: 0.75rem; margin-top: 4rem; margin-bottom: 2rem; display: block; text-align: center; }
+    .section-title { font-size: 3.5rem; font-weight: 900; text-align: center; margin-bottom: 6rem; letter-spacing: -0.05em; }
+
+    .timeline-container { position: relative; max-width: 1000px; margin: 0 auto; }
+    .timeline-container::before {
+        content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+        width: 1px; background: linear-gradient(transparent, var(--border), transparent);
+    }
+
+    .timeline-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rem; width: 100%; }
+    .timeline-content { width: 40%; }
+    .timeline-dot {
+        width: 12px; height: 12px; background: var(--bg); border: 2px solid var(--primary);
+        border-radius: 50%; position: absolute; left: 50%; transform: translateX(-50%);
+        z-index: 10; box-shadow: 0 0 20px var(--primary);
+    }
+
+    /* ── STATS ── */
+    .stats-row {
+        display: flex; justify-content: space-around;
+        padding: 6rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+        margin-bottom: 8rem;
+    }
+    .stat-val { font-size: 4rem; font-weight: 900; letter-spacing: -0.06em; color: white; line-height: 1; }
+    .stat-label { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; margin-top: 0.5rem; }
+
+    /* ── TESTIMONIALS ── */
+    .testi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 4rem; }
+    .testi-card { background: var(--surface); border: 1px solid var(--border); padding: 3rem; border-radius: 32px; }
+    .testi-text { font-size: 1.25rem; font-weight: 500; font-style: italic; margin-bottom: 2rem; color: #E2E8F0; }
+
+    /* ── BUTTONS ── */
+    .btn-main {
+        background: var(--text); color: var(--bg);
+        padding: 1.25rem 3.5rem; border-radius: 100px; font-weight: 800;
+        text-decoration: none; transition: 0.3s; display: inline-block;
+        font-size: 1.1rem;
+    }
+    .btn-main:hover { transform: scale(1.05); background: #FFF; }
+
+    /* ── FAQ ── */
+    .faq-item { border-bottom: 1px solid var(--border); transition: all 0.3s; }
     .faq-q {
-        width: 100%; padding: 1.5rem 1.75rem; background: none; border: none;
-        display: flex; justify-content: space-between; align-items: center;
-        cursor: pointer; text-align: left; gap: 1rem;
+        width: 100%; padding: 2.5rem 0; display: flex; justify-content: space-between;
+        align-items: center; background: none; border: none; cursor: pointer;
+        color: white; font-weight: 700; font-size: 1.25rem; text-align: left;
     }
-    .faq-q-text { font-size: 1rem; font-weight: 600; color: white; }
-    .faq-icon {
-        font-size: 1.25rem; font-weight: 300; color: var(--text-muted);
-        transition: transform 0.3s, color 0.3s; flex-shrink: 0;
-    }
-    .faq-item.open .faq-icon { transform: rotate(45deg); color: #a5b4fc; }
-    .faq-a {
-        max-height: 0; overflow: hidden;
-        transition: max-height 0.4s ease, padding 0.3s ease;
-        color: var(--text-muted); line-height: 1.7; font-size: 0.95rem;
-        padding: 0 1.75rem;
-    }
-    .faq-item.open .faq-a { max-height: 300px; padding: 0 1.75rem 1.5rem; }
+    .faq-icon { color: var(--text-muted); transition: transform 0.4s; font-size: 1.5rem; display: block; line-height: 1; }
+    .faq-a { max-height: 0; overflow: hidden; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); color: var(--text-muted); font-size: 1.1rem; line-height: 1.7; }
+    .faq-item.open .faq-a { max-height: 300px; padding-bottom: 3rem; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); color: var(--primary); }
 
-    /* ── Final CTA ───────────────────────────────────────────── */
-    .final-cta {
-        padding: 8rem 0; text-align: center;
-        background: radial-gradient(ellipse at center, rgba(99,102,241,0.12) 0%, transparent 70%);
-        border-top: 1px solid var(--border);
-        margin-top: 4rem;
+    .section-padding { padding: 10rem 0; }
+    .final-cta-section { padding-bottom: 15rem; text-align: center; }
+    .final-cta-gradient {
+        background: linear-gradient(to bottom, var(--surface), transparent);
+        border: 1px solid var(--border);
+        padding: 8rem 2rem;
+        border-radius: 64px;
     }
-    .final-cta-title { font-size: 3.25rem; font-weight: 900; letter-spacing: -2px; color: white; margin-bottom: 1.25rem; }
-    .final-cta-sub { color: var(--text-muted); font-size: 1.1rem; max-width: 550px; margin: 0 auto 2.5rem; line-height: 1.65; }
-    .final-cta-note { color: var(--text-muted); font-size: 0.8rem; margin-top: 1.25rem; }
+    .final-cta-title { font-size: clamp(2rem, 8vw, 4.5rem); }
 
-    /* ── Pricing ─────────────────────────────────────────────── */
-    .pricing { padding: 4rem 0; position: relative; }
-    .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 4.5rem; }
-    .price-card {
-        background: var(--surface); border: 1px solid var(--border);
-        padding: 3.5rem 2.5rem; border-radius: 32px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative; display: flex; flex-direction: column;
-    }
-    .price-card:hover { transform: translateY(-12px); border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.04); }
-    .price-card.popular {
-        background: rgba(99, 102, 241, 0.06); border: 2px solid var(--primary);
-    }
-    .popular-badge {
-        position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-        background: var(--p-grad); color: white; font-size: 0.75rem; font-weight: 800;
-        padding: 0.4rem 1.2rem; border-radius: 100px; text-transform: uppercase; letter-spacing: 1px;
-    }
-    .price-name { font-size: 1.25rem; font-weight: 800; color: white; margin-bottom: 0.5rem; }
-    .price-val { font-size: 3.5rem; font-weight: 950; color: white; margin-bottom: 1.5rem; display: flex; align-items: baseline; gap: 0.25rem; }
-    .price-val span { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
-    .price-features { list-style: none; padding: 0; margin: 0 0 2.5rem; flex-grow: 1; }
-    .price-features li { padding: 0.85rem 0; color: rgba(255, 255, 255, 0.85); font-size: 0.95rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem; }
-    .price-features li::before { content: '✓'; color: var(--green); font-weight: 900; }
-    .price-features li.no::before { content: '×'; color: #ef4444; }
-    .price-features li.no { color: var(--text-muted); opacity: 0.6; }
-
-    /* ── Responsive ─────────────────────────────────────────── */
+    /* ── RESPONSIVE ── */
     @media (max-width: 960px) {
-        .hero-title { font-size: 3.5rem; letter-spacing: -2px; }
-        .features-grid, .price-grid, .testi-grid, .stats-grid, .steps-grid { grid-template-columns: 1fr; }
-        .section-title { font-size: 2.25rem; }
-        .final-cta-title { font-size: 2.25rem; }
-        .hero { padding: 4rem 0 2rem; }
+        .section-padding { padding: 5rem 0; }
+        .hero { padding: 8rem 0 5rem; }
+        .hero-title { font-size: clamp(2.5rem, 12vw, 4rem); letter-spacing: -0.02em; }
+        .hero-subtitle { font-size: 1.1rem; margin-bottom: 3rem; }
+
+        .stats-row { 
+            display: grid; grid-template-columns: 1fr; gap: 3rem; 
+            padding: 4rem 1.5rem; text-align: center; 
+        }
+        .stat-val { font-size: 3.5rem; }
+
+        .section-title { font-size: 2.5rem; margin-bottom: 4rem; }
+
+        .bento-large, .bento-medium, .bento-small { grid-column: span 12; }
+        .bento-grid { grid-auto-rows: auto; gap: 1rem; padding: 5rem 0; }
+        .bento-card { padding: 2rem 1.5rem; border-radius: 24px; }
+
+        .timeline-container::before, .timeline-dot { display: none; }
+        .timeline-item { flex-direction: column; text-align: center; gap: 2rem; margin-bottom: 5rem; }
+        .timeline-content { width: 100% !important; text-align: center !important; }
+        .timeline { padding: 6rem 0; }
+
+        .testi-row { grid-template-columns: 1fr; gap: 1.5rem; }
+        .testi-card { padding: 2rem; }
+
+        .faq-q { padding: 1.5rem 0; font-size: 1.1rem; }
+        
+        .final-cta-section { padding-bottom: 8rem; }
+        .final-cta-gradient { padding: 4rem 1.5rem; border-radius: 40px; }
     }
 
-    @media (max-width: 480px) {
-        .hero-title { font-size: 2.5rem; line-height: 1.1; }
-        .hero-subtitle { font-size: 1rem; padding: 0 1rem; }
-        .stats-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .hero-ctas { flex-direction: column; width: 100%; }
-        .hero-ctas a { width: 100%; text-align: center; }
-        .section-title { font-size: 2rem; }
-        .stat-num { font-size: 2rem; }
-        
-        /* User request: Reduce landing nav names on mobile */
-        .landing-nav-link { font-size: 0.75rem !important; }
-        .btn-p-small { padding: 0.5rem 1rem !important; font-size: 0.75rem !important; }
+    /* ── NAV ACTIONS PRO ── */
+    .nav-btn-group { display: flex; gap: 2rem; align-items: center; }
+    .nav-link-pro { 
+        color: var(--text-muted); text-decoration: none; font-weight: 700; 
+        font-size: 0.9rem; transition: 0.3s; letter-spacing: -0.02em;
+    }
+    .nav-link-pro:hover { color: white; }
+    .btn-nav-pro {
+        background: var(--text); color: var(--bg); padding: 0.6rem 1.5rem;
+        border-radius: 100px; font-weight: 800; font-size: 0.85rem;
+        text-decoration: none; transition: 0.3s;
+    }
+    .btn-nav-pro:hover { transform: scale(1.05); }
+
+    @media (max-width: 640px) {
+        .nav-btn-group { gap: 1.25rem; }
+        .btn-nav-pro { padding: 0.5rem 1rem; font-size: 0.8rem; }
     }
 </style>
 {% endblock %}
 
 {% block nav_actions %}
-<div style="display: flex; gap: 1.25rem; align-items: center;">
-    <a href="#pricing" class="landing-nav-link" style="color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Preços</a>
-    <a href="/login" class="landing-nav-link" style="color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Entrar</a>
-    <a href="/register" class="btn-p btn-p-small" style="padding: 0.6rem 1.5rem; font-size: 0.85rem;">Começar Grátis</a>
+<div class="nav-btn-group">
+    <a href="/login" class="nav-link-pro">Entrar</a>
+    <a href="/register" class="btn-nav-pro">Começar Grátis</a>
 </div>
 {% endblock %}
 
 {% block main_content %}
-    <!-- ── HERO ──────────────────────────────────────────── -->
-    <header class="hero">
-        <div class="hero-badge">Novo: Campanha com IA + Proteção Anti-Ban 2.0</div>
-        <h1 class="hero-title">Venda mais pelo<br><span class="accent">WhatsApp</span>,<br>no piloto automático</h1>
-        <p class="hero-subtitle">Escale seus lucros com Campanhas em Massa (Broadcast) e postagens automáticas nos Status. Crie textos com Inteligência Artificial, gerencie suas instâncias sem risco de ban e alcance seus clientes onde eles estão.</p>
-        <div class="hero-ctas">
-            <a href="/register" class="btn-p">Começar Teste Grátis</a>
-            <a href="#pricing" style="color: rgba(255,255,255,0.75); padding: 0.9rem 2.25rem; border-radius: 100px; border: 1px solid rgba(255,255,255,0.15); text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: all 0.25s; display: inline-block;">Ver Planos</a>
-        </div>
-        <img src="/static/dashboard_v3_mockup_1774045102162.png" alt="Painel WhatSeller Pro" class="hero-mockup">
-    </header>
+<!-- HERO -->
+<section class="hero container">
+    <div class="hero-badge reveal">WhatSeller Pro 2.0</div>
+    <h1 class="hero-title reveal">Automatize suas<br>Vendas Agora.</h1>
+    <p class="hero-subtitle reveal">A ferramenta simples e poderosa para quem quer vender mais no WhatsApp sem perder tempo com envios manuais.</p>
+    <div class="reveal">
+        <a href="/register" class="btn-main">Começar Agora Gratis</a>
+    </div>
 
-    <!-- ── STATS ─────────────────────────────────────────── -->
-    <section class="stats-strip">
-        <div class="stats-grid">
-            <div>
-                <div class="stat-num">3.2M+</div>
-                <div class="stat-label">Mensagens enviadas</div>
-            </div>
-            <div>
-                <div class="stat-num">98%</div>
-                <div class="stat-label">Taxa de entrega</div>
-            </div>
-            <div>
-                <div class="stat-num">0</div>
-                <div class="stat-label">Bans reportados</div>
-            </div>
-            <div>
-                <div class="stat-num">R$0</div>
-                <div class="stat-label">Para começar</div>
-            </div>
-        </div>
-    </section>
+    <div class="hero-mockup-container reveal">
+        <img src="/static/hero_mockup_v4.png" alt="Dashboard" class="hero-mockup">
+    </div>
+</section>
 
-    <!-- ── FEATURES ──────────────────────────────────────── -->
-    <section id="features">
-        <div class="section-header">
-            <span class="section-tag">Funcionalidades</span>
-            <h2 class="section-title">Tudo que você precisa para escalar</h2>
-            <p class="section-sub">Do disparo inteligente ao relatório de desempenho, cada detalhe foi pensado para afiliados, dropshippers e agências digitais.</p>
+<!-- STATS -->
+<section class="container">
+    <div class="stats-row">
+        <div class="stat-item reveal">
+            <div class="stat-val">3.2M</div>
+            <div class="stat-label">Mensagens de Sucesso</div>
         </div>
-        <div class="features-grid">
-            <div class="feat-card">
-                <span class="feat-icon">📸</span>
-                <h3 class="feat-title">Status Automáticos com Links</h3>
-                <p class="feat-desc">Poste fotos, vídeos e textos diretamente no Status das suas instâncias, automatizado! Divulgue links de compra disfarçados de conteúdo sem risco de banimento.</p>
-            </div>
-            <div class="feat-card">
-                <span class="feat-icon">📢</span>
-                <h3 class="feat-title">Broadcast Humanizado (Anti-Ban)</h3>
-                <p class="feat-desc">Dispare para contatos, grupos ou listas inteiras! O sistema usa a tecnologia Spintax (variações de texto) e "Simulação de Digitação" para o WhatsApp achar que é você digitando.</p>
-            </div>
-            <div class="feat-card">
-                <span class="feat-icon">🤖</span>
-                <h3 class="feat-title">Copiloto de IA com GPT-4</h3>
-                <p class="feat-desc">Não sabe o que escrever? Escolha seu Produto, e a nossa Inteligência Artificial escreve pichs inteiros usando gatilhos mentais para converter mais.</p>
-            </div>
-            <div class="feat-card">
-                <span class="feat-icon">📅</span>
-                <h3 class="feat-title">Agendamento Recorrente</h3>
-                <p class="feat-desc">Odeia enviar "Bom dia" todo dia? Crie campanhas semanais, mensais ou horárias. Nosso calendário cuida dos seus Status e Mensagens sozinho.</p>
-            </div>
-            <div class="feat-card">
-                <span class="feat-icon">📱</span>
-                <h3 class="feat-title">Multi-Instância Integrada</h3>
-                <p class="feat-desc">Gerencie 2, 5, 20 números de WhatsApp num lugar só. Sincronize contatos de qualquer conta com 1 clique. Ideal para agências e contingência estruturada.</p>
-            </div>
-            <div class="feat-card">
-                <span class="feat-icon">📦</span>
-                <h3 class="feat-title">Catálogo de Produtos</h3>
-                <p class="feat-desc">Cadastre seus infoprodutos ou produtos físicos com link de afiliado. A plataforma organiza tudo e cria links magnéticos nas campanhas.</p>
-            </div>
+        <div class="stat-item reveal">
+            <div class="stat-val">99.8%</div>
+            <div class="stat-label">Uptime Garantido</div>
         </div>
-    </section>
+        <div class="stat-item reveal">
+            <div class="stat-val">100%</div>
+            <div class="stat-label">Uso Seguro e Confiável</div>
+        </div>
+    </div>
+</section>
 
-    <!-- ── HOW IT WORKS ───────────────────────────────────── -->
-    <section class="how-it-works">
-        <div class="section-header">
-            <span class="section-tag">Como Funciona</span>
-            <h2 class="section-title">Pronto para vender em 3 passos</h2>
-        </div>
-        <div class="steps-grid">
-            <div class="step">
-                <div class="step-num">1</div>
-                <h3 class="step-title">1. Conecte pelo QR Code</h3>
-                <p class="step-desc">Abra o WhatSeller Pro, adicione seu WhatsApp através do QR Code. Imediatamente puxaremos todos os seus contatos e Grupos oficiais para nossa nuvem.</p>
-            </div>
-            <div class="step">
-                <div class="step-num">2</div>
-                <h3 class="step-title">2. IA Escreve por Você</h3>
-                <p class="step-desc">Crie um Broadcast (Mensagem direta) ou Status (Imagem de 24h). Escolha "Melhorar com IA" e deixe o algoritmo escrever um texto persuasivo para seu produto e link.</p>
-            </div>
-            <div class="step">
-                <div class="step-num">3</div>
-                <h3 class="step-title">3. Caixa Fazendo "Plim"</h3>
-                <p class="step-desc">Configure como "Imediato", "Agendado" ou "Recorrente". Nós enviaremos sem parecer um robô, preservando sua conta enquanto recuperamos seus lucros.</p>
-            </div>
-        </div>
-    </section>
+<!-- BENTO FEATURES -->
+<section class="container section-padding">
+    <span class="section-tag">Capacidades</span>
+    <h2 class="section-title">Engenharia de Performance</h2>
 
-    <!-- ── PRICING ────────────────────────────────────────── -->
-    <section id="pricing" class="pricing">
-        <div class="section-header">
-            <span class="section-tag">Transparência</span>
-            <h2 class="section-title">Escolha o plano ideal para sua escala</h2>
-            <p class="section-sub">Comece hoje mesmo com 3 dias de trial gratuito em qualquer plano. Sem compromisso.</p>
+    <div class="bento-grid">
+        <div class="bento-card bento-large reveal">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            <h3 class="bento-title">Envios de Forma Natural</h3>
+            <p class="bento-desc">O sistema envia suas mensagens de forma tranquila, com pausas como se uma pessoa real estivesse digitando. Tudo para seu uso ser o mais calmo e produtivo possível.</p>
         </div>
-        <div class="price-grid">
-            <div class="price-card">
-                <h3 class="price-name">Starter</h3>
-                <div class="price-val">R$ 97 <span>/ mês</span></div>
-                <ul class="price-features">
-                    <li>1 Instância do WhatsApp</li>
-                    <li>5 Campanhas por mês</li>
-                    <li>Até 500 contatos/mês</li>
-                    <li>Status Automático</li>
-                    <li class="no">Inteligência Artificial (IA)</li>
-                    <li class="no">Suporte Prioritário</li>
-                </ul>
-                <a href="/register?plan=starter" style="width: 100%; text-align: center; color: rgba(255,255,255,0.75); padding: 0.9rem; border-radius: 100px; border: 1px solid rgba(255,255,255,0.1); text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: all 0.25s; display: inline-block;">Assinar Starter</a>
-            </div>
-            <div class="price-card popular">
-                <div class="popular-badge">Mais Popular</div>
-                <h3 class="price-name">Pro</h3>
-                <div class="price-val">R$ 197 <span>/ mês</span></div>
-                <ul class="price-features">
-                    <li>3 Instâncias do WhatsApp</li>
-                    <li>Campanhas Ilimitadas</li>
-                    <li>Contatos Ilimitados</li>
-                    <li>Status Automático</li>
-                    <li>Inteligência Artificial (IA)</li>
-                    <li>Suporte Prioritário</li>
-                </ul>
-                <a href="/register?plan=pro" class="btn-p" style="width: 100%; text-align: center;">Assinar Pro</a>
-            </div>
-            <div class="price-card">
-                <h3 class="price-name">Agência</h3>
-                <div class="price-val">R$ 397 <span>/ mês</span></div>
-                <ul class="price-features">
-                    <li>Instâncias Ilimitadas</li>
-                    <li>Campanhas Ilimitadas</li>
-                    <li>Contatos Ilimitados</li>
-                    <li>Status Automático</li>
-                    <li>Inteligência Artificial (IA)</li>
-                    <li>Gerente de Conta</li>
-                </ul>
-                <a href="/register?plan=agency" style="width: 100%; text-align: center; color: rgba(255,255,255,0.75); padding: 0.9rem; border-radius: 100px; border: 1px solid rgba(255,255,255,0.1); text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: all 0.25s; display: inline-block;">Assinar Agência</a>
-            </div>
+        <div class="bento-card bento-medium reveal">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h3 class="bento-title">Sempre Ativo</h3>
+            <p class="bento-desc">Você configura uma vez e ele trabalha sozinho. Seu celular pode estar desligado, mas suas vendas continuam rodando 24 horas por dia.</p>
         </div>
-    </section>
+        <div class="bento-card bento-small reveal">
+            <h3 class="bento-title">Agendamento Simples</h3>
+            <p class="bento-desc">Escolha o dia e hora. Suas mensagens chegam no momento perfeito.</p>
+        </div>
+        <div class="bento-card bento-small reveal">
+            <h3 class="bento-title">Ajuda da Inteligência</h3>
+            <p class="bento-desc">Textos prontos para seus produtos em segundos, sem esforço.</p>
+        </div>
+    </div>
+</section>
 
-    <!-- ── TESTIMONIALS ───────────────────────────────────── -->
-    <section class="testimonials">
-        <div class="section-header">
-            <span class="section-tag">Casos de Sucesso</span>
-            <h2 class="section-title">Quem usa, vende mais</h2>
-        </div>
-        <div class="testi-grid">
-            <div class="testi-card">
-                <div class="testi-stars">★★★★★</div>
-                <p class="testi-text">"Antes eu perdia 2 contas por mês por ban. Desde que uso o WhatSeller Pro, mandei mais de 50.000 mensagens sem nenhum problema. O envio humanizado é diferente de tudo."</p>
-                <div class="testi-author">
-                    <div class="author-avatar">RL</div>
-                    <div>
-                        <div class="author-name">Ricardo Lima</div>
-                        <div class="author-role">Dono de E-commerce · SP</div>
-                    </div>
-                </div>
-            </div>
-            <div class="testi-card">
-                <div class="testi-stars">★★★★★</div>
-                <p class="testi-text">"A IA transformou meu pitch básico numa oferta irresistível. Na primeira semana usando, meu ROI de afiliado aumentou 45%. Não vivo mais sem."</p>
-                <div class="testi-author">
-                    <div class="author-avatar">AM</div>
-                    <div>
-                        <div class="author-name">Ana Mendes</div>
-                        <div class="author-role">Agência Digital · BH</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+<!-- TIMELINE -->
+<section class="timeline section-padding">
+    <div class="container timeline-container">
+        <span class="section-tag">Metodologia</span>
+        <h2 class="section-title">O Caminho da Escala</h2>
 
-    <!-- ── FAQ ───────────────────────────────────────────── -->
-    <section class="faq">
-        <div class="section-header">
-            <span class="section-tag">Dúvidas</span>
-            <h2 class="section-title">Perguntas frequentes</h2>
+        <div class="timeline-item reveal">
+            <div class="timeline-content" style="text-align: right;">
+                <h3 class="bento-title">01. Ativação</h3>
+                <p class="bento-desc">Conexão instantânea via QR Code. Segurança de ponta a ponta sem instalação de softwares locais.</p>
+            </div>
+            <div class="timeline-dot"></div>
+            <div class="timeline-content"></div>
         </div>
-        <div class="faq-inner">
-            <div class="faq-item">
-                <button class="faq-q" aria-expanded="false">
-                    <span class="faq-q-text">Minha conta pode ser banida?</span>
-                    <span class="faq-icon">+</span>
-                </button>
-                <div class="faq-a">Nosso sistema usa delays aleatórios humanizados, spintax e simulação de digitação para imitar comportamento humano. Quando usado corretamente, o risco é mínimo.</div>
-            </div>
-            <div class="faq-item">
-                <button class="faq-q" aria-expanded="false">
-                    <span class="faq-q-text">Preciso de algum servidor?</span>
-                    <span class="faq-icon">+</span>
-                </button>
-                <div class="faq-a">Não. Fornecemos toda a infraestrutura em nuvem necessária. Você só precisa escanear o QR Code e pronto.</div>
-            </div>
-            <div class="faq-item">
-                <button class="faq-q" aria-expanded="false">
-                    <span class="faq-q-text">A IA escreve em português?</span>
-                    <span class="faq-icon">+</span>
-                </button>
-                <div class="faq-a">Sim, nativamente. O prompt está configurado para copy de vendas em português brasileiro, adaptado ao tom persuasivo do mercado local.</div>
-            </div>
-        </div>
-    </section>
 
-    <!-- ── FINAL CTA ──────────────────────────────────────── -->
-    <section class="final-cta">
-        <h2 class="final-cta-title">Pronto para vender<br>no piloto automático?</h2>
-        <p class="final-cta-sub">Crie sua conta gratuita agora, conecte seu WhatsApp e dispare sua primeira campanha em menos de 5 minutos.</p>
-        <a href="/register" class="btn-p" style="font-size: 1.05rem; padding: 1.1rem 2.75rem;">Criar conta gratuita →</a>
-        <p class="final-cta-note">✓ Sem cartão &nbsp;·&nbsp; ✓ Cancele quando quiser &nbsp;·&nbsp; ✓ Suporte WhatsApp</p>
-    </section>
+        <div class="timeline-item reveal">
+            <div class="timeline-content"></div>
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+                <h3 class="bento-title">02. Textos Prontos</h3>
+                <p class="bento-desc">Diga qual o seu produto e receba várias sugestões de textos que vendem, criados pela nossa inteligência artificial.</p>
+            </div>
+        </div>
+
+        <div class="timeline-item reveal">
+            <div class="timeline-content" style="text-align: right;">
+                <h3 class="bento-title">03. Escala Brutal</h3>
+                <p class="bento-desc">Disparos em massa e agendamento de status para manter sua oferta no topo da lista, 24 horas por dia.</p>
+            </div>
+            <div class="timeline-dot"></div>
+            <div class="timeline-content"></div>
+        </div>
+    </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="container section-padding">
+    <h2 class="section-title">Aprovado por quem escala</h2>
+    <div class="testi-row">
+        <div class="testi-card reveal">
+            <p class="testi-text">"Parei de perder 2-3 contas por semana. A humanização do WhatSeller Pro é o divisor de águas entre quem brinca e quem lucra."</p>
+            <div style="font-weight: 800; color: white;">Ricardo Lima</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Dono de E-commerce</div>
+        </div>
+        <div class="testi-card reveal">
+            <p class="testi-text">"O ROI aumentou 45% na primeira semana. A IA escreve copies que eu levaria horas para criar."</p>
+            <div style="font-weight: 800; color: white;">Ana Mendes</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Agência de Lançamentos</div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="container section-padding">
+    <span class="section-tag">Transparência</span>
+    <h2 class="section-title">Engenharia e Segurança</h2>
+    <div class="faq-container">
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>É difícil de mexer para quem não entende de tecnologia?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Criamos tudo para ser o mais simples possível. Em menos de 2 minutos você já consegue conectar seu WhatsApp e enviar suas primeiras mensagens, mesmo que sinta que não sabe nada de computador.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>Preciso deixar meu celular ligado ou com internet o dia todo?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Não! Você configura uma única vez e o WhatSeller trabalha sozinho para você. Você pode desligar o celular, ficar sem sinal ou até viajar, e o sistema continuará enviando suas mensagens conforme planejado.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>Funciona para enviar em grupos e no privado?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Com certeza. Você tem total controle: pode escolher falar diretamente com as pessoas no privado ou enviar suas ofertas em todos os seus grupos de uma só vez.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>Posso usar meu número de sempre ou preciso de um novo?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Você pode usar seu número atual sem problemas. O sistema imita o comportamento de uma pessoa real digitando, o que garante um uso muito mais tranquilo e seguro para o seu número.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>Funciona no iPhone, no Android ou só no computador?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Como nosso sistema funciona totalmente pela internet, você consegue acessar e configurar tudo de qualquer aparelho. Funciona perfeitamente em iPhones, celulares Android ou computadores.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>E se eu me perder ou tiver alguma dúvida no caminho?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Você não estará sozinho. Temos uma equipe de suporte humanizada pronta para te atender via WhatsApp ou e-mail. Se precisar de uma mãozinha, basta nos chamar.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>Dá para programar mensagens com muita antecedência?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Sim! Você pode agendar as mensagens de uma semana (ou até um mês) inteira em um único dia. Depois disso, é só descansar enquanto o sistema faz o trabalho pesado de vendas por você.
+            </div>
+        </div>
+        <div class="faq-item reveal">
+            <button class="faq-q">
+                <span>Consigo saber quem realmente recebeu as mensagens?</span>
+                <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-a">
+                Sim, você terá acesso a um relatório muito simples de ler, mostrando exatamente quem recebeu e o que aconteceu com cada envio seu. Tudo transparente e fácil de entender.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="container final-cta-section">
+    <div class="final-cta-gradient reveal">
+        <h2 class="hero-title final-cta-title">Pronto para parar de perder tempo?</h2>
+        <div style="margin-top: 3rem;">
+            <a href="/register" class="btn-main">Começar Minha Jornada Grátis</a>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // faq accordion
-    document.querySelectorAll('.faq-q').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const item = btn.closest('.faq-item');
+    // Pro FAQ Accordion
+    document.querySelectorAll('.faq-q').forEach(q => {
+        q.addEventListener('click', () => {
+            const item = q.parentElement;
             const isOpen = item.classList.contains('open');
-            // close all
             document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
             if (!isOpen) item.classList.add('open');
-            btn.setAttribute('aria-expanded', !isOpen);
         });
     });
 
-    // scroll-reveal via IntersectionObserver
+    // Scroll Reveal implementation
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(e => {
             if (e.isIntersecting) {
                 e.target.style.opacity = '1';
                 e.target.style.transform = 'translateY(0)';
-                observer.unobserve(e.target);
             }
         });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.feat-card, .testi-card, .step').forEach(el => {
+    document.querySelectorAll('.reveal').forEach(el => {
         el.style.opacity = '0';
-        el.style.transform = 'translateY(24px)';
-        el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        el.style.transform = 'translateY(40px)';
+        el.style.transition = 'all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)';
         observer.observe(el);
     });
 </script>
