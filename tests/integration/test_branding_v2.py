@@ -26,7 +26,10 @@ def test_global_branding_consistency(client):
         assert "Seller" in response.text
         assert "Pro" in response.text
         # Allow either the class or the equivalent inline style for the 'Seller' gradient
-        assert ("gradient-text" in response.text or "background: linear-gradient" in response.text)
+        assert (
+            "gradient-text" in response.text
+            or "background: linear-gradient" in response.text
+        )
 
 
 def test_no_rocket_icons(client):

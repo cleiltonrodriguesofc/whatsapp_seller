@@ -1,16 +1,18 @@
 import bcrypt
 import jwt
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from core.infrastructure.utils.timezone import now_sp
 from typing import Optional
 import os
+import secrets
 
 logger = logging.getLogger(__name__)
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-it-in-prod")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
+PASSWORD_RESET_EXPIRE_HOURS = 1
 
 if SECRET_KEY == "your-secret-key-change-it-in-prod":
     logger.warning(
@@ -53,3 +55,15 @@ class AuthService:
             return payload
         except jwt.PyJWTError:
             return None
+
+    @staticmethod
+    def generate_reset_token() -> str:
+        """Generates a secure token for password recovery."""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def is_token_expired(expiry_date: Optional[datetime]) -> bool:
+        """Checks if the reset token has expired."""
+        if not expiry_date:
+            return True
+        return now_sp() > expiry_date

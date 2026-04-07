@@ -464,17 +464,23 @@ async def view_whatsapp_chats(
     """
     WhatsApp inbox view - loads active chats from Evolution API.
     """
-    instances = db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    instances = (
+        db.query(InstanceModel).filter(InstanceModel.user_id == current_user.id).all()
+    )
 
     selected_instance = None
     chats = []
 
     if instances:
         if instance_id:
-            selected_instance = db.query(InstanceModel).filter(
-                InstanceModel.id == instance_id,
-                InstanceModel.user_id == current_user.id
-            ).first()
+            selected_instance = (
+                db.query(InstanceModel)
+                .filter(
+                    InstanceModel.id == instance_id,
+                    InstanceModel.user_id == current_user.id,
+                )
+                .first()
+            )
         if not selected_instance:
             selected_instance = instances[0]
 
@@ -488,14 +494,19 @@ async def view_whatsapp_chats(
             for c in raw_chats:
                 if isinstance(c, dict):
                     chat_id = c.get("remoteJid") or c.get("id") or c.get("jid") or ""
-                    chats.append({
-                        "id": chat_id,
-                        "name": c.get("name") or c.get("pushName") or c.get("subject") or chat_id.split("@")[0],
-                        "profilePicUrl": c.get("profilePicUrl") or "",
-                        "unreadCount": c.get("unreadCount") or 0,
-                        "lastMsgTimestamp": c.get("lastMsgTimestamp") or 0,
-                        "isGroup": "@g.us" in chat_id,
-                    })
+                    chats.append(
+                        {
+                            "id": chat_id,
+                            "name": c.get("name")
+                            or c.get("pushName")
+                            or c.get("subject")
+                            or chat_id.split("@")[0],
+                            "profilePicUrl": c.get("profilePicUrl") or "",
+                            "unreadCount": c.get("unreadCount") or 0,
+                            "lastMsgTimestamp": c.get("lastMsgTimestamp") or 0,
+                            "isGroup": "@g.us" in chat_id,
+                        }
+                    )
             # sort by most recent message
             chats.sort(key=lambda x: x.get("lastMsgTimestamp", 0), reverse=True)
 
@@ -524,10 +535,14 @@ async def get_chat_messages_api(
     """
     API endpoint to fetch message history for a specific chat.
     """
-    instance = db.query(InstanceModel).filter(
-        InstanceModel.id == instance_id,
-        InstanceModel.user_id == current_user.id,
-    ).first()
+    instance = (
+        db.query(InstanceModel)
+        .filter(
+            InstanceModel.id == instance_id,
+            InstanceModel.user_id == current_user.id,
+        )
+        .first()
+    )
 
     if not instance:
         raise HTTPException(status_code=404, detail="Instance not found")
@@ -546,12 +561,18 @@ async def get_chat_messages_api(
             message_content = msg.get("message", {})
             # extract text from various message types
             text = (
-                message_content.get("conversation") or
-                message_content.get("extendedTextMessage", {}).get("text") or
-                message_content.get("imageMessage", {}).get("caption") or
-                message_content.get("videoMessage", {}).get("caption") or
-                ""
-            ) if isinstance(message_content, dict) else str(message_content) if message_content else ""
+                (
+                    message_content.get("conversation")
+                    or message_content.get("extendedTextMessage", {}).get("text")
+                    or message_content.get("imageMessage", {}).get("caption")
+                    or message_content.get("videoMessage", {}).get("caption")
+                    or ""
+                )
+                if isinstance(message_content, dict)
+                else str(message_content)
+                if message_content
+                else ""
+            )
 
             # detect message type
             msg_type = "text"
@@ -567,15 +588,18 @@ async def get_chat_messages_api(
                 elif "stickerMessage" in message_content:
                     msg_type = "sticker"
 
-            normalized.append({
-                "id": key.get("id", ""),
-                "fromMe": key.get("fromMe", False),
-                "remoteJid": key.get("remoteJid", ""),
-                "text": text,
-                "type": msg_type,
-                "timestamp": msg.get("messageTimestamp") or msg.get("messageTimestamp", 0),
-                "pushName": msg.get("pushName", ""),
-            })
+            normalized.append(
+                {
+                    "id": key.get("id", ""),
+                    "fromMe": key.get("fromMe", False),
+                    "remoteJid": key.get("remoteJid", ""),
+                    "text": text,
+                    "type": msg_type,
+                    "timestamp": msg.get("messageTimestamp")
+                    or msg.get("messageTimestamp", 0),
+                    "pushName": msg.get("pushName", ""),
+                }
+            )
 
     # sort by timestamp ascending (oldest first)
     normalized.sort(key=lambda x: x.get("timestamp", 0))

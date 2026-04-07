@@ -23,13 +23,17 @@ def test_instance_model():
 
 
 def test_product_model():
-    product = ProductModel(user_id=1, name="Prod", description="Desc", price=9.99, affiliate_link="link")
+    product = ProductModel(
+        user_id=1, name="Prod", description="Desc", price=9.99, affiliate_link="link"
+    )
     assert product.name == "Prod"
     assert product.price == 9.99
 
 
 def test_whatsapp_target_model():
-    target = WhatsAppTargetModel(user_id=1, jid="123@s.whatsapp.net", name="John", type="chat")
+    target = WhatsAppTargetModel(
+        user_id=1, jid="123@s.whatsapp.net", name="John", type="chat"
+    )
     assert target.jid == "123@s.whatsapp.net"
     assert target.type == "chat"
 
@@ -46,7 +50,7 @@ def test_status_campaign_model_refinements():
         title="Status",
         link="http://link",
         price=10.0,
-        background_color="#FFFFFF"
+        background_color="#FFFFFF",
     )
     assert model.link == "http://link"
     assert model.price == 10.0

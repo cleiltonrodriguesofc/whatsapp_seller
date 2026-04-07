@@ -381,9 +381,14 @@ async def import_broadcast_contacts(
             # Upsert them to global targets too, assigning to first instance if any
             default_inst = instance_repo.list_by_user(current_user.id)
             inst_id = default_inst[0].id if default_inst else None
-            import_payload = [{"id": f"{c['phone']}@s.whatsapp.net", "subject": c["name"]} for c in parsed_contacts]
+            import_payload = [
+                {"id": f"{c['phone']}@s.whatsapp.net", "subject": c["name"]}
+                for c in parsed_contacts
+            ]
             if inst_id:
-                target_repo.upsert_sync(import_payload, current_user.id, instance_id=inst_id)
+                target_repo.upsert_sync(
+                    import_payload, current_user.id, instance_id=inst_id
+                )
 
             existing_jids = set(list_repo.get_member_jids(list_id))
             added_count = 0
@@ -404,11 +409,13 @@ async def import_broadcast_contacts(
 
             # Log activity
             activity_repo = SQLActivityRepository(db)
-            activity_repo.save(ActivityLog(
-                user_id=current_user.id,
-                event_type="broadcast_list_import",
-                description=f"Imported {added_count} new contacts to list ID: {list_id}"
-            ))
+            activity_repo.save(
+                ActivityLog(
+                    user_id=current_user.id,
+                    event_type="broadcast_list_import",
+                    description=f"Imported {added_count} new contacts to list ID: {list_id}",
+                )
+            )
 
     return RedirectResponse(url=f"/broadcast/lists/{list_id}", status_code=303)
 

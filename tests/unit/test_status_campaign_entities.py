@@ -55,7 +55,7 @@ def test_status_campaign_with_link_and_price():
         scheduled_at=datetime.utcnow(),
         link="https://wa.me/message",
         price=49.90,
-        background_color="#FF5733"
+        background_color="#FF5733",
     )
     assert campaign.link == "https://wa.me/message"
     assert campaign.price == 49.90

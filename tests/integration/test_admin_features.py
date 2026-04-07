@@ -20,13 +20,15 @@ def test_deactivated_user_access_denied(client, db_session):
     user = UserModel(
         email="deactivated@test.com",
         hashed_password=auth.hash_password("password"),
-        is_active=False
+        is_active=False,
     )
     db_session.add(user)
     db_session.commit()
 
     # Attempt to login (the login route itself doesn't check is_active yet, but get_current_user does)
-    client.post("/login", data={"username": "deactivated@test.com", "password": "password"})
+    client.post(
+        "/login", data={"username": "deactivated@test.com", "password": "password"}
+    )
 
     # accessing a protected route should redirect due to is_active check in get_current_user
     # Note: get_current_user is called via Depends(login_required)
@@ -43,12 +45,16 @@ def test_activity_log_system_event_null_user(db_session):
         user_id=None,
         event_type="system_startup",
         description="System started successfully without user context",
-        timestamp=datetime.utcnow()
+        timestamp=datetime.utcnow(),
     )
     db_session.add(log)
     db_session.commit()
 
-    saved_log = db_session.query(ActivityLogModel).filter_by(event_type="system_startup").first()
+    saved_log = (
+        db_session.query(ActivityLogModel)
+        .filter_by(event_type="system_startup")
+        .first()
+    )
     assert saved_log is not None
     assert saved_log.user_id is None
     assert "System started" in saved_log.description
@@ -61,13 +67,15 @@ def test_admin_dashboard_vision_2_0_rendering(client, db_session):
         email="admin@vision.com",
         hashed_password=auth.hash_password("adminpass"),
         is_admin=True,
-        is_active=True
+        is_active=True,
     )
     db_session.add(admin)
     db_session.commit()
 
     # Login as admin
-    client.post("/login", data={"username": "admin@vision.com", "password": "adminpass"})
+    client.post(
+        "/login", data={"username": "admin@vision.com", "password": "adminpass"}
+    )
 
     response = client.get("/admin/")
     assert response.status_code == 200
@@ -86,7 +94,7 @@ def test_admin_users_page_renders_without_500(client, db_session):
         email="admin_users@test.com",
         hashed_password=auth.hash_password("pass"),
         is_admin=True,
-        is_active=True
+        is_active=True,
     )
     db_session.add(admin)
     db_session.commit()

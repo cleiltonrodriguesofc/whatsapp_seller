@@ -295,10 +295,7 @@ class EvolutionWhatsAppService(NotificationService):
     async def get_chat_messages(self, remote_jid: str, limit: int = 50) -> list:
         """Fetches message history for a specific chat from Evolution API."""
         url = f"{self.base_url}/chat/findMessages/{self.instance}"
-        payload = {
-            "where": {"key": {"remoteJid": remote_jid}},
-            "limit": limit
-        }
+        payload = {"where": {"key": {"remoteJid": remote_jid}}, "limit": limit}
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
@@ -307,7 +304,11 @@ class EvolutionWhatsAppService(NotificationService):
 
                 # debug: log the raw response structure
                 if isinstance(data, dict):
-                    logger.info("findMessages response keys: %s (type=%s)", list(data.keys()), type(data).__name__)
+                    logger.info(
+                        "findMessages response keys: %s (type=%s)",
+                        list(data.keys()),
+                        type(data).__name__,
+                    )
                     # try to find messages in various response structures
                     records = data.get("messages", None)
                     if records is None:
@@ -315,42 +316,57 @@ class EvolutionWhatsAppService(NotificationService):
                         for key in data.keys():
                             val = data[key]
                             if isinstance(val, list):
-                                logger.info("findMessages found list at key '%s' with %d items", key, len(val))
+                                logger.info(
+                                    "findMessages found list at key '%s' with %d items",
+                                    key,
+                                    len(val),
+                                )
                                 if val:
                                     logger.info(
                                         "findMessages first item keys: %s",
-                                        list(
-                                            val[0].keys()) if isinstance(
-                                            val[0],
-                                            dict) else type(
-                                            val[0]))
+                                        list(val[0].keys())
+                                        if isinstance(val[0], dict)
+                                        else type(val[0]),
+                                    )
                                 return val
                             elif isinstance(val, dict) and "records" in val:
-                                logger.info("findMessages found records inside '%s'", key)
+                                logger.info(
+                                    "findMessages found records inside '%s'", key
+                                )
                                 return val.get("records", [])
                         # fallback: return empty
-                        logger.warning("findMessages: could not find message list in response: %s", str(data)[:500])
+                        logger.warning(
+                            "findMessages: could not find message list in response: %s",
+                            str(data)[:500],
+                        )
                         return []
                     elif isinstance(records, dict):
                         inner = records.get("records", [])
-                        logger.info("findMessages messages.records has %d items", len(inner))
+                        logger.info(
+                            "findMessages messages.records has %d items", len(inner)
+                        )
                         return inner
                     elif isinstance(records, list):
-                        logger.info("findMessages messages list has %d items", len(records))
+                        logger.info(
+                            "findMessages messages list has %d items", len(records)
+                        )
                         if records:
                             logger.info(
                                 "findMessages first msg keys: %s",
-                                list(
-                                    records[0].keys()) if isinstance(
-                                    records[0],
-                                    dict) else type(
-                                    records[0]))
+                                list(records[0].keys())
+                                if isinstance(records[0], dict)
+                                else type(records[0]),
+                            )
                         return records
                     else:
-                        logger.warning("findMessages 'messages' is type %s", type(records).__name__)
+                        logger.warning(
+                            "findMessages 'messages' is type %s", type(records).__name__
+                        )
                         return []
                 elif isinstance(data, list):
-                    logger.info("findMessages returned flat list with %d items", len(data))
+                    logger.info(
+                        "findMessages returned flat list with %d items", len(data)
+                    )
                     return data
                 return []
         except Exception as exc:

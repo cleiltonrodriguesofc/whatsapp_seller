@@ -35,19 +35,29 @@ def test_billing_dashboard_requires_login(client):
 def test_checkout_create_session_fails_gracefully_without_token(client, db_session):
     """Verify that checkout gracefully errors when no token is present."""
     auth = AuthService()
-    user = UserModel(email="billing_test@example.com", hashed_password=auth.hash_password("pass"))
-    plan = PlanModel(name="test_plan", display_name="Test", price_brl=100.0, mp_plan_id="mp_123", max_instances=1)
+    user = UserModel(
+        email="billing_test@example.com", hashed_password=auth.hash_password("pass")
+    )
+    plan = PlanModel(
+        name="test_plan",
+        display_name="Test",
+        price_brl=100.0,
+        mp_plan_id="mp_123",
+        max_instances=1,
+    )
     db_session.add(user)
     db_session.add(plan)
     db_session.commit()
 
     # Login user
-    client.post("/login", data={"username": "billing_test@example.com", "password": "pass"})
+    client.post(
+        "/login", data={"username": "billing_test@example.com", "password": "pass"}
+    )
 
     response = client.post(
         "/checkout/create-session",
         data={"plan_name": "test_plan"},
-        follow_redirects=False
+        follow_redirects=False,
     )
 
     # Since MP_ACCESS_TOKEN is not configured in this test environment, it should hit 500

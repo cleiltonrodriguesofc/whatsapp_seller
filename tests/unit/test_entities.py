@@ -70,7 +70,12 @@ def test_sale_entity():
 
 def test_campaign_entity():
     product = Product(name="p", description="d", price=1.0, affiliate_link="link")
-    campaign = Campaign(title="Promo", product=product, target_groups=["g1", "g2"], scheduled_at=datetime.utcnow())
+    campaign = Campaign(
+        title="Promo",
+        product=product,
+        target_groups=["g1", "g2"],
+        scheduled_at=datetime.utcnow(),
+    )
     assert campaign.status == CampaignStatus.PENDING
     assert campaign.is_recurring is False
     assert campaign.target_config == {}

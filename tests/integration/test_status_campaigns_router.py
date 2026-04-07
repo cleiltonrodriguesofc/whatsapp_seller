@@ -3,12 +3,17 @@ Integration tests for the status_campaigns router.
 Verifies HTTP routes, form handling, and the existing_image_url persistence
 logic introduced to fix image loss during campaign duplication.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
 from core.application.services.auth_service import AuthService
-from core.infrastructure.database.models import UserModel, InstanceModel, StatusCampaignModel
+from core.infrastructure.database.models import (
+    UserModel,
+    InstanceModel,
+    StatusCampaignModel,
+)
 
 
 @pytest.fixture
@@ -22,7 +27,9 @@ def client(override_get_db):
 def get_auth_headers(client, db_session, email="test@example.com"):
     """Helper to create a user and log them in by setting cookies directly."""
     auth = AuthService()
-    user = UserModel(email=email, hashed_password=auth.hash_password("test_password_placeholder"))
+    user = UserModel(
+        email=email, hashed_password=auth.hash_password("test_password_placeholder")
+    )
     db_session.add(user)
     db_session.commit()
 
@@ -101,7 +108,11 @@ def test_create_status_preserves_existing_image_url(client, db_session):
     db_session.expire_all()
 
     # verify the campaign was saved with the existing image url
-    saved = db_session.query(StatusCampaignModel).filter_by(title="Duplicated Campaign").first()
+    saved = (
+        db_session.query(StatusCampaignModel)
+        .filter_by(title="Duplicated Campaign")
+        .first()
+    )
     assert saved is not None
     assert saved.image_url == image_url
 
@@ -128,6 +139,7 @@ def test_create_status_new_file_overrides_existing_image_url(client, db_session)
         )
 
         import io
+
         fake_file = io.BytesIO(b"fake image data")
 
         response = client.post(
@@ -147,7 +159,9 @@ def test_create_status_new_file_overrides_existing_image_url(client, db_session)
 
     assert response.status_code == 303
 
-    saved = db_session.query(StatusCampaignModel).filter_by(title="Override Test").first()
+    saved = (
+        db_session.query(StatusCampaignModel).filter_by(title="Override Test").first()
+    )
     assert saved is not None
     # new file should win over the existing url
     assert saved.image_url != old_url

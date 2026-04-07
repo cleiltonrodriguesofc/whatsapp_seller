@@ -7,8 +7,13 @@ from core.infrastructure.services.supabase_storage import SupabaseStorageService
 def mock_supabase_client():
     import os
 
-    with patch.dict(os.environ, {"SUPABASE_URL": "http://127.0.0.1:54321", "SUPABASE_KEY": "testkey"}):
-        with patch("core.infrastructure.services.supabase_storage.create_client") as mock_create:
+    with patch.dict(
+        os.environ,
+        {"SUPABASE_URL": "http://127.0.0.1:54321", "SUPABASE_KEY": "testkey"},
+    ):
+        with patch(
+            "core.infrastructure.services.supabase_storage.create_client"
+        ) as mock_create:
             client = MagicMock()
             mock_create.return_value = client
             yield client

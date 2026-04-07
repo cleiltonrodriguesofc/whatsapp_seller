@@ -45,8 +45,12 @@ def test_status_campaign_repository_list_pending(db_session):
     db_session.commit()
 
     now = datetime.utcnow()
-    c1 = StatusCampaign(title="C1", scheduled_at=now, status=CampaignStatus.SCHEDULED, user_id=user.id)
-    c2 = StatusCampaign(title="C2", scheduled_at=now, status=CampaignStatus.SENT, user_id=user.id)
+    c1 = StatusCampaign(
+        title="C1", scheduled_at=now, status=CampaignStatus.SCHEDULED, user_id=user.id
+    )
+    c2 = StatusCampaign(
+        title="C2", scheduled_at=now, status=CampaignStatus.SENT, user_id=user.id
+    )
 
     repo.save(c1)
     repo.save(c2)
@@ -62,7 +66,9 @@ def test_status_campaign_repository_delete(db_session):
     db_session.add(user)
     db_session.commit()
 
-    campaign = StatusCampaign(title="To Delete", scheduled_at=datetime.utcnow(), user_id=user.id)
+    campaign = StatusCampaign(
+        title="To Delete", scheduled_at=datetime.utcnow(), user_id=user.id
+    )
     saved = repo.save(campaign)
 
     success = repo.delete(saved.id, user_id=user.id)

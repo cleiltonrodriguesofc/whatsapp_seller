@@ -1,13 +1,21 @@
 from datetime import datetime
 from core.domain.entities import Product, Campaign
-from core.infrastructure.database.repositories import SQLCampaignRepository, SQLTargetRepository
+from core.infrastructure.database.repositories import (
+    SQLCampaignRepository,
+    SQLTargetRepository,
+)
 
 
 def test_campaign_repository_save_and_get(db_session):
     repo = SQLCampaignRepository(db_session)
 
     product = Product(
-        id=1, name="Test Product", description="Desc", price=10.0, affiliate_link="http://link.com", user_id=1
+        id=1,
+        name="Test Product",
+        description="Desc",
+        price=10.0,
+        affiliate_link="http://link.com",
+        user_id=1,
     )
     # Ensure product exists or mock it if needed
     # For now, let's assume existence or add it
@@ -15,7 +23,12 @@ def test_campaign_repository_save_and_get(db_session):
 
     db_session.add(
         ProductModel(
-            id=1, name="Test Product", description="Desc", price=10.0, affiliate_link="http://link.com", user_id=1
+            id=1,
+            name="Test Product",
+            description="Desc",
+            price=10.0,
+            affiliate_link="http://link.com",
+            user_id=1,
         )
     )
     db_session.commit()
@@ -39,7 +52,10 @@ def test_campaign_repository_save_and_get(db_session):
 
 def test_target_repository_upsert_sync(db_session):
     repo = SQLTargetRepository(db_session)
-    targets = [{"id": "123@g.us", "subject": "Group 1"}, {"id": "456@s.whatsapp.net", "subject": "User 1"}]
+    targets = [
+        {"id": "123@g.us", "subject": "Group 1"},
+        {"id": "456@s.whatsapp.net", "subject": "User 1"},
+    ]
 
     repo.upsert_sync(targets, user_id=1)
 
@@ -50,8 +66,10 @@ def test_target_repository_upsert_sync(db_session):
 
 def test_target_repository_upsert_sync_with_instance(db_session):
     repo = SQLTargetRepository(db_session)
-    targets_inst1 = [{"id": "111@g.us", "subject": "Group Inst1"},
-                     {"id": "222@s.whatsapp.net", "subject": "User Inst1"}]
+    targets_inst1 = [
+        {"id": "111@g.us", "subject": "Group Inst1"},
+        {"id": "222@s.whatsapp.net", "subject": "User Inst1"},
+    ]
     targets_inst2 = [{"id": "333@g.us", "subject": "Group Inst2"}]
 
     repo.upsert_sync(targets_inst1, user_id=1, instance_id=1)
@@ -70,7 +88,9 @@ def test_target_repository_upsert_sync_with_instance(db_session):
 
     # Check updating existing target shifts instance safely (or keeps it) based on implementation
     # With upsert_sync, if same JID comes from same user but different instance, it updates it.
-    repo.upsert_sync([{"id": "333@g.us", "subject": "Group Inst2 Updated"}], user_id=1, instance_id=2)
+    repo.upsert_sync(
+        [{"id": "333@g.us", "subject": "Group Inst2 Updated"}], user_id=1, instance_id=2
+    )
     t2_updated = next(t for t in repo.list_all(user_id=1) if t.jid == "333@g.us")
     assert t2_updated.name == "Group Inst2 Updated"
     assert t2_updated.instance_id == 2
@@ -94,7 +114,9 @@ def test_target_repository_list_deduplication(db_session):
             name="Group Inst 1",
             type="group",
             last_synced_at=datetime.utcnow(),
-            is_active=True))
+            is_active=True,
+        )
+    )
     db_session.add(
         WhatsAppTargetModel(
             user_id=1,
@@ -103,7 +125,9 @@ def test_target_repository_list_deduplication(db_session):
             name="Group Inst 2",
             type="group",
             last_synced_at=datetime.utcnow(),
-            is_active=True))
+            is_active=True,
+        )
+    )
     db_session.commit()
 
     repo = SQLTargetRepository(db_session)
@@ -123,10 +147,17 @@ def test_target_repository_legacy_sync_no_duplicates(db_session):
     from datetime import datetime
 
     # Simulate a legacy target synced before instance logic existed
-    db_session.add(WhatsAppTargetModel(
-        user_id=1, instance_id=None, jid="legacy@g.us", name="Legacy Group",
-        type="group", last_synced_at=datetime.utcnow(), is_active=True
-    ))
+    db_session.add(
+        WhatsAppTargetModel(
+            user_id=1,
+            instance_id=None,
+            jid="legacy@g.us",
+            name="Legacy Group",
+            type="group",
+            last_synced_at=datetime.utcnow(),
+            is_active=True,
+        )
+    )
     db_session.commit()
 
     repo = SQLTargetRepository(db_session)
@@ -135,7 +166,9 @@ def test_target_repository_legacy_sync_no_duplicates(db_session):
     # Sync using a modern instance
     repo.upsert_sync(targets_inst1, user_id=1, instance_id=1)
 
-    all_targets = db_session.query(WhatsAppTargetModel).filter_by(jid="legacy@g.us").all()
+    all_targets = (
+        db_session.query(WhatsAppTargetModel).filter_by(jid="legacy@g.us").all()
+    )
     # Should NOT have created a new row, but updated the legacy one
     assert len(all_targets) == 1
     assert all_targets[0].instance_id == 1
