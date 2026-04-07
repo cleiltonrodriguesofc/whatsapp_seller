@@ -6,7 +6,10 @@ from core.infrastructure.ai.openai_service import OpenAIService
 @pytest.mark.asyncio
 async def test_openai_service_chat_success():
     with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
-        with patch("openai.resources.chat.completions.AsyncCompletions.create", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "openai.resources.chat.completions.AsyncCompletions.create",
+            new_callable=AsyncMock,
+        ) as mock_create:
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message.content = "AI Response"
@@ -20,7 +23,10 @@ async def test_openai_service_chat_success():
 @pytest.mark.asyncio
 async def test_openai_service_chat_failure():
     with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
-        with patch("openai.resources.chat.completions.AsyncCompletions.create", new_callable=AsyncMock) as mock_create:
+        with patch(
+            "openai.resources.chat.completions.AsyncCompletions.create",
+            new_callable=AsyncMock,
+        ) as mock_create:
             mock_create.side_effect = Exception("OpenAI Error")
 
             service = OpenAIService()

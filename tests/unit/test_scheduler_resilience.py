@@ -16,9 +16,13 @@ async def test_execute_status_task_calls_expire_before_send():
 
     with (
         patch("core.presentation.web.scheduler.SessionLocal", return_value=mock_db),
-        patch("core.presentation.web.scheduler.send_status_campaign", new_callable=AsyncMock) as mock_send,
+        patch(
+            "core.presentation.web.scheduler.send_status_campaign",
+            new_callable=AsyncMock,
+        ) as mock_send,
     ):
         from core.presentation.web.scheduler import execute_status_campaign_task
+
         await execute_status_campaign_task(1)
 
         mock_db.expire.assert_called_once_with(mock_model)
@@ -48,7 +52,9 @@ async def test_execute_status_task_recovery_session_on_failure():
     session_calls = [primary_db, recovery_db]
 
     with (
-        patch("core.presentation.web.scheduler.SessionLocal", side_effect=session_calls),
+        patch(
+            "core.presentation.web.scheduler.SessionLocal", side_effect=session_calls
+        ),
         patch(
             "core.presentation.web.scheduler.send_status_campaign",
             new_callable=AsyncMock,
@@ -56,6 +62,7 @@ async def test_execute_status_task_recovery_session_on_failure():
         ),
     ):
         from core.presentation.web.scheduler import execute_status_campaign_task
+
         await execute_status_campaign_task(1)
 
         # recovery session must have set status to 'failed' and committed
@@ -80,15 +87,17 @@ async def test_send_status_campaign_marks_sent_on_success():
     mock_instance.apikey = "key1"
 
     mock_db = MagicMock()
-    mock_db.query.return_value.filter.return_value.first.side_effect = [mock_model, mock_instance]
+    mock_db.query.return_value.filter.return_value.first.side_effect = [
+        mock_model,
+        mock_instance,
+    ]
 
-    with patch(
-        "core.presentation.web.scheduler.EvolutionWhatsAppService"
-    ) as MockSvc:
+    with patch("core.presentation.web.scheduler.EvolutionWhatsAppService") as MockSvc:
         mock_svc_instance = MockSvc.return_value
         mock_svc_instance.send_status = AsyncMock(return_value=True)
 
         from core.presentation.web.scheduler import send_status_campaign
+
         await send_status_campaign(42, mock_db)
 
         assert mock_model.status == "sent"
@@ -104,9 +113,13 @@ async def test_send_status_campaign_marks_failed_when_instance_missing():
 
     mock_db = MagicMock()
     # first call returns model, second (instance lookup) returns None
-    mock_db.query.return_value.filter.return_value.first.side_effect = [mock_model, None]
+    mock_db.query.return_value.filter.return_value.first.side_effect = [
+        mock_model,
+        None,
+    ]
 
     from core.presentation.web.scheduler import send_status_campaign
+
     await send_status_campaign(99, mock_db)
 
     assert mock_model.status == "failed"

@@ -1,5 +1,8 @@
 from core.infrastructure.utils.text_utils import (
-    parse_spintax, humanize_greeting, clean_whatsapp_number, parse_contacts_text
+    parse_spintax,
+    humanize_greeting,
+    clean_whatsapp_number,
+    parse_contacts_text,
 )
 
 

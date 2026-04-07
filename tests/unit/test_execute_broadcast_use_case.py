@@ -68,7 +68,9 @@ async def test_execute_marks_failed_when_instance_not_found(use_case):
     # instance not found
     use_case.db.query.return_value.get.return_value = None
 
-    with patch("core.application.use_cases.execute_broadcast_campaign.EvolutionWhatsAppService"):
+    with patch(
+        "core.application.use_cases.execute_broadcast_campaign.EvolutionWhatsAppService"
+    ):
         await use_case.execute(1)
 
     assert campaign.status == "failed"
@@ -92,6 +94,7 @@ async def test_execute_sends_to_contacts_and_updates_counts(use_case):
     use_case.broadcast_repo.get_by_id.return_value = campaign
 
     from core.infrastructure.database.models import InstanceModel, WhatsAppTargetModel
+
     mock_instance = MagicMock(spec=InstanceModel)
     mock_instance.name = "inst1"
     mock_instance.apikey = "k1"
@@ -130,6 +133,7 @@ async def test_execute_final_status_failed_when_all_sends_fail(use_case):
     use_case.broadcast_repo.get_by_id.return_value = campaign
 
     from core.infrastructure.database.models import InstanceModel
+
     mock_instance = MagicMock(spec=InstanceModel)
     mock_instance.name = "inst1"
     mock_instance.apikey = "k1"

@@ -30,6 +30,8 @@ from core.infrastructure.notifications.evolution_whatsapp import (
 from core.infrastructure.database.repositories import SQLActivityRepository
 from core.domain.entities import ActivityLog
 from core.presentation.web.dependencies import auth_service, templates, get_current_user
+from core.infrastructure.utils.timezone import now_sp
+from core.infrastructure.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 # use shared limiter from app
@@ -82,6 +84,125 @@ async def login_action(
         samesite="lax",
     )
     return response
+
+
+@router.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="forgot_password.html",
+        context={"title": "Esqueci minha senha"},
+    )
+
+
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password_action(
+    request: Request,
+    email: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user = db.query(UserModel).filter(UserModel.email == email).first()
+
+    if user:
+        # 1. Generate secure token
+        token = auth_service.generate_reset_token()
+        expiry = now_sp() + timedelta(hours=1)
+
+        # 2. Save to DB
+        user.reset_token = token
+        user.reset_token_expiry = expiry
+        db.commit()
+
+        # 3. Send Email
+        email_service = EmailService()
+        base_url = str(request.base_url).rstrip("/")
+        reset_link = f"{base_url}/forgot-password/reset?token={token}"
+
+        try:
+            await email_service.send_password_reset_email(user.email, reset_link)
+            logger.info("Password reset email sent to %s", user.email)
+        except Exception as e:
+            logger.error("Failed to send reset email: %s", e)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="forgot_password.html",
+        context={
+            "success": "Se este e-mail estiver cadastrado, você receberá um link para redefinir sua senha em instantes.",
+            "title": "Esqueci minha senha",
+        },
+    )
+
+
+@router.get("/forgot-password/reset", response_class=HTMLResponse)
+async def reset_password_page(request: Request, token: str):
+    # One-off DB session for validation
+    db: Session = next(get_db())
+    try:
+        user = db.query(UserModel).filter(UserModel.reset_token == token).first()
+
+        if not user or auth_service.is_token_expired(user.reset_token_expiry):
+            return templates.TemplateResponse(
+                request=request,
+                name="forgot_password.html",
+                context={
+                    "error": "O link de recuperação é inválido ou expirou.",
+                    "title": "Erro de Recuperação",
+                },
+            )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="reset_password.html",
+            context={"token": token, "title": "Nova Senha"},
+        )
+    finally:
+        db.close()
+
+
+@router.post("/forgot-password/reset")
+async def reset_password_action(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user = db.query(UserModel).filter(UserModel.reset_token == token).first()
+
+    if not user or auth_service.is_token_expired(user.reset_token_expiry):
+        return templates.TemplateResponse(
+            request=request,
+            name="forgot_password.html",
+            context={
+                "error": "O link de recuperação é inválido ou expirou.",
+                "title": "Erro de Recuperação",
+            },
+        )
+
+    user.hashed_password = auth_service.hash_password(password)
+    user.reset_token = None
+    user.reset_token_expiry = None
+    db.commit()
+
+    # Log activity
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(
+        ActivityLog(
+            user_id=user.id,
+            event_type="password_reset",
+            description="User successfully reset their password",
+        )
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "success": "Sua senha foi alterada com sucesso! Faça login agora.",
+            "title": "Login",
+        },
+    )
 
 
 @router.get("/register", response_class=HTMLResponse)

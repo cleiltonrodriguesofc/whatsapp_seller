@@ -4,7 +4,11 @@ from datetime import datetime
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
 from core.infrastructure.database.models import (
-    UserModel, SubscriptionModel, ReferralCodeModel, PlanModel, ReferralConversionModel
+    UserModel,
+    SubscriptionModel,
+    ReferralCodeModel,
+    PlanModel,
+    ReferralConversionModel,
 )
 from core.application.services.auth_service import AuthService
 
@@ -19,17 +23,22 @@ def client(override_get_db):
 
 def test_registration_creates_trial_and_ref_code(client, db_session):
     # Setup: Ensure a "starter" plan exists
-    plan = PlanModel(name="starter", display_name="Starter", price_brl=97.0, max_instances=1)
+    plan = PlanModel(
+        name="starter", display_name="Starter", price_brl=97.0, max_instances=1
+    )
     db_session.add(plan)
     db_session.commit()
 
     # Action: Register a new user
-    response = client.post("/register", data={
-        "email": "trial_user@test.com",
-        "password": "password123",
-        "business_name": "Test Business",
-        "terms_accepted": "on"
-    })
+    response = client.post(
+        "/register",
+        data={
+            "email": "trial_user@test.com",
+            "password": "password123",
+            "business_name": "Test Business",
+            "terms_accepted": "on",
+        },
+    )
 
     assert response.status_code == 303  # Redirect to dashboard
 
@@ -43,7 +52,9 @@ def test_registration_creates_trial_and_ref_code(client, db_session):
     assert len(ref_code.code) == 8
 
     # Verify Subscription
-    subscription = db_session.query(SubscriptionModel).filter_by(user_id=user.id).first()
+    subscription = (
+        db_session.query(SubscriptionModel).filter_by(user_id=user.id).first()
+    )
     assert subscription is not None
     assert subscription.status == "trialing"
     assert subscription.plan_id == plan.id
@@ -55,28 +66,41 @@ def test_registration_creates_trial_and_ref_code(client, db_session):
 def test_referral_conversion_tracking(client, db_session):
     # Setup: Referrer user
     auth = AuthService()
-    referrer = UserModel(email="referrer@test.com", hashed_password=auth.hash_password("pass"))
+    referrer = UserModel(
+        email="referrer@test.com", hashed_password=auth.hash_password("pass")
+    )
     db_session.add(referrer)
     db_session.commit()
 
     ref_code = ReferralCodeModel(user_id=referrer.id, code="REF12345")
     db_session.add(ref_code)
 
-    plan = PlanModel(name="starter", display_name="Starter", price_brl=97.0, max_instances=1)
+    plan = PlanModel(
+        name="starter", display_name="Starter", price_brl=97.0, max_instances=1
+    )
     db_session.add(plan)
     db_session.commit()
 
     # Action: Register with referral code
-    client.post("/register?ref=REF12345", data={
-        "email": "referred_user@test.com",
-        "password": "password123",
-        "business_name": "Referred Business",
-        "terms_accepted": "on"
-    })
+    client.post(
+        "/register?ref=REF12345",
+        data={
+            "email": "referred_user@test.com",
+            "password": "password123",
+            "business_name": "Referred Business",
+            "terms_accepted": "on",
+        },
+    )
 
     # Verify Conversion record
-    new_user = db_session.query(UserModel).filter_by(email="referred_user@test.com").first()
-    conversion = db_session.query(ReferralConversionModel).filter_by(referred_id=new_user.id).first()
+    new_user = (
+        db_session.query(UserModel).filter_by(email="referred_user@test.com").first()
+    )
+    conversion = (
+        db_session.query(ReferralConversionModel)
+        .filter_by(referred_id=new_user.id)
+        .first()
+    )
 
     assert conversion is not None
     assert conversion.referrer_id == referrer.id

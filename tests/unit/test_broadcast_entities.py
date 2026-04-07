@@ -12,7 +12,7 @@ def test_broadcast_list_entity_creation():
         name="Test List",
         description="A test description",
         member_count=10,
-        created_at=now
+        created_at=now,
     )
 
     assert blist.id == 1
@@ -38,7 +38,7 @@ def test_broadcast_campaign_entity_creation():
         message="Hello world",
         image_url="http://example.com/img.jpg",
         scheduled_at=now,
-        status="scheduled"
+        status="scheduled",
     )
 
     assert campaign.id == 1
@@ -64,7 +64,7 @@ def test_broadcast_campaign_defaults():
         title="Draft Campaign",
         target_type="contacts",
         message="Test message",
-        scheduled_at=datetime.utcnow()
+        scheduled_at=datetime.utcnow(),
     )
 
     assert campaign.status == "draft"

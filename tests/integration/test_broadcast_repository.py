@@ -3,7 +3,10 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from core.infrastructure.database.models import Base
-from core.infrastructure.database.repositories import SQLBroadcastListRepository, SQLBroadcastCampaignRepository
+from core.infrastructure.database.repositories import (
+    SQLBroadcastListRepository,
+    SQLBroadcastCampaignRepository,
+)
 from core.domain.entities import BroadcastList, BroadcastCampaign
 
 
@@ -19,7 +22,12 @@ def db_session():
 
 def test_broadcast_list_repository_save_and_get(db_session):
     repo = SQLBroadcastListRepository(db_session)
-    blist = BroadcastList(user_id=1, instance_id=2, name="Integration Test List", description="Testing repo")
+    blist = BroadcastList(
+        user_id=1,
+        instance_id=2,
+        name="Integration Test List",
+        description="Testing repo",
+    )
 
     # Save
     saved_list = repo.save(blist)
@@ -43,7 +51,7 @@ def test_broadcast_campaign_repository_save_and_list(db_session):
         target_jids=["jid1"],
         message="Integration message",
         scheduled_at=datetime.utcnow(),
-        status="scheduled"
+        status="scheduled",
     )
 
     # Save
@@ -64,7 +72,7 @@ def test_broadcast_campaign_repository_delete(db_session):
         title="ToDelete",
         target_type="contacts",
         message="Delete me",
-        scheduled_at=datetime.utcnow()
+        scheduled_at=datetime.utcnow(),
     )
     saved = repo.save(campaign)
 

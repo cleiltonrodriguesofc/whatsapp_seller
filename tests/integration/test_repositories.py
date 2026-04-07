@@ -1,5 +1,8 @@
 from core.domain.entities import Product
-from core.infrastructure.database.repositories import SQLProductRepository, SQLUserRepository
+from core.infrastructure.database.repositories import (
+    SQLProductRepository,
+    SQLUserRepository,
+)
 from core.infrastructure.database.models import UserModel
 
 
@@ -12,7 +15,11 @@ def test_product_repository_save_and_get(db_session):
     db_session.commit()
 
     product = Product(
-        name="Rep Product", description="Rep Description", price=50.0, affiliate_link="http://link.com", user_id=user.id
+        name="Rep Product",
+        description="Rep Description",
+        price=50.0,
+        affiliate_link="http://link.com",
+        user_id=user.id,
     )
 
     saved = repo.save(product)
@@ -43,8 +50,12 @@ def test_product_repository_list_all(db_session):
     db_session.add(user)
     db_session.commit()
 
-    p1 = Product(name="P1", description="D1", price=10, affiliate_link="L1", user_id=user.id)
-    p2 = Product(name="P2", description="D2", price=20, affiliate_link="L2", user_id=user.id)
+    p1 = Product(
+        name="P1", description="D1", price=10, affiliate_link="L1", user_id=user.id
+    )
+    p2 = Product(
+        name="P2", description="D2", price=20, affiliate_link="L2", user_id=user.id
+    )
 
     repo.save(p1)
     repo.save(p2)

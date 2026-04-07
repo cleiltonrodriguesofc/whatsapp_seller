@@ -394,7 +394,6 @@ async def view_status_campaign(
 
     target_names = []
     if campaign.target_contacts:
-
         for jid in campaign.target_contacts or []:
             tm = (
                 db.query(WhatsAppTargetModel)

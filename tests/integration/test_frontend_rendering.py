@@ -3,12 +3,17 @@ Frontend rendering tests.
 The project uses FastAPI + Jinja2, so frontend testing is done
 via TestClient — asserting that correct HTML elements are rendered.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from core.presentation.web.app import app
 from core.infrastructure.database.session import get_db
 from core.application.services.auth_service import AuthService
-from core.infrastructure.database.models import UserModel, InstanceModel, StatusCampaignModel
+from core.infrastructure.database.models import (
+    UserModel,
+    InstanceModel,
+    StatusCampaignModel,
+)
 
 
 @pytest.fixture
@@ -22,7 +27,9 @@ def client(override_get_db):
 def login_user(client, db_session, email="frontend@test.com"):
     """Helper to create a unique user and log them in by setting cookies directly."""
     auth = AuthService()
-    user = UserModel(email=email, hashed_password=auth.hash_password("test_password_placeholder"))
+    user = UserModel(
+        email=email, hashed_password=auth.hash_password("test_password_placeholder")
+    )
     db_session.add(user)
     db_session.commit()
 
@@ -50,10 +57,15 @@ def test_status_list_shows_duplicate_button(client, db_session):
 
     response = client.get("/status_campaigns")
     assert response.status_code == 200
-    assert "duplicate" in response.text.lower() or "/status_campaigns/duplicate/" in response.text
+    assert (
+        "duplicate" in response.text.lower()
+        or "/status_campaigns/duplicate/" in response.text
+    )
 
 
-def test_status_editor_has_existing_image_url_for_campaign_with_image(client, db_session):
+def test_status_editor_has_existing_image_url_for_campaign_with_image(
+    client, db_session
+):
     """
     When editing a campaign that has an image, the editor template must render
     the hidden existing_image_url field — this is required for image persistence
@@ -134,6 +146,7 @@ def test_broadcast_duplicate_form_action_does_not_contain_none(client, db_sessio
     db_session.commit()
 
     from core.infrastructure.database.models import BroadcastCampaignModel
+
     campaign = BroadcastCampaignModel(
         user_id=user.id,
         instance_id=instance.id,

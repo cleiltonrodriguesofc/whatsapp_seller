@@ -123,6 +123,16 @@ try:
                 "is_admin",
                 "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;",
             ),
+            (
+                "users",
+                "reset_token",
+                "ALTER TABLE users ADD COLUMN reset_token VARCHAR(255) UNIQUE;",
+            ),
+            (
+                "users",
+                "reset_token_expiry",
+                "ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP;",
+            ),
         ]
 
         for table, column, stmt in migrations:

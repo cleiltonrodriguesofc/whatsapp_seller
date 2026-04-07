@@ -43,7 +43,9 @@ async def test_send_campaign_humanized_with_media():
         targets = ["user1"]
         content = "Hello with image"
 
-        success = await sender.send_campaign_humanized(targets, content, media_url="http://example.com/image.jpg")
+        success = await sender.send_campaign_humanized(
+            targets, content, media_url="http://example.com/image.jpg"
+        )
 
         assert success is True
         assert mock_ws.send_image.called

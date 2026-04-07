@@ -57,7 +57,9 @@ async def test_get_optimized_base64_supabase():
     img.save(buffer, format="JPEG")
     img_data = buffer.getvalue()
 
-    with patch("core.infrastructure.services.supabase_storage.SupabaseStorageService.download_image") as mock_download:
+    with patch(
+        "core.infrastructure.services.supabase_storage.SupabaseStorageService.download_image"
+    ) as mock_download:
         mock_download.return_value = img_data
         base64_res = await get_optimized_base64("supabase://bucket/test.jpg")
         assert isinstance(base64_res, str)

@@ -24,9 +24,13 @@ def test_registration_flow(client, db_session):
     # Mocking Evolution API for instance creation
     from unittest.mock import patch, AsyncMock
 
-    with patch("core.presentation.web.routers.auth.EvolutionWhatsAppService") as mock_ws:
+    with patch(
+        "core.presentation.web.routers.auth.EvolutionWhatsAppService"
+    ) as mock_ws:
         mock_instance = mock_ws.return_value
-        mock_instance.create_instance = AsyncMock(return_value={"hash": {"apikey": "mock_sys_key_x9"}})
+        mock_instance.create_instance = AsyncMock(
+            return_value={"hash": {"apikey": "mock_sys_key_x9"}}
+        )
 
         response = client.post(
             "/register",
@@ -34,16 +38,24 @@ def test_registration_flow(client, db_session):
                 "email": "api_test@test.com",
                 "password": "test_password_placeholder",
                 "business_name": "API Business",
-                "terms_accepted": "on"},
+                "terms_accepted": "on",
+            },
             follow_redirects=True,
         )
 
         # Should redirect to connect_whatsapp_page
         assert response.status_code == 200
-        assert "connect_whatsapp.html" in response.template.name or "/whatsapp/connect" in response.url.path
+        assert (
+            "connect_whatsapp.html" in response.template.name
+            or "/whatsapp/connect" in response.url.path
+        )
 
         # Verify user created in DB
-        user = db_session.query(UserModel).filter(UserModel.email == "api_test@test.com").first()
+        user = (
+            db_session.query(UserModel)
+            .filter(UserModel.email == "api_test@test.com")
+            .first()
+        )
         assert user is not None
         assert user.instances[0].apikey == "mock_sys_key_x9"
 
@@ -57,14 +69,26 @@ def test_dashboard_login_required(client):
 def test_successful_login(client, db_session):
     # Create user
     auth = AuthService()
-    user = UserModel(email="auth_test@test.com", hashed_password=auth.hash_password("test_password_placeholder"))
+    user = UserModel(
+        email="auth_test@test.com",
+        hashed_password=auth.hash_password("test_password_placeholder"),
+    )
     db_session.add(user)
     db_session.commit()
 
     response = client.post(
-        "/login", data={"username": "auth_test@test.com", "password": "test_password_placeholder"}, follow_redirects=True
+        "/login",
+        data={
+            "username": "auth_test@test.com",
+            "password": "test_password_placeholder",
+        },
+        follow_redirects=True,
     )
 
     assert response.status_code == 200
     # Should show dashboard (list campaigns)
-    assert "Dashboard" in response.text or "Campaign Details" in response.text or "/" in response.url.path
+    assert (
+        "Dashboard" in response.text
+        or "Campaign Details" in response.text
+        or "/" in response.url.path
+    )

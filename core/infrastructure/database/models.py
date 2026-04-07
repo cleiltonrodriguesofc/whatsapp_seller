@@ -47,6 +47,8 @@ class UserModel(Base):
     referral_balance = Column(Float, default=0.0)
     referral_code_id = Column(Integer, ForeignKey("referral_codes.id"), nullable=True)
     agreed_to_terms_at = Column(DateTime, nullable=True)
+    reset_token = Column(String, unique=True, index=True, nullable=True)
+    reset_token_expiry = Column(DateTime, nullable=True)
 
     products = relationship("ProductModel", back_populates="user")
     instances = relationship("InstanceModel", back_populates="user")

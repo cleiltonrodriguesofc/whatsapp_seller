@@ -19,3 +19,4 @@ supabase
 pytz
 mercadopago>=2.2.0
 mercadopago==2.3.0
+aiosmtplib
