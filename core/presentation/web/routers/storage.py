@@ -75,10 +75,25 @@ async def redirect_to_affiliate(
     Cloaks affiliate links by redirecting through a local route.
     Also increments the click counter for analytics.
     """
+    from core.infrastructure.database.repositories import SQLActivityRepository
+    from core.domain.entities import ActivityLog
+
     product_repo = SQLProductRepository(db)
     product_repo.increment_clicks(product_id)
 
     product = product_repo.get_by_id(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Link not found")
+
+    # Log click activity
+    if product.user_id:
+        activity_repo = SQLActivityRepository(db)
+        activity_repo.save(
+            ActivityLog(
+                user_id=product.user_id,
+                event_type="link_click",
+                description=f"Novo clique no produto: {product.name}",
+            )
+        )
+
     return RedirectResponse(url=product.affiliate_link)
