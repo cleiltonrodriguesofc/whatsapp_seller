@@ -1,144 +1,283 @@
 {% extends "base.html" %}
 
 {% block page_title %}Visão Geral{% endblock %}
-{% block page_subtitle %}Acompanhe suas campanhas e o desempenho do marketing automatizado.{% endblock %}
+{% block page_subtitle %}Métricas em tempo real do seu ecossistema de vendas.{% endblock %}
 
 {% block content %}
-{% if subscription and subscription.status == "trialing" %}
-<div class="card trial-banner animate-fade-in" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%); border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 2.5rem; backdrop-filter: blur(10px);">
-    <div style="display: flex; align-items: center; gap: 1.5rem;">
-        <div style="font-size: 2rem; background: rgba(255, 255, 255, 0.05); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 16px;">🎁</div>
-        <div>
-            <h4 style="margin: 0; font-weight: 800; font-size: 1.1rem; color: white;">Seu Trial Gratuito está ativo!</h4>
-            <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Você tem <strong style="color: var(--primary-light);">{{ days_left }} dias</strong> restantes para testar todas as funcionalidades Pro.</p>
-        </div>
-    </div>
-    <a href="/pricing" class="btn btn-primary">
-        Fazer Upgrade Agora
-    </a>
-</div>
-{% endif %}
+<style>
+    :root {
+        --card-bg: rgba(16, 20, 30, 0.4);
+        --accent-glow: rgba(99, 102, 241, 0.15);
+    }
 
-<div class="stat-grid">
-    <div class="card stat-card">
-        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">📊</div>
-        <div class="stat-data">
-            <h4>Total de Campanhas</h4>
-            <p>{{ campaigns|length }}</p>
-        </div>
-    </div>
-    <div class="card stat-card">
-        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">✅</div>
-        <div class="stat-data">
-            <h4>Mensagens Enviadas</h4>
-            <p>{{ sent_count }}</p>
-        </div>
-    </div>
-    <div class="card stat-card">
-        <div class="stat-icon" style="background: rgba(236, 72, 153, 0.1); color: var(--secondary);">✨</div>
-        <div class="stat-data">
-            <h4>Geradas por IA</h4>
-            <p>{{ ai_count }}</p>
-        </div>
-    </div>
-    <div class="card stat-card">
-        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">🖱️</div>
-        <div class="stat-data">
-            <h4>Cliques em Links</h4>
-            <p>{{ total_clicks or 0 }}</p>
-        </div>
-    </div>
-<div class="grid-split" style="grid-template-columns: 2fr 1fr; margin-bottom: 3rem;">
-    <!-- Performance Chart -->
-    <div class="card" style="padding: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    .dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Staggered Entrance Animation */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); filter: blur(5px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+
+    .animate-item {
+        opacity: 0;
+        animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Stats Grid - Mobile First */
+    .premium-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2 per row on mobile */
+        gap: 1rem;
+    }
+
+    @media (min-width: 1024px) {
+        .premium-stats {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+    }
+
+    .glass-card {
+        position: relative;
+        background: var(--card-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+
+    .glass-card:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        transform: translateY(-5px);
+        background: rgba(16, 20, 30, 0.6);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    @media (min-width: 768px) {
+        .stat-value { font-size: 2.25rem; }
+    }
+
+    .stat-icon-bg {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        font-size: 4rem;
+        opacity: 0.05;
+        transform: rotate(-15deg);
+        pointer-events: none;
+    }
+
+    /* Analytics Grid */
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    @media (min-width: 1024px) {
+        .analytics-grid {
+            grid-template-columns: 2fr 1fr;
+        }
+    }
+
+    /* Timeline Section */
+    .timeline {
+        position: relative;
+        padding-left: 20px;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 1rem;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -25px;
+        top: 5px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--primary);
+        box-shadow: 0 0 10px var(--primary);
+    }
+
+    .timeline-content p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    .timeline-time {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    /* Trial Banner */
+    .trial-banner-premium {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+        border: 1px dashed rgba(99, 102, 241, 0.3);
+        border-radius: 16px;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+        text-align: center;
+    }
+
+    @media (min-width: 768px) {
+        .trial-banner-premium {
+            flex-direction: row;
+            justify-content: space-between;
+            text-align: left;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    {% if subscription and subscription.status == "trialing" %}
+    <div class="trial-banner-premium animate-item" style="animation-delay: 0.1s;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="font-size: 1.5rem;">⚡</div>
             <div>
-                <h3 style="margin-bottom: 0.25rem;">Desempenho Semanal</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted);">Engajamento e cliques nos últimos 7 dias</p>
-            </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <span class="badge badge-success" style="background: rgba(99, 102, 241, 0.1); color: var(--primary);">Cliques</span>
-                <span class="badge badge-success" style="background: rgba(168, 85, 247, 0.1); color: var(--secondary);">Envios</span>
+                <h4 style="margin: 0; font-size: 1rem; color: white;">Trial Gratuito Ativo</h4>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">Você tem <strong>{{ days_left }} dias</strong> restantes de acesso Pro.</p>
             </div>
         </div>
-        <div style="height: 300px; width: 100%;">
-            <canvas id="performanceChart"></canvas>
+        <a href="/pricing" class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.85rem;">Upgrade Now</a>
+    </div>
+    {% endif %}
+
+    <!-- Stats Section -->
+    <div class="premium-stats">
+        <div class="glass-card animate-item" style="animation-delay: 0.1s;">
+            <div class="stat-label">Campanhas</div>
+            <div class="stat-value">{{ total_campaigns }}</div>
+            <div class="stat-icon-bg">📊</div>
+        </div>
+        <div class="glass-card animate-item" style="animation-delay: 0.2s;">
+            <div class="stat-label">Enviadas</div>
+            <div class="stat-value">{{ total_sent }}</div>
+            <div class="stat-icon-bg">✅</div>
+        </div>
+        <div class="glass-card animate-item" style="animation-delay: 0.3s;">
+            <div class="stat-label">Contatos</div>
+            <div class="stat-value">{{ contact_count }}</div>
+            <div class="stat-icon-bg">👤</div>
+        </div>
+        <div class="glass-card animate-item" style="animation-delay: 0.4s;">
+            <div class="stat-label">Grupos</div>
+            <div class="stat-value">{{ group_count }}</div>
+            <div class="stat-icon-bg">👥</div>
         </div>
     </div>
 
-    <!-- Recent Activity -->
-    <div class="card" style="padding: 2rem; display: flex; flex-direction: column;">
-        <h3 style="margin-bottom: 1.5rem;">Atividade Recente</h3>
-        <div style="display: flex; flex-direction: column; gap: 1.25rem; flex-grow: 1;">
-            <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-top: 0.5rem; box-shadow: 0 0 8px var(--success);"></div>
+    <!-- Charts Section -->
+    <div class="analytics-grid">
+        <div class="glass-card animate-item" style="animation-delay: 0.5s; min-height: 350px;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
                 <div>
-                    <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.1rem;">Campanha Finalizada</p>
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">"Oferta de Verão" enviada com sucesso</p>
+                    <h3 style="font-size: 1.1rem;">Estatísticas de Engajamento</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Monitoramento dos últimos 7 dias</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <span style="font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; background: rgba(99, 102, 241, 0.2); color: #818cf8;">CLIQUES</span>
+                    <span style="font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; background: rgba(168, 85, 247, 0.2); color: #c084fc;">ENVIOS</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); margin-top: 0.5rem; box-shadow: 0 0 8px var(--primary);"></div>
-                <div>
-                    <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.1rem;">Novo Clique Registrado</p>
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">Lead clicou no link do Produto X</p>
-                </div>
-            </div>
-            <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); margin-top: 0.5rem; box-shadow: 0 0 8px var(--secondary);"></div>
-                <div>
-                    <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.1rem;">Status Postado</p>
-                    <p style="font-size: 0.75rem; color: var(--text-muted);">Automação de status ativa há 2h</p>
-                </div>
+            <div style="height: 250px;">
+                <canvas id="performanceChart"></canvas>
             </div>
         </div>
-        <a href="/activities" style="margin-top: 2rem; text-align: center; font-size: 0.85rem; color: var(--primary); font-weight: 600; text-decoration: none;">Ver todo o histórico →</a>
+
+        <div class="glass-card animate-item" style="animation-delay: 0.6s;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Distribuição</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 2rem;">Mix de campanhas ativas</p>
+            <div style="height: 200px; display: flex; justify-content: center; align-items: center; position: relative;">
+                <canvas id="distChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('performanceChart').getContext('2d');
-        
-        // Mock data for 7 days
-        const labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-        const data = {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Cliques',
-                    data: [12, 19, 15, 25, 22, 30, 45],
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#6366f1'
-                },
-                {
-                    label: 'Mensagens',
-                    data: [50, 65, 55, 80, 70, 90, 120],
-                    borderColor: '#a855f7',
-                    backgroundColor: 'transparent',
-                    fill: false,
-                    tension: 0.4,
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 0
-                }
-            ]
-        };
+        const perfCtx = document.getElementById('performanceChart').getContext('2d');
+        const distCtx = document.getElementById('distChart').getContext('2d');
+        const chartData = {{ chart_data | tojson | safe }};
 
-        new Chart(ctx, {
+        // Standardizing Area Gradients
+        const purpleGradient = perfCtx.createLinearGradient(0, 0, 0, 250);
+        purpleGradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+        purpleGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+        // 1. Performance Line Chart
+        new Chart(perfCtx, {
             type: 'line',
-            data: data,
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Cliques',
+                        data: chartData.cliques,
+                        borderColor: '#6366f1',
+                        backgroundColor: purpleGradient,
+                        fill: true,
+                        tension: 0.45,
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#6366f1'
+                    },
+                    {
+                        label: 'Envios',
+                        data: chartData.mensagens,
+                        borderColor: '#a855f7',
+                        borderDash: [5, 5],
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        tension: 0.45,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }
+                ]
+            },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -148,6 +287,42 @@
                     x: {
                         grid: { display: false },
                         ticks: { color: '#64748b', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+
+        // 2. Distribution Doughnut Chart
+        const distData = chartData.distribution;
+        new Chart(distCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Regular', 'Status', 'Broadcast'],
+                datasets: [{
+                    data: [distData.regular, distData.status, distData.broadcast],
+                    backgroundColor: [
+                        'rgba(99, 102, 241, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(236, 72, 153, 0.8)'
+                    ],
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 2,
+                    hoverOffset: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            usePointStyle: true,
+                            padding: 20,
+                            font: { size: 11 }
+                        }
                     }
                 }
             }

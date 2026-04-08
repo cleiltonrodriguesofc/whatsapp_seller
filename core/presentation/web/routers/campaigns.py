@@ -2,13 +2,15 @@
 Campaign routes: dashboard, new/edit/delete campaigns, AI rewrite.
 """
 
+import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
 from core.infrastructure.ai.openai_service import OpenAIService
@@ -17,6 +19,12 @@ from core.infrastructure.database.models import (
     StatusCampaignModel,
     SubscriptionModel,
     UserModel,
+    CampaignModel,
+    BroadcastCampaignModel,
+    ProductModel,
+    ActivityLogModel,
+    WhatsAppTargetModel,
+    campaign_groups,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
@@ -55,26 +63,172 @@ async def home(
             request=request, name="landing.html", context={"title": "Welcome"}
         )
 
-    # Estatísticas focadas em Status
-    status_campaigns = (
-        db.query(StatusCampaignModel)
-        .filter(StatusCampaignModel.user_id == current_user.id)
-        .all()
+    uid = current_user.id
+
+    # --- Statistics Aggregation ---
+
+    # 1. Total Campaigns (all types)
+    c_count = db.query(CampaignModel).filter(CampaignModel.user_id == uid).count()
+    s_count = (
+        db.query(StatusCampaignModel).filter(StatusCampaignModel.user_id == uid).count()
     )
-    sent_count = (
+    b_count = (
+        db.query(BroadcastCampaignModel)
+        .filter(BroadcastCampaignModel.user_id == uid)
+        .count()
+    )
+    total_campaigns = c_count + s_count + b_count
+
+    # 2. Total Messages Sent (actual recipients, not campaign count)
+    # - CampaignModel: count rows in campaign_groups for all sent campaigns of this user
+    c_sent_messages = (
+        db.query(func.count(campaign_groups.c.group_jid))
+        .join(CampaignModel, campaign_groups.c.campaign_id == CampaignModel.id)
+        .filter(CampaignModel.user_id == uid, CampaignModel.status == "sent")
+        .scalar()
+        or 0
+    )
+    # - StatusCampaignModel: target_contacts is a JSON list stored as text; we must
+    #   fetch each sent campaign and count items in its list in Python
+    sent_status_campaigns = (
         db.query(StatusCampaignModel)
         .filter(
-            StatusCampaignModel.user_id == current_user.id,
-            StatusCampaignModel.status == "sent",
+            StatusCampaignModel.user_id == uid, StatusCampaignModel.status == "sent"
+        )
+        .all()
+    )
+    s_sent_messages = 0
+    for sc in sent_status_campaigns:
+        if sc.target_contacts:
+            try:
+                contacts = json.loads(sc.target_contacts)
+                s_sent_messages += len(contacts) if isinstance(contacts, list) else 1
+            except (json.JSONDecodeError, TypeError):
+                s_sent_messages += 1
+    # - BroadcastCampaignModel: uses its own sent_count field (accurate)
+    b_sent_messages = (
+        db.query(func.sum(BroadcastCampaignModel.sent_count))
+        .filter(BroadcastCampaignModel.user_id == uid)
+        .scalar()
+        or 0
+    )
+    total_sent = c_sent_messages + s_sent_messages + b_sent_messages
+
+    # 3. AI Generated campaigns count
+    ai_count = (
+        db.query(CampaignModel)
+        .filter(
+            CampaignModel.user_id == uid,
+            CampaignModel.is_ai_generated == True,  # noqa: E712
         )
         .count()
     )
 
+    # 4. Total Clicks across all products
+    total_clicks = (
+        db.query(func.sum(ProductModel.click_count))
+        .filter(ProductModel.user_id == uid)
+        .scalar()
+        or 0
+    )
+
+    # 5. Unique Contacts and Groups (deduplicated by JID, active only)
+    contact_count = (
+        db.query(func.count(func.distinct(WhatsAppTargetModel.jid)))
+        .filter(
+            WhatsAppTargetModel.user_id == uid,
+            WhatsAppTargetModel.type == "chat",
+            WhatsAppTargetModel.is_active == True,  # noqa: E712
+        )
+        .scalar()
+        or 0
+    )
+    group_count = (
+        db.query(func.count(func.distinct(WhatsAppTargetModel.jid)))
+        .filter(
+            WhatsAppTargetModel.user_id == uid,
+            WhatsAppTargetModel.type == "group",
+            WhatsAppTargetModel.is_active == True,  # noqa: E712
+        )
+        .scalar()
+        or 0
+    )
+
+    # --- Chart Data Generation (Last 7 Days) ---
+    today = datetime.utcnow().date()
+    # Generate labels backwards from today
+    labels = []
+    clicks_data = []
+    mensagens_data = []
+
+    for i in range(6, -1, -1):
+        target_date = today - timedelta(days=i)
+        start_dt = datetime(target_date.year, target_date.month, target_date.day)
+        end_dt = start_dt + timedelta(days=1)
+
+        # Abbreviated weekday label (e.g., Seg, Ter)
+        # Using a simple mapping since strftime("%a") uses locale in some envs
+        pt_br_weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]
+        labels.append(pt_br_weekdays[target_date.weekday()])
+
+        # Count Clicks for target_date
+        day_clicks = (
+            db.query(ActivityLogModel)
+            .filter(
+                ActivityLogModel.user_id == uid,
+                ActivityLogModel.event_type == "link_click",
+                ActivityLogModel.timestamp >= start_dt,
+                ActivityLogModel.timestamp < end_dt,
+            )
+            .count()
+        )
+        clicks_data.append(day_clicks)
+
+        # Count Sent Messages for target_date
+        # (Status, Regular)
+        c_day_sent = (
+            db.query(CampaignModel)
+            .filter(
+                CampaignModel.user_id == uid,
+                CampaignModel.status == "sent",
+                CampaignModel.sent_at >= start_dt,
+                CampaignModel.sent_at < end_dt,
+            )
+            .count()
+        )
+        s_day_sent = (
+            db.query(StatusCampaignModel)
+            .filter(
+                StatusCampaignModel.user_id == uid,
+                StatusCampaignModel.status == "sent",
+                StatusCampaignModel.sent_at >= start_dt,
+                StatusCampaignModel.sent_at < end_dt,
+            )
+            .count()
+        )
+        b_day_sent = (
+            db.query(func.sum(BroadcastCampaignModel.sent_count))
+            .filter(
+                BroadcastCampaignModel.user_id == uid,
+                BroadcastCampaignModel.sent_at >= start_dt,
+                BroadcastCampaignModel.sent_at < end_dt,
+            )
+            .scalar()
+            or 0
+        )
+
+        mensagens_data.append(c_day_sent + s_day_sent + b_day_sent)
+
+    chart_data = {
+        "labels": labels,
+        "cliques": clicks_data,
+        "mensagens": mensagens_data,
+        "distribution": {"regular": c_count, "status": s_count, "broadcast": b_count},
+    }
+
     # Buscar assinatura e dados de referral
     subscription = (
-        db.query(SubscriptionModel)
-        .filter(SubscriptionModel.user_id == current_user.id)
-        .first()
+        db.query(SubscriptionModel).filter(SubscriptionModel.user_id == uid).first()
     )
 
     # Calcular dias restantes se for trial
@@ -91,13 +245,19 @@ async def home(
         request=request,
         name="dashboard.html",
         context={
-            "campaigns": status_campaigns,
-            "sent_count": sent_count,
-            "ai_count": 0,
-            "total_clicks": 0,
+            "campaigns": range(
+                total_campaigns
+            ),  # just for campaigns|length in template to work without changing it, or we edit the template. Let's pass the integer and update the template as well. Actually, I am editing the template.
+            "total_campaigns": total_campaigns,
+            "total_sent": total_sent,
+            "ai_count": ai_count,
+            "total_clicks": total_clicks,
+            "contact_count": contact_count,
+            "group_count": group_count,
             "user": current_user,
             "subscription": subscription,
             "days_left": days_left,
+            "chart_data": chart_data,
         },
     )
 
