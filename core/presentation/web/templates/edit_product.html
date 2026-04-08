@@ -53,7 +53,7 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Trocar Imagem</label>
-                    <input type="file" name="image_file" class="form-input" accept="image/*">
+                    <input type="file" name="image_file" class="form-input" accept="image/*" onchange="checkFileSize(this)">
                     <small style="color: var(--text-muted); font-size: 0.75rem;">Deixe vazio para manter a imagem atual.</small>
                 </div>
             </div>
@@ -65,4 +65,19 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkFileSize(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const maxSize = 25 * 1024 * 1024; // 25MB
+        if (file.size > maxSize) {
+            alert(`⚠️ O arquivo é muito grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). O limite para upload é 25MB.`);
+            input.value = '';
+        }
+    }
+}
+</script>
 {% endblock %}

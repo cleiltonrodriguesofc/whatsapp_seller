@@ -19,7 +19,9 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 @pytest.fixture(scope="session")
 def engine():
-    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(bind=engine)
     return engine
 
@@ -42,11 +44,13 @@ def db_session(engine):
 @pytest.fixture(scope="function")
 def override_get_db(db_session):
     """Overrides the FastAPI get_db dependency."""
+
     def _override_get_db():
         try:
             yield db_session
         finally:
             pass
+
     return _override_get_db
 
 
@@ -54,5 +58,6 @@ def override_get_db(db_session):
 def disable_rate_limiter():
     """Disable rate limiter entirely during tests to prevent 429 errors."""
     from core.presentation.web.limiter import limiter
+
     limiter.enabled = False
     yield

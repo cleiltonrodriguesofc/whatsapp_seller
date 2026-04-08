@@ -20,7 +20,7 @@ class EvolutionWhatsAppService(NotificationService):
         self.base_url = os.environ.get("EVOLUTION_API_URL", "http://evolution-api:8080")
         self.api_key = apikey or os.environ.get("EVOLUTION_API_KEY", "changeme")
         self.instance = instance or os.environ.get("EVOLUTION_INSTANCE", "grupo_1000")
-        self.timeout = httpx.Timeout(60.0, connect=30.0)
+        self.timeout = httpx.Timeout(120.0, connect=30.0)
 
     def _headers(self) -> dict:
         return {
@@ -413,7 +413,7 @@ class EvolutionWhatsAppService(NotificationService):
 
                 return {"status": state, "connected": state in ["open", "CONNECTED"]}
         except Exception as exc:
-            logger.error("Failed to get WhatsApp status: %s", exc)
+            logger.error("Failed to get WhatsApp status: %r", exc)
             return {"status": "error", "connected": False}
 
     async def create_instance(
