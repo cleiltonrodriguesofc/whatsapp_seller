@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["products"])
 
 _ALLOWED_IMAGE_TYPES = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif"}
-_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+_MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
 
 
 async def _save_uploaded_image(

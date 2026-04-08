@@ -31,7 +31,7 @@ async def serve_private_image(
     Securely serves images from the private Supabase bucket.
     Requires active dashboard session cookie.
     """
-    storage_svc = SupabaseStorageService()
+    storage_svc = SupabaseStorageService(bucket_name="images")
     clean_path = filename.replace("supabase://", "")
 
     image_bytes = storage_svc.download_image(clean_path)

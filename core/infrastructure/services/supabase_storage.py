@@ -69,8 +69,10 @@ class SupabaseStorageService:
 
         clean_path = path.replace("supabase://", "")
         buckets_to_try = [self.bucket_name]
-        other_bucket = "images" if self.bucket_name == "produtos" else "produtos"
-        buckets_to_try.append(other_bucket)
+        if self.bucket_name == "produtos":
+            buckets_to_try.append("images")
+        else:
+            buckets_to_try.append("produtos")
 
         for bucket in buckets_to_try:
             try:

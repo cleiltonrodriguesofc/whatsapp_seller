@@ -368,6 +368,13 @@
         const preview = document.getElementById('image-preview-container');
         
         if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const maxSize = 25 * 1024 * 1024; // 25MB
+            if (file.size > maxSize) {
+                alert(`⚠️ O arquivo é muito grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). O limite para upload é 25MB para garantir a qualidade e processamento.`);
+                input.value = '';
+                return;
+            }
             palette.style.display = 'none';
             clearBtn.style.display = 'block';
             if (preview) preview.style.display = 'block';
