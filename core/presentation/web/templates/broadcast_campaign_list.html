@@ -27,7 +27,7 @@
                 {% for campaign in campaigns %}
                 <tr style="border-bottom: 1px solid var(--border); transition: var(--transition);" class="table-row">
                     <td style="padding: 1rem;">
-                        <a href="/broadcast/campaigns/{{ campaign.id }}" style="font-weight: 700; color: #fff; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
+                        <a href="/broadcast/campaigns/{{ campaign.id }}" style="font-weight: 700; color: #fff; text-decoration: none; transition: color 0.2s; display: block; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ campaign.title }}" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
                         <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             {{ campaign.message }}
                         </div>
