@@ -9,7 +9,7 @@
     <!-- Status Header -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem;">
         <div>
-            <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">{{ campaign.title }}</h2>
+            <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; word-break: break-word; hyphens: auto; overflow-wrap: break-word;">{{ campaign.title }}</h2>
             <div style="display: flex; gap: 0.75rem; align-items: center; font-size: 0.85rem; color: var(--text-secondary);">
                 <span>🗓️ Criado em {{ campaign.created_at.strftime('%d/%m/%Y às %H:%M') }}</span>
                 <span>•</span>
