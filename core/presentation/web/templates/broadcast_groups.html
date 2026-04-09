@@ -58,7 +58,7 @@
             </div>
             
             <div style="overflow: hidden; flex-grow: 1; padding-right: 2rem;">
-                <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ group.name or "Sem Nome" }}</h3>
+                <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">{{ group.name or "Sem Nome" }}</h3>
                 <p style="font-size: 0.7rem; color: var(--text-muted); margin: 2px 0 0; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ group.jid }}</p>
                 <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase;">Sinc: {{ group.last_synced_at.strftime('%d/%m/%Y') }}</p>
             </div>

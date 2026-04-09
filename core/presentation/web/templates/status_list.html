@@ -21,7 +21,7 @@
     
     <!-- Info -->
     <div style="flex-grow: 1; min-width: 0;">
-        <a href="/status_campaigns/{{ campaign.id }}" style="text-decoration: none; display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; font-size: 1.15rem; color: #fff; margin-bottom: 0.25rem; transition: color 0.2s;" title="{{ campaign.title }}" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
+        <a href="/status_campaigns/{{ campaign.id }}" style="text-decoration: none; display: block; max-width: 350px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; font-size: 1.15rem; color: #fff; margin-bottom: 0.25rem; transition: color 0.2s;" title="{{ campaign.title }}" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
         <div style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;">
             {% if campaign.caption %}{{ campaign.caption }}{% else %}Sem legenda{% endif %}
         </div>
