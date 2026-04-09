@@ -56,7 +56,7 @@ def test_public_layout_conditional_navigation(client):
     res_landing = client.get("/")
     assert "Engenharia" in res_landing.text
     assert "Entrar" in res_landing.text
-    assert "Começar Grátis" in res_landing.text
+    assert "Começar por R$ 97" in res_landing.text
     assert "Voltar para o Início" not in res_landing.text
 
     # 2. Terms Page
