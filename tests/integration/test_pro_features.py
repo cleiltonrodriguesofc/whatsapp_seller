@@ -118,6 +118,6 @@ def test_pricing_on_landing_page(client):
     response = client.get("/")
     assert response.status_code == 200
     assert "Automatize" in response.text
-    assert "3.2M" in response.text
+    assert "Beta Aberto" in response.text
     assert "Capacidades" in response.text
     assert "Metodologia" in response.text
