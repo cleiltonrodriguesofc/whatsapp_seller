@@ -4,6 +4,7 @@ from core.presentation.web.routers.products import _save_uploaded_image
 from core.infrastructure.database.models import UserModel
 from fastapi import UploadFile
 import io
+import pytest
 
 @pytest.fixture
 def mock_supabase_client():
@@ -19,7 +20,7 @@ async def test_save_uploaded_image_with_user_isolation(mock_supabase_client):
     
     # Mock file
     file_content = b"fake_image_bytes"
-    file = UploadFile(filename="test.jpg", file=io.BytesIO(file_content))
+    file = UploadFile(filename="test.jpg", file=io.BytesIO(file_content), headers={"content-type": "image/jpeg"})
     
     # Run the function with mocked service
     with patch("core.presentation.web.routers.products.SupabaseStorageService") as MockSvc:
