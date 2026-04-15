@@ -26,3 +26,10 @@ async def documentation_page(request: Request):
     return templates.TemplateResponse(
         request=request, name="documentation.html", context={"title": "Documentação"}
     )
+
+
+@router.get("/google9a53f07c34b6a040.html", response_class=HTMLResponse)
+async def google_verification(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="google9a53f07c34b6a040.html", context={}
+    )

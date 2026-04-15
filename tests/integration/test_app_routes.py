@@ -202,3 +202,10 @@ def test_api_targets_endpoint_auth(client, db_session):
     json_grp = res_grp.json()
     assert len(json_grp) == 1
     assert json_grp[0]["jid"] == "api2@g.us"
+
+
+def test_google_verification_route(client):
+    """The google verification HTML must be served at the root."""
+    response = client.get("/google9a53f07c34b6a040.html")
+    assert response.status_code == 200
+    assert "google-site-verification: google9a53f07c34b6a040.html" in response.text

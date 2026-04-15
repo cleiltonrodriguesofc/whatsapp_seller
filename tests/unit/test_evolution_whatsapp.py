@@ -121,12 +121,12 @@ async def test_send_status_returns_true_on_2xx(svc, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_send_status_returns_true_on_4xx(svc, mock_client):
-    """evolution api sendStatus commonly returns 400 even when message is delivered."""
+async def test_send_status_returns_false_on_4xx(svc, mock_client):
+    """evolution api sendStatus rejected (4xx) should now return False."""
     mock_client.post = AsyncMock(
         return_value=MagicMock(status_code=400, text="bad request")
     )
-    assert await svc.send_status("hello world", type="text") is True
+    assert await svc.send_status("hello world", type="text") is False
 
 
 @pytest.mark.asyncio
@@ -147,6 +147,24 @@ async def test_send_status_returns_true_on_timeout(svc, mock_client):
 async def test_send_status_returns_false_on_connect_error(svc, mock_client):
     mock_client.post = AsyncMock(side_effect=httpx.ConnectError("refused"))
     assert await svc.send_status("hello world", type="text") is False
+
+
+@pytest.mark.asyncio
+async def test_send_status_returns_false_on_connect_timeout(svc, mock_client):
+    mock_client.post = AsyncMock(side_effect=httpx.ConnectTimeout("timeout"))
+    assert await svc.send_status("hello world", type="text") is False
+
+
+@pytest.mark.asyncio
+async def test_create_instance_payload(svc, mock_client):
+    mock_client.post = AsyncMock(return_value=MagicMock(status_code=201, json=lambda: {"hash": "abc"}))
+    await svc.create_instance("test_inst", display_name="BrowserName")
+    
+    args, kwargs = mock_client.post.call_args
+    payload = kwargs["json"]
+    assert payload["instanceName"] == "test_inst"
+    assert payload["syncFullHistory"] is True
+    assert payload["webhook_by_events"] is False
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

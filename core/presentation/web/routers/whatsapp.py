@@ -180,6 +180,14 @@ async def delete_whatsapp(
     current_user: UserModel = Depends(login_required),
     db: Session = Depends(get_db),
 ):
+    from core.infrastructure.database.models import (
+        StatusCampaignModel,
+        CampaignModel,
+        BroadcastCampaignModel,
+        WhatsAppTargetModel,
+        BroadcastListModel,
+    )
+
     instance_model = (
         db.query(InstanceModel)
         .filter(
@@ -195,6 +203,25 @@ async def delete_whatsapp(
         apikey=instance_model.apikey,
     )
     await whatsapp_service.delete_instance()
+
+    # nullify all fk references before deleting to avoid IntegrityError
+    db.query(StatusCampaignModel).filter(
+        StatusCampaignModel.instance_id == instance_id
+    ).update({"instance_id": None})
+    db.query(CampaignModel).filter(
+        CampaignModel.instance_id == instance_id
+    ).update({"instance_id": None})
+    db.query(WhatsAppTargetModel).filter(
+        WhatsAppTargetModel.instance_id == instance_id
+    ).update({"instance_id": None})
+    db.query(BroadcastListModel).filter(
+        BroadcastListModel.instance_id == instance_id
+    ).update({"instance_id": None})
+    # broadcast_campaigns has NOT NULL fk — delete orphaned campaigns
+    db.query(BroadcastCampaignModel).filter(
+        BroadcastCampaignModel.instance_id == instance_id
+    ).delete()
+
     db.delete(instance_model)
     db.commit()
 

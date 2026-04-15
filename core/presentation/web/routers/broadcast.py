@@ -710,7 +710,7 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     if hasattr(image_file, "filename") and image_file.filename:
         from core.presentation.web.routers.products import _save_uploaded_image
 
-        image_url = await _save_uploaded_image(image_file, current_user.id)
+        image_url = await _save_uploaded_image(image_file, user=current_user)
 
     target_jids = []
     if target_type in ["contacts", "groups"]:

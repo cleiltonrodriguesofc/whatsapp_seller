@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class SupabaseStorageService:
-    def __init__(self, bucket_name: str = "produtos"):
+    def __init__(self, bucket_name: str = "images"):
         self.url: str = os.getenv("SUPABASE_URL", "")
         self.key: str = os.getenv("SUPABASE_KEY", "")
         self.bucket_name: str = bucket_name
@@ -20,7 +20,7 @@ class SupabaseStorageService:
             self.client = create_client(self.url, self.key)
 
     async def upload_image(
-        self, file_content: bytes, filename: str, content_type: str = "image/jpeg"
+        self, file_content: bytes, filename: str, content_type: str = "image/jpeg", folder_path: str = ""
     ) -> Optional[str]:
         """
         Uploads image bytes to Supabase Storage and returns the UNIQUE PATH (filename).
@@ -33,6 +33,10 @@ class SupabaseStorageService:
         try:
             ext = os.path.splitext(filename)[1] or ".jpg"
             unique_name = f"{uuid.uuid4()}{ext}"
+            if folder_path:
+                # Ensure no trailing slashes on folder path
+                folder_path = folder_path.strip("/")
+                unique_name = f"{folder_path}/{unique_name}"
 
             # Suapbase python client storage is sync
             res = self.client.storage.from_(self.bucket_name).upload(
@@ -68,24 +72,14 @@ class SupabaseStorageService:
             return None
 
         clean_path = path.replace("supabase://", "")
-        buckets_to_try = [self.bucket_name]
-        if self.bucket_name == "produtos":
-            buckets_to_try.append("images")
-        else:
-            buckets_to_try.append("produtos")
 
-        for bucket in buckets_to_try:
-            try:
-                res = self.client.storage.from_(bucket).download(clean_path)
-                if res:
-                    return res
-            except Exception:
-                continue
+        try:
+            res = self.client.storage.from_(self.bucket_name).download(clean_path)
+            if res:
+                return res
+        except Exception as e:
+            logger.error("Failed to download image from Supabase bucket '%s': %s", self.bucket_name, e)
 
-        logger.error(
-            "Failed to download image from Supabase path '%s' via multiple buckets",
-            path,
-        )
         return None
 
     def get_signed_url(self, path: str, expires_in: int = 3600) -> Optional[str]:
