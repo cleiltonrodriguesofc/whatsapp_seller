@@ -114,7 +114,7 @@ async def create_status_campaign(
     image_url = None
     if image_file and image_file.filename:
         image_url = await _save_uploaded_image(
-            image_file, quality=90, max_size=(1080, 1920), bucket="images"
+            image_file, user=current_user, quality=90, max_size=(1080, 1920)
         )
     elif existing_image_url:
         image_url = existing_image_url
@@ -232,7 +232,7 @@ async def update_status_campaign(
             storage_svc.delete_image(campaign.image_url)
 
         image_url = await _save_uploaded_image(
-            image_file, quality=90, max_size=(1080, 1920), bucket="images"
+            image_file, user=current_user, quality=90, max_size=(1080, 1920)
         )
         if image_url:
             campaign.image_url = image_url

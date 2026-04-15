@@ -191,7 +191,6 @@ class EvolutionWhatsAppService(NotificationService):
             payload["backgroundColor"] = backgroundColor
             payload["font"] = font
         else:
-            # For images
             payload["mimetype"] = "image/jpeg"
             payload["fileName"] = "status.jpg"
 
@@ -210,12 +209,13 @@ class EvolutionWhatsAppService(NotificationService):
                     )
                     return False
                 if response.status_code >= 400:
-                    # log as warning — api sometimes returns 4xx but still delivers the status
-                    logger.warning(
-                        "evolution api sendstatus returned %s (message may still be delivered): %s",
+                    # 4xx means the api rejected our request — mark as failed
+                    logger.error(
+                        "evolution api sendstatus rejected (%s): %s",
                         response.status_code,
                         response.text[:300],
                     )
+                    return False
                 logger.info(
                     "whatsapp status update sent (http %s) to %s",
                     response.status_code,
@@ -224,11 +224,10 @@ class EvolutionWhatsAppService(NotificationService):
                 return True
         except httpx.TimeoutException:
             logger.warning(
-                "evolution api sendstatus timed out after 60s, but delivery likely started (jid_list_size=%s)",
-                len(jid_list) if jid_list else 0,
+                "evolution api sendstatus timed out, marking as failed (delivery uncertain for %s targets)",
+                len(jid_list) if jid_list else "all",
             )
-            # return true because message usually arrives anyway when this happens
-            return True
+            return False
         except Exception as exc:
             logger.error("evolution-api sendStatus failed with exception: %s", exc)
             return False
@@ -387,7 +386,7 @@ class EvolutionWhatsAppService(NotificationService):
     async def get_status(self) -> dict:
         url = f"{self.base_url}/instance/connectionState/{self.instance}"
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(url, headers=self._headers())
                 if response.status_code == 404:
                     return {"status": "not_found", "connected": False}
@@ -428,6 +427,10 @@ class EvolutionWhatsAppService(NotificationService):
             "token": str(uuid.uuid4()),  # Unique token for the instance
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
+            "webhook_by_events": False,
+            "readMessages": False,
+            "readStatus": False,
+            "syncFullHistory": True,
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name

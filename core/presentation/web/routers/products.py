@@ -33,9 +33,9 @@ _MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
 
 async def _save_uploaded_image(
     image_file: UploadFile,
+    user: UserModel = None,
     quality: int = 85,
     max_size: tuple = (1080, 1920),
-    bucket: str = "produtos",
 ) -> str:
     """
     Validates, resizes and uploads an image to Supabase Storage.
@@ -91,11 +91,17 @@ async def _save_uploaded_image(
         logger.warning("image optimization failed, using raw: %s", e)
 
     try:
-        storage_svc = SupabaseStorageService(bucket_name=bucket)
+        storage_svc = SupabaseStorageService()
+        folder = ""
+        if user:
+            safe_email = user.email.split('@')[0].replace('.', '_').replace('+', '_')
+            folder = f"user_{user.id}_{safe_email}"
+        
         public_url = await storage_svc.upload_image(
             file_content=raw,
             filename=unique_filename,
             content_type="image/jpeg",
+            folder_path=folder,
         )
     except Exception as e:
         logger.error("supabase storage service error: %s", e)
@@ -146,7 +152,7 @@ async def create_product(
 
     final_image_url = image_url
     if image_file and image_file.filename:
-        final_image_url = await _save_uploaded_image(image_file)
+        final_image_url = await _save_uploaded_image(image_file, user=current_user)
 
     product = Product(
         name=name,
@@ -210,7 +216,7 @@ async def update_product(
 
     final_image_url = image_url or product.image_url
     if image_file and image_file.filename:
-        final_image_url = await _save_uploaded_image(image_file)
+        final_image_url = await _save_uploaded_image(image_file, user=current_user)
     elif final_image_url and final_image_url.startswith("/static/uploads/"):
         # lazy-migrate legacy local images to supabase
         local_path = os.path.join(
@@ -237,10 +243,13 @@ async def update_product(
                 except Exception:
                     pass
 
+                safe_email = current_user.email.split('@')[0].replace('.', '_').replace('+', '_')
+                folder = f"user_{current_user.id}_{safe_email}"
                 migrated_url = await storage_svc.upload_image(
                     file_content=content,
                     filename=local_path,
                     content_type="image/jpeg",
+                    folder_path=folder,
                 )
                 if migrated_url:
                     final_image_url = migrated_url

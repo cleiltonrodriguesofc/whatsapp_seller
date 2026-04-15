@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["storage"])
 
 
-@router.get("/storage/view/{filename}")
+@router.get("/storage/view/{filename:path}")
 async def serve_private_image(
     filename: str,
     current_user: UserModel = Depends(login_required),
@@ -62,7 +62,7 @@ async def upload_campaign_image(
     Upload endpoint for campaign images (product-based campaigns).
     Uses standard product quality settings.
     """
-    url = await _save_uploaded_image(file, quality=85, max_size=(1080, 1920))
+    url = await _save_uploaded_image(file, user=current_user, quality=85, max_size=(1080, 1920))
     return {"url": url}
 
 
