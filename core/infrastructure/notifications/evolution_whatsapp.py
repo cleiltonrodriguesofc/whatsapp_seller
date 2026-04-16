@@ -430,7 +430,7 @@ class EvolutionWhatsAppService(NotificationService):
             "webhook_by_events": False,
             "readMessages": False,
             "readStatus": False,
-            "syncFullHistory": True,
+            "syncFullHistory": False,
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
