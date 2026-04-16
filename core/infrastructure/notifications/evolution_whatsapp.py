@@ -428,6 +428,12 @@ class EvolutionWhatsAppService(NotificationService):
             "token": str(uuid.uuid4()),  # Unique token for the instance
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
+            "reject_call": True,
+            "groups_ignore": True,
+            "always_online": False,
+            "read_messages": False,
+            "read_status": False,
+            "sync_full_history": False,
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
@@ -459,6 +465,12 @@ class EvolutionWhatsAppService(NotificationService):
             "token": self.api_key,  # Use api_key as token
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
+            "reject_call": True,
+            "groups_ignore": True,
+            "always_online": False,
+            "read_messages": False,
+            "read_status": False,
+            "sync_full_history": False,
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
@@ -504,6 +516,30 @@ class EvolutionWhatsAppService(NotificationService):
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp QR Code: %s", exc)
             return ""
+
+    async def request_pairing_code(self, phone: str) -> Optional[str]:
+        """
+        Requests a pairing code for a phone number.
+        """
+        # Evolution v2 endpoint: POST /instance/connect/pairingCode/{instance}
+        url = f"{self.base_url}/instance/connect/pairingCode/{self.instance}"
+        payload = {"number": self._clean_phone(phone)}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.post(url, json=payload, headers=self._headers())
+                if response.status_code >= 400:
+                    logger.error(
+                        "Evolution Pairing Code Error (%s): %s",
+                        response.status_code,
+                        response.text,
+                    )
+                response.raise_for_status()
+                data = response.json()
+                # API usually returns {"code": "ABCD-EFGH"}
+                return data.get("code")
+        except Exception as exc:
+            logger.error("Failed to request pairing code for %s: %s", phone, exc)
+            return None
 
     async def set_presence(
         self, phone: str, presence: str = "composing", delay: int = 1200

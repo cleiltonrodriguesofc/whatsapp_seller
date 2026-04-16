@@ -416,3 +416,95 @@ async def view_status_campaign(
             "target_names": target_names,
         },
     )
+
+
+@router.post("/status_campaigns/delete/{campaign_id}")
+async def delete_status_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    repo = SQLStatusCampaignRepository(db)
+    campaign = repo.get_by_id(campaign_id, user_id=current_user.id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Delete image from storage if it exists
+    if campaign.image_url and campaign.image_url.startswith("supabase://"):
+        try:
+            storage_svc = SupabaseStorageService(bucket_name="images")
+            storage_svc.delete_image(campaign.image_url)
+        except Exception as e:
+            logger.warning("Failed to delete image from storage: %s", e)
+
+    repo.delete(campaign_id, user_id=current_user.id)
+    return RedirectResponse(url="/status_campaigns", status_code=303)
+
+
+@router.post("/status_campaigns/pause/{campaign_id}")
+async def pause_status_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import StatusCampaignModel
+    campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "paused"
+    db.commit()
+    return {"success": True, "status": "paused"}
+
+
+@router.post("/status_campaigns/resume/{campaign_id}")
+async def resume_status_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import StatusCampaignModel
+    campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "scheduled"
+    db.commit()
+    return {"success": True, "status": "scheduled"}
+
+
+@router.post("/status_campaigns/cancel/{campaign_id}")
+async def cancel_status_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import StatusCampaignModel
+    campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "canceled"
+    db.commit()
+    return {"success": True, "status": "canceled"}
+
+
+@router.post("/status_campaigns/resend/{campaign_id}")
+async def resend_status_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import StatusCampaignModel
+    campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "scheduled"
+    campaign.sent_at = None
+    if not campaign.is_recurring:
+        from core.infrastructure.utils.timezone import now_sp
+        campaign.scheduled_at = now_sp()
+        
+    db.commit()
+    return {"success": True, "status": "scheduled"}

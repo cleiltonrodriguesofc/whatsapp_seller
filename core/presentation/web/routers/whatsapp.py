@@ -122,6 +122,33 @@ async def get_whatsapp_qr(
     qrcode_base64 = await whatsapp_service.get_qrcode()
     if qrcode_base64:
         return {"success": True, "qrcode": qrcode_base64}
+
+
+@router.post("/whatsapp/connect-phone/{instance_id}")
+async def request_pairing_code_api(
+    instance_id: int,
+    phone: str = Form(...),
+    current_user: UserModel = Depends(login_required),
+    db: Session = Depends(get_db),
+):
+    instance_model = (
+        db.query(InstanceModel)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
+        .first()
+    )
+    if not instance_model:
+        return {"success": False, "error": "Instance not found"}
+
+    whatsapp_service = EvolutionWhatsAppService(
+        instance=instance_model.name,
+        apikey=instance_model.apikey,
+    )
+    code = await whatsapp_service.request_pairing_code(phone)
+    if code:
+        return {"success": True, "code": code}
+    return {"success": False, "error": "Failed to generate pairing code"}
     return {"success": False, "error": "Failed to generate QR code"}
 
 

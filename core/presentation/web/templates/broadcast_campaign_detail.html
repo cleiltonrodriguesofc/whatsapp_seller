@@ -20,6 +20,10 @@
                 <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); font-size: 0.9rem; padding: 6px 16px;">✅ Concluída</span>
             {% elif campaign.status == 'sending' %}
                 <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 0.9rem; padding: 6px 16px;">⏳ Enviando...</span>
+            {% elif campaign.status == 'paused' %}
+                <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 0.9rem; padding: 6px 16px; border: 1px dotted #f59e0b;">⏸ Pausada</span>
+            {% elif campaign.status == 'canceled' %}
+                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); font-size: 0.9rem; padding: 6px 16px;">⛔ Cancelada</span>
             {% elif campaign.status == 'scheduled' %}
                 <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; font-size: 0.9rem; padding: 6px 16px;">🕒 Agendada</span>
             {% elif campaign.status == 'failed' %}
@@ -112,11 +116,26 @@
     </div>
     
     <!-- Actions Footer -->
-    <div style="margin-top: 3rem; display: flex; gap: 1rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 2rem;">
-        <a href="/broadcast/campaigns" class="btn btn-ghost">← Voltar para Campanhas</a>
-        {% if campaign.status in ['scheduled', 'draft'] %}
-        <a href="/broadcast/campaigns/edit/{{ campaign.id }}" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">✏️ Editar</a>
+    <div style="margin-top: 3rem; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 2rem;">
+        <a href="/broadcast/campaigns" class="btn btn-ghost" style="margin-right: auto;">← Voltar para Campanhas</a>
+
+        {% if campaign.status in ['scheduled', 'sending', 'processing'] %}
+            <button onclick="controlCampaign('broadcast', 'pause', {{ campaign.id }})" class="btn btn-ghost" style="border-color: #f59e0b; color: #f59e0b;">⏸ Pausar</button>
+        {% elif campaign.status == 'paused' %}
+            <button onclick="controlCampaign('broadcast', 'resume', {{ campaign.id }})" class="btn btn-primary" style="background: #10b981; border-color: #10b981;">▶️ Retomar</button>
+        {% elif campaign.status in ['sent', 'failed', 'canceled'] %}
+            <button onclick="controlCampaign('broadcast', 'resend', {{ campaign.id }})" class="btn btn-primary">🔄 Reenviar Agora</button>
         {% endif %}
+
+        {% if campaign.status in ['scheduled', 'paused', 'sending', 'processing'] %}
+            <button onclick="controlCampaign('broadcast', 'cancel', {{ campaign.id }})" class="btn btn-ghost" style="border-color: var(--border); color: var(--text-muted);">⛔ Cancelar Agendamento</button>
+        {% endif %}
+
+        <a href="/broadcast/campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="border-color: var(--border);">✏️ Editar</a>
+        
+        <form action="/broadcast/campaigns/{{ campaign.id }}/delete" method="post" onsubmit="return confirm('Excluir esta campanha?');" style="margin: 0;">
+            <button type="submit" class="btn btn-ghost" style="border-color: #ef4444; color: #ef4444;">🗑️ Excluir</button>
+        </form>
     </div>
 </div>
 

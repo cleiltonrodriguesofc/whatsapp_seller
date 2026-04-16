@@ -166,6 +166,24 @@ class ExecuteBroadcastCampaignUseCase:
                     )
                     await asyncio.sleep(typing_duration)
 
+                # Check for pause/cancel signal between sends
+                try:
+                    self.db.expire_all()
+                    # reload to get latest status
+                    current = self.db.query(type(campaign)).get(campaign.id)
+                    if current and current.status in ["paused", "canceled"]:
+                        logger.info(
+                            "[broadcast] campaign %s is now %s, stopping loop at %d/%d",
+                            campaign_id,
+                            current.status,
+                            i,
+                            len(targets),
+                        )
+                        # just return, the loop is broken and state is already updated/saved in db by the trigger endpoint
+                        return
+                except Exception as e:
+                    logger.warning("[broadcast] failed to check campaign status: %s", e)
+
                 # Send message
                 t_start = now_sp()
                 success = False
