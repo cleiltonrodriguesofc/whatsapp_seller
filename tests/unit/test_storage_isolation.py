@@ -18,8 +18,12 @@ async def test_save_uploaded_image_with_user_isolation(mock_supabase_client):
     # Mock user
     user = UserModel(id=123, email="test.user+tag@gmail.com")
     
-    # Mock file
-    file_content = b"fake_image_bytes"
+    # Generate a real minimal JPEG image
+    from PIL import Image as PILImage
+    img_buf = io.BytesIO()
+    PILImage.new("RGB", (10, 10), color="red").save(img_buf, format="JPEG")
+    img_buf.seek(0)
+    file_content = img_buf.getvalue()
     file = UploadFile(filename="test.jpg", file=io.BytesIO(file_content), headers={"content-type": "image/jpeg"})
     
     # Run the function with mocked service
@@ -30,10 +34,10 @@ async def test_save_uploaded_image_with_user_isolation(mock_supabase_client):
         result = await _save_uploaded_image(file, user=user)
         
         # Verify folder path generation
-        # safe_email = "test_user" (from "test.user+tag".split('@')[0].replace('.','_').replace('+','_'))
-        # expected folder = "user_123_test_user"
+        # safe_email = "test_user_tag" (from "test.user+tag".split('@')[0].replace('.','_').replace('+','_'))
+        # expected folder = "user_123_test_user_tag"
         args, kwargs = msg_instance.upload_image.call_args
-        assert kwargs["folder_path"] == "user_123_test_user"
+        assert kwargs["folder_path"] == "user_123_test_user_tag"
         assert result == "http://supabase.com/user_123_test_user/uuid.jpg"
 
 @pytest.mark.asyncio

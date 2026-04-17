@@ -230,7 +230,7 @@ class TestProductCampaignControls:
         db_session.commit()
 
         # login as a different user
-        other = login_user(client, db_session, email="prod_other@test.com")
+        login_user(client, db_session, email="prod_other@test.com")
 
         response = client.post(f"/campaign/pause/{campaign.id}")
         assert response.status_code == 404

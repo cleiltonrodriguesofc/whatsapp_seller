@@ -533,7 +533,7 @@ class EvolutionWhatsAppService(NotificationService):
         # in QR mode or an orphaned reconnect loop. Logging out first resets the socket cleanly.
         try:
             await self.logout_instance()
-        except:
+        except Exception:
             pass
 
         import asyncio
