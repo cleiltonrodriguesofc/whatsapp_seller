@@ -383,6 +383,7 @@ async def view_status_campaign(
             "title": f"Detalhes: {campaign.title}",
             "campaign": campaign,
             "instance_name": instance_name,
+            "target_names": target_names,
         },
     )
 
