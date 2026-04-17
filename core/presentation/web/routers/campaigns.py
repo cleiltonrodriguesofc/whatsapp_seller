@@ -241,13 +241,19 @@ async def home(
         delta = subscription.trial_ends_at - datetime.utcnow()
         days_left = max(0, delta.days)
 
+    recent_campaigns = (
+        db.query(CampaignModel)
+        .filter(CampaignModel.user_id == uid)
+        .order_by(CampaignModel.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
         context={
-            "campaigns": range(
-                total_campaigns
-            ),  # just for campaigns|length in template to work without changing it, or we edit the template. Let's pass the integer and update the template as well. Actually, I am editing the template.
+            "campaigns": recent_campaigns,
             "total_campaigns": total_campaigns,
             "total_sent": total_sent,
             "ai_count": ai_count,
@@ -289,6 +295,73 @@ async def delete_campaign(
     )
 
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.post("/campaign/pause/{campaign_id}")
+async def pause_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    campaign = db.query(CampaignModel).filter(CampaignModel.id == campaign_id, CampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "paused"
+    db.commit()
+    return {"success": True, "status": "paused"}
+
+
+@router.post("/campaign/resume/{campaign_id}")
+async def resume_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    campaign = db.query(CampaignModel).filter(CampaignModel.id == campaign_id, CampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # If it's recurring, picking it up again is automatic.
+    # If it's one-off, set back to scheduled.
+    campaign.status = "scheduled"
+    db.commit()
+    return {"success": True, "status": "scheduled"}
+
+
+@router.post("/campaign/cancel/{campaign_id}")
+async def cancel_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    campaign = db.query(CampaignModel).filter(CampaignModel.id == campaign_id, CampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "canceled"
+    db.commit()
+    return {"success": True, "status": "canceled"}
+
+
+@router.post("/campaign/resend/{campaign_id}")
+async def resend_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    campaign = db.query(CampaignModel).filter(CampaignModel.id == campaign_id, CampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "scheduled"
+    campaign.sent_at = None
+    if not campaign.is_recurring:
+        from core.infrastructure.utils.timezone import now_sp
+        campaign.scheduled_at = now_sp()
+        
+    db.commit()
+    return {"success": True, "status": "scheduled"}
 
 
 @router.get("/campaigns/new", response_class=HTMLResponse)

@@ -13,7 +13,8 @@
 <body>
     <div class="mobile-header">
         <button class="mobile-menu-toggle" id="mobile-menu-btn" aria-label="Abrir Menu">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -31,7 +32,8 @@
             <a href="/" class="nav-item {{ 'active' if request.url.path == '/' else '' }}">
                 <span class="nav-item-icon">📊</span> Painel
             </a>
-            <a href="/status_campaigns" class="nav-item {{ 'active' if '/status_campaigns' in request.url.path else '' }}">
+            <a href="/status_campaigns"
+                class="nav-item {{ 'active' if '/status_campaigns' in request.url.path else '' }}">
                 <span class="nav-item-icon">📱</span> Status Auto
             </a>
             {% set is_contacts = request.url.path.startswith('/broadcast/contacts') %}
@@ -52,13 +54,13 @@
                 <span class="nav-item-icon">🏢</span> Grupos
             </a>
 
-            {# 
+            {#
             <a href="/dashboard/billing" class="nav-item {{ 'active' if '/billing' in request.url.path else '' }}">
                 <span class="nav-item-icon">💳</span> Faturamento
             </a>
             <a href="/referral" class="nav-item {{ 'active' if '/referral' in request.url.path else '' }}">
                 <span class="nav-item-icon">🤝</span> Indicação
-            </a> 
+            </a>
             #}
             <a href="/whatsapp/connect"
                 class="nav-item {{ 'active' if request.url.path == '/whatsapp/connect' else '' }}">
@@ -130,16 +132,135 @@
         if (mobileMenuBtn && sidebarOverlay) {
             mobileMenuBtn.addEventListener('click', toggleSidebar);
             sidebarOverlay.addEventListener('click', toggleSidebar);
-            
+
             // Close sidebar when clicking a nav item (useful for anchors/SPA in future, but standard for UX)
             const navItems = document.querySelectorAll('.sidebar .nav-item');
             navItems.forEach(item => {
                 item.addEventListener('click', () => {
                     // if it has 'open' class
-                    if(sidebar.classList.contains('open')){
+                    if (sidebar.classList.contains('open')) {
                         toggleSidebar();
                     }
                 });
+            });
+        }
+    </script>
+    
+    <!-- Global UI Utilities (Toasts & Modals) -->
+    <div id="toast-container" style="position: fixed; top: 2rem; right: 2rem; z-index: 99999; display: flex; flex-direction: column; gap: 0.75rem;"></div>
+
+    <div id="global-confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100000; align-items: center; justify-content: center; padding: 1.5rem;">
+        <div class="glass-card animate-scale-up" style="width: 100%; max-width: 400px; padding: 2rem; border: 1px solid var(--border); text-align: center;">
+            <div id="confirm-icon" style="font-size: 3rem; margin-bottom: 1.5rem;">❓</div>
+            <p id="confirm-text" style="color: white; font-size: 1.1rem; line-height: 1.5; margin-bottom: 2rem; font-weight: 500;"></p>
+            <div style="display: flex; gap: 1rem;">
+                <button id="confirm-cancel" class="btn btn-ghost" style="flex: 1;">CANCELAR</button>
+                <button id="confirm-ok" class="btn btn-primary" style="flex: 1.2; font-weight: 800;">CONFIRMAR</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modern Toast Notification Utility
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: { bg: 'rgba(16, 185, 129, 0.15)', border: '#10b981', icon: '✅' },
+                error: { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', icon: '❌' },
+                info: { bg: 'rgba(59, 130, 246, 0.15)', border: '#3b82f6', icon: 'ℹ️' }
+            };
+            
+            const theme = colors[type] || colors.info;
+            
+            toast.className = 'animate-fade-in';
+            toast.style.cssText = `
+                background: ${theme.bg};
+                backdrop-filter: blur(12px);
+                border: 1px solid ${theme.border};
+                border-radius: 12px;
+                padding: 1rem 1.5rem;
+                color: white;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+                min-width: 280px;
+                max-width: 450px;
+                transition: all 0.3s ease;
+            `;
+            
+            toast.innerHTML = `<span>${theme.icon}</span><span style="flex-grow: 1;">${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(50px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Professional Global Confirmation Utility
+        let confirmCallback = null;
+        function showConfirm(message, callback) {
+            const modal = document.getElementById('global-confirm-modal');
+            const textEl = document.getElementById('confirm-text');
+            
+            textEl.innerText = message;
+            confirmCallback = callback;
+            modal.style.display = 'flex';
+        }
+
+        document.getElementById('confirm-cancel').onclick = () => {
+            document.getElementById('global-confirm-modal').style.display = 'none';
+        };
+
+        document.getElementById('confirm-ok').onclick = async () => {
+            document.getElementById('global-confirm-modal').style.display = 'none';
+            if (confirmCallback) await confirmCallback();
+            confirmCallback = null;
+        };
+
+        // Unified Campaign Control Function
+        async function controlCampaign(module, action, id, btn = null) {
+            const messages = {
+                'pause': 'Deseja pausar esta campanha temporariamente?',
+                'resume': 'Deseja retomar o envio desta campanha agora?',
+                'cancel': 'Tem certeza que deseja CANCELAR definitivamente esta campanha?',
+                'resend': 'Deseja colocar esta campanha na fila de envio novamente? Isso não criará um novo registro, apenas resetará o status para agendado.'
+            };
+
+            showConfirm(messages[action] || 'Deseja realizar esta ação?', async () => {
+                if (btn) btn.disabled = true;
+                try {
+                    // Normalize paths (Broadcast uses different pattern from Status/Product)
+                    let path = "";
+                    if (module === 'broadcast') {
+                        path = `/broadcast/campaigns/${id}/${action}`;
+                    } else if (module === 'status_campaigns') {
+                        path = `/status_campaigns/${action}/${id}`;
+                    } else {
+                        // Product campaigns (default 'campaign' module)
+                        path = `/campaign/${action}/${id}`;
+                    }
+
+                    const res = await fetch(path, { method: 'POST' });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        showToast(`Ação '${action}' aplicada com sucesso!`, 'success');
+                        setTimeout(() => window.location.reload(), 800);
+                    } else {
+                        showToast(data.error || 'Não foi possível completar a ação.', 'error');
+                    }
+                } catch (e) {
+                    console.error('Action error:', e);
+                    showToast('Erro de conexão ao servidor.', 'error');
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
             });
         }
     </script>
@@ -150,7 +271,7 @@
                 const res = await fetch('/whatsapp/status');
                 const data = await res.json();
                 const dot = document.getElementById('sidebar-status-dot');
-                
+
                 if (data.connected) {
                     dot.style.background = '#10b981';
                     dot.title = 'WhatsApp Conectado';

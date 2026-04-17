@@ -9,20 +9,28 @@
 </div>
 
 {% macro status_card(campaign) %}
-<div class="card campaign-row animate-fade-in" style="background: rgba(255,255,255,0.02); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1.5rem; justify-content: space-between; padding: 1.25rem 1.5rem; transition: var(--transition);">
+<div class="card campaign-row animate-fade-in"
+    style="background: rgba(255,255,255,0.02); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1.5rem; justify-content: space-between; padding: 1.25rem 1.5rem; transition: var(--transition);">
     <!-- Thumbnail -->
-    <div style="width: 72px; height: 72px; border-radius: 12px; background: var(--bg-main); flex-shrink: 0; overflow: hidden; border: 1px solid var(--border);">
+    <div
+        style="width: 72px; height: 72px; border-radius: 12px; background: var(--bg-main); flex-shrink: 0; overflow: hidden; border: 1px solid var(--border);">
         {% if campaign.image_url %}
-        <img src="{{ get_proxy_url(campaign.image_url) }}" alt="Status Image" style="width: 100%; height: 100%; object-fit: cover;">
+        <img src="{{ get_proxy_url(campaign.image_url) }}" alt="Status Image"
+            style="width: 100%; height: 100%; object-fit: cover;">
         {% else %}
-        <div style="display: flex; height: 100%; align-items: center; justify-content: center; font-size: 1.5rem;">📱</div>
+        <div style="display: flex; height: 100%; align-items: center; justify-content: center; font-size: 1.5rem;">📱
+        </div>
         {% endif %}
     </div>
-    
+
     <!-- Info -->
     <div style="flex-grow: 1; min-width: 0;">
-        <a href="/status_campaigns/{{ campaign.id }}" style="text-decoration: none; display: block; max-width: 350px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; font-size: 1.15rem; color: #fff; margin-bottom: 0.25rem; transition: color 0.2s;" title="{{ campaign.title }}" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
-        <div style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;">
+        <a href="/status_campaigns/{{ campaign.id }}"
+            style="text-decoration: none; display: block; max-width: 350px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; font-size: 1.15rem; color: #fff; margin-bottom: 0.25rem; transition: color 0.2s;"
+            title="{{ campaign.title }}" onmouseover="this.style.color='var(--primary)'"
+            onmouseout="this.style.color='#fff'">{{ campaign.title }}</a>
+        <div
+            style="font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;">
             {% if campaign.caption %}{{ campaign.caption }}{% else %}Sem legenda{% endif %}
         </div>
     </div>
@@ -30,52 +38,85 @@
     <!-- Schedule Info -->
     <div style="text-align: center; min-width: 150px; border-left: 1px solid var(--border); padding-left: 1.5rem;">
         {% if campaign.is_recurring %}
-            <div style="font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem;">⏰ Recorrente</div>
-            
-            {% set day_labels = {"sun": "DOM", "mon": "SEG", "tue": "TER", "wed": "QUA", "thu": "QUI", "fri": "SEX", "sat": "SÁB"} %}
-            <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                {% for d in (campaign.recurrence_days or "").split(",") %}
-                    <span style="font-size: 0.65rem; background: rgba(99,102,241,0.1); color: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700;">{{ day_labels[d] or d|upper }}</span>
-                {% endfor %}
-            </div>
+        <div
+            style="font-size: 0.7rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem;">
+            ⏰ Recorrente</div>
 
-            <div style="font-weight: 800; font-size: 1rem; color: #fff; letter-spacing: 0.5px;">
-                {% set times = (campaign.send_time or "").split(",") %}
-                {% if times|length > 2 %}
-                    {{ times[0] }}, {{ times[1] }} <span style="font-size: 0.7rem; color: var(--text-muted);">+{{ times|length - 2 }}</span>
-                {% else %}
-                    {{ campaign.send_time }}
-                {% endif %}
-            </div>
+        {% set day_labels = {"sun": "DOM", "mon": "SEG", "tue": "TER", "wed": "QUA", "thu": "QUI", "fri": "SEX", "sat":
+        "SÁB"} %}
+        <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 0.5rem; flex-wrap: wrap;">
+            {% for d in (campaign.recurrence_days or "").split(",") %}
+            <span
+                style="font-size: 0.65rem; background: rgba(99,102,241,0.1); color: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 700;">{{
+                day_labels[d] or d|upper }}</span>
+            {% endfor %}
+        </div>
+
+        <div style="font-weight: 800; font-size: 1rem; color: #fff; letter-spacing: 0.5px;">
+            {% set times = (campaign.send_time or "").split(",") %}
+            {% if times|length > 2 %}
+            {{ times[0] }}, {{ times[1] }} <span style="font-size: 0.7rem; color: var(--text-muted);">+{{ times|length -
+                2 }}</span>
+            {% else %}
+            {{ campaign.send_time }}
+            {% endif %}
+        </div>
         {% else %}
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">🗓️ Disparo Único</div>
-            <div style="font-weight: 600; font-size: 0.95rem; color: #f3f4f6;">
-                {{ campaign.scheduled_at.strftime('%d/%m às %H:%M') if campaign.scheduled_at else 'Imediato' }}
-            </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">🗓️
+            Disparo Único</div>
+        <div style="font-weight: 600; font-size: 0.95rem; color: #f3f4f6;">
+            {{ campaign.scheduled_at.strftime('%d/%m às %H:%M') if campaign.scheduled_at else 'Imediato' }}
+        </div>
         {% endif %}
     </div>
 
     <!-- Actions -->
-    <div style="text-align: right; display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; min-width: 250px;">
+    <div
+        style="text-align: right; display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; min-width: 250px;">
         {% if campaign.status.value == 'sent' %}
-            <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2);">ENVIADO</span>
+        <span class="badge"
+            style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2);">ENVIADO</span>
         {% elif campaign.status.value == 'failed' %}
-            <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.2);">FALHOU</span>
+        <span class="badge"
+            style="background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.2);">FALHOU</span>
         {% elif campaign.status.value == 'processing' or campaign.status.value == 'sending' %}
-            <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.2);">ENVIANDO...</span>
-        {% elif campaign.status.value == 'draft' %}
-            <span class="badge" style="background: rgba(255, 191, 0, 0.1); color: #ffbf00; border: 1px solid rgba(255, 191, 0, 0.2);">RASCUNHO</span>
+        <span class="badge"
+            style="background: rgba(59, 130, 246, 0.1); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.2);">ENVIANDO...</span>
+        {% elif campaign.status.value == 'paused' %}
+        <span class="badge"
+            style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);">PAUSADO</span>
+        {% elif campaign.status.value == 'canceled' %}
+        <span class="badge"
+            style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border);">CANCELADO</span>
         {% else %}
-            <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border);">AGENDADO</span>
+        <span class="badge"
+            style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid var(--border);">AGENDADO</span>
         {% endif %}
 
         <div style="display: flex; gap: 0.5rem;">
-            <a href="/status_campaigns/duplicate/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Duplicar (Reenviar)">📄</a>
-            <a href="/status_campaigns/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Ver Detalhes">👁️</a>
-            {% if campaign.status.value in ['draft', 'scheduled', 'pending'] %}
-            <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Editar">✏️</a>
+            {# CONTROLES PRINCIPAIS #}
+            
+            {% if campaign.status.value in ['scheduled', 'pending', 'sending', 'processing'] %}
+                {# PAUSE #}
+                <button onclick="controlCampaign('status_campaigns', 'pause', {{ campaign.id }}, this)" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 8px;" title="Pausar">⏸</button>
+            {% elif campaign.status.value == 'paused' %}
+                {# RESUME #}
+                <button onclick="controlCampaign('status_campaigns', 'resume', {{ campaign.id }}, this)" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(16,185,129,0.2); color: #10b981; border-radius: 8px;" title="Retomar">▶️</button>
+            {% elif campaign.status.value in ['sent', 'failed', 'canceled'] %}
+                {# RESEND #}
+                <button onclick="controlCampaign('status_campaigns', 'resend', {{ campaign.id }}, this)" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--primary); color: var(--primary); border-radius: 8px;" title="Reenviar agora">🔄</button>
             {% endif %}
-            <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente? A imagem também será removida do storage.');" style="margin: 0;">
+
+            {% if campaign.status.value in ['scheduled', 'pending', 'paused', 'sending', 'processing'] %}
+                {# CANCEL #}
+                <button onclick="controlCampaign('status_campaigns', 'cancel', {{ campaign.id }}, this)" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.1); color: var(--text-muted); border-radius: 8px;" title="Cancelar Agendamentos">⛔</button>
+            {% endif %}
+
+            {# EDIT - SEMPRE VISÍVEL #}
+            <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Editar">✏️</a>
+            
+            {# DELETE #}
+            <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente?');" style="margin: 0;">
                 <button type="submit" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; color: #ef4444; border-color: rgba(239,68,68,0.2); border-radius: 8px;" title="Excluir">🗑️</button>
             </form>
         </div>
@@ -84,64 +125,77 @@
 {% endmacro %}
 
 <div class="campaign-list">
-    
+
     <!-- 0. SEÇÃO: RASCUNHOS -->
     {% set draft_list = campaigns | selectattr("status.value", "equalto", "draft") | list %}
     {% if draft_list %}
-    <div style="margin-bottom: 3rem; background: rgba(255, 191, 0, 0.03); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255, 191, 0, 0.1);">
-        <h3 style="font-size: 1rem; color: #ffbf00; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+    <div
+        style="margin-bottom: 3rem; background: rgba(255, 191, 0, 0.03); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255, 191, 0, 0.1);">
+        <h3
+            style="font-size: 1rem; color: #ffbf00; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
             <span>📥 Meus Rascunhos</span>
-            <span style="background: #ffbf00; color: #000; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{ draft_list|length }}</span>
+            <span
+                style="background: #ffbf00; color: #000; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{
+                draft_list|length }}</span>
         </h3>
         {% for campaign in draft_list | sort(attribute="created_at", reverse=True) %}
-            {{ status_card(campaign) }}
+        {{ status_card(campaign) }}
         {% endfor %}
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Estes status ainda não foram agendados e não serão enviados.</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Estes status ainda não foram agendados
+            e não serão enviados.</p>
     </div>
     {% endif %}
-    
+
     <!-- 1. SEÇÃO: AGENDADOS -->
-    {% set scheduled_list = (campaigns | selectattr("status.value", "equalto", "scheduled") | list) + (campaigns | selectattr("status.value", "equalto", "pending") | list) %}
+    {% set scheduled_list = (campaigns | selectattr("status.value", "equalto", "scheduled") | list) + (campaigns |
+    selectattr("status.value", "equalto", "pending") | list) %}
     {% if scheduled_list %}
     <div style="margin-bottom: 3rem;">
-        <h3 style="font-size: 1rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+        <h3
+            style="font-size: 1rem; color: var(--primary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
             <span>🕒 Status Agendados</span>
-            <span style="background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{ scheduled_list|length }}</span>
+            <span
+                style="background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{
+                scheduled_list|length }}</span>
         </h3>
         {% for campaign in scheduled_list | sort(attribute="scheduled_at") %}
-            {{ status_card(campaign) }}
+        {{ status_card(campaign) }}
         {% endfor %}
     </div>
     {% endif %}
 
     <!-- 2. SEÇÃO: EM PROCESSAMENTO -->
-    {% set processing_list = (campaigns | selectattr("status.value", "equalto", "processing") | list) + (campaigns | selectattr("status.value", "equalto", "sending") | list) %}
+    {% set processing_list = (campaigns | selectattr("status.value", "equalto", "processing") | list) + (campaigns |
+    selectattr("status.value", "equalto", "sending") | list) %}
     {% if processing_list %}
     <div style="margin-bottom: 3rem;">
-        <h3 style="font-size: 1rem; color: var(--info); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+        <h3
+            style="font-size: 1rem; color: var(--info); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
             <span>🔄 Sendo Enviados</span>
             <span class="spinner" style="width:14px; height:14px; border-width: 2px;"></span>
         </h3>
         {% for campaign in processing_list %}
-            {{ status_card(campaign) }}
+        {{ status_card(campaign) }}
         {% endfor %}
     </div>
     {% endif %}
 
     <!-- 3. SEÇÃO: HISTÓRICO -->
-    {% set finished_list = (campaigns | selectattr("status.value", "equalto", "sent") | list) + (campaigns | selectattr("status.value", "equalto", "failed") | list) %}
+    {% set finished_list = (campaigns | selectattr("status.value", "in", ["sent", "failed", "paused", "canceled"]) | list) %}
     <div style="margin-bottom: 3rem;">
-        <h3 style="font-size: 1rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem;">
+        <h3
+            style="font-size: 1rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem;">
             ✅ Histórico de Envios
         </h3>
         {% if finished_list %}
-            {% for campaign in finished_list | sort(attribute="created_at", reverse=True) %}
-                {{ status_card(campaign) }}
-            {% endfor %}
+        {% for campaign in finished_list | sort(attribute="created_at", reverse=True) %}
+        {{ status_card(campaign) }}
+        {% endfor %}
         {% else %}
-            <div style="padding: 2rem; text-align: center; background: rgba(255,255,255,0.01); border: 1px dashed var(--border); border-radius: 12px; color: var(--text-muted); font-size: 0.9rem;">
-                Nenhum envio finalizado ainda.
-            </div>
+        <div
+            style="padding: 2rem; text-align: center; background: rgba(255,255,255,0.01); border: 1px dashed var(--border); border-radius: 12px; color: var(--text-muted); font-size: 0.9rem;">
+            Nenhum envio finalizado ainda.
+        </div>
         {% endif %}
     </div>
 
@@ -149,31 +203,35 @@
     <div style="text-align: center; padding: 4rem;">
         <div style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.8;">📱</div>
         <h3 style="color: white; font-size: 1.5rem; margin-bottom: 0.5rem;">Status Automático</h3>
-        <p style="color: var(--text-muted); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
-            Poste ofertas, novidades e provas sociais diretamente no seu Status sem precisar cadastrar produtos na plataforma. O sistema gerencia tudo para você.
+        <p
+            style="color: var(--text-muted); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+            Poste ofertas, novidades e provas sociais diretamente no seu Status sem precisar cadastrar produtos na
+            plataforma. O sistema gerencia tudo para você.
         </p>
-        <a href="/status_campaigns/new" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">Criar Meu Primeiro Status</a>
+        <a href="/status_campaigns/new" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">Criar Meu
+            Primeiro Status</a>
     </div>
     {% endif %}
 
 </div>
 
 <style>
-/* Responsive row adjustments */
-@media (max-width: 768px) {
-    .campaign-row {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        padding: 1.5rem !important;
+    /* Responsive row adjustments */
+    @media (max-width: 768px) {
+        .campaign-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 1.5rem !important;
+        }
+
+        .campaign-row>div {
+            width: 100% !important;
+            text-align: left !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            justify-content: flex-start !important;
+        }
     }
-    .campaign-row > div {
-        width: 100% !important;
-        text-align: left !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border: none !important;
-        justify-content: flex-start !important;
-    }
-}
 </style>
 {% endblock %}

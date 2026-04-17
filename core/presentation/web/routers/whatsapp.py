@@ -122,7 +122,33 @@ async def get_whatsapp_qr(
     qrcode_base64 = await whatsapp_service.get_qrcode()
     if qrcode_base64:
         return {"success": True, "qrcode": qrcode_base64}
-    return {"success": False, "error": "Failed to generate QR code"}
+
+
+@router.post("/whatsapp/connect-phone/{instance_id}")
+async def request_pairing_code_api(
+    instance_id: int,
+    phone: str = Form(...),
+    current_user: UserModel = Depends(login_required),
+    db: Session = Depends(get_db),
+):
+    instance_model = (
+        db.query(InstanceModel)
+        .filter(
+            InstanceModel.id == instance_id, InstanceModel.user_id == current_user.id
+        )
+        .first()
+    )
+    if not instance_model:
+        return {"success": False, "error": "Instance not found"}
+
+    whatsapp_service = EvolutionWhatsAppService(
+        instance=instance_model.name,
+        apikey=instance_model.apikey,
+    )
+    code = await whatsapp_service.request_pairing_code(phone)
+    if code:
+        return {"success": True, "code": code}
+    return {"success": False, "error": "Failed to generate pairing code"}
 
 
 @router.get("/whatsapp/status")
@@ -202,25 +228,21 @@ async def delete_whatsapp(
         instance=instance_model.name,
         apikey=instance_model.apikey,
     )
-    await whatsapp_service.delete_instance()
+    try:
+        await whatsapp_service.delete_instance()
+    except Exception as e:
+        logger.error(f"Failed to delete remote instance {instance_id}: {e}")
 
-    # nullify all fk references before deleting to avoid IntegrityError
-    db.query(StatusCampaignModel).filter(
-        StatusCampaignModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    db.query(CampaignModel).filter(
-        CampaignModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    db.query(WhatsAppTargetModel).filter(
-        WhatsAppTargetModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    db.query(BroadcastListModel).filter(
-        BroadcastListModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    # broadcast_campaigns has NOT NULL fk — delete orphaned campaigns
-    db.query(BroadcastCampaignModel).filter(
-        BroadcastCampaignModel.instance_id == instance_id
-    ).delete()
+
+
+    try:
+        db.query(StatusCampaignModel).filter(StatusCampaignModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(CampaignModel).filter(CampaignModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(BroadcastListModel).filter(BroadcastListModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(WhatsAppTargetModel).filter(WhatsAppTargetModel.instance_id == instance_id).delete()
+        db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.instance_id == instance_id).delete()
+    except Exception as e:
+        logger.warning(f"Error handling cascades for instance {instance_id}: {e}")
 
     db.delete(instance_model)
     db.commit()

@@ -25,6 +25,8 @@ class CampaignStatus(enum.Enum):
     SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
+    PAUSED = "paused"
+    CANCELED = "canceled"
 
 
 # Association table for Campaign - Group

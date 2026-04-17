@@ -178,6 +178,15 @@ class EvolutionWhatsAppService(NotificationService):
         if type == "image" and not is_url and not content.startswith("data:"):
             final_content = f"data:image/jpeg;base64,{content}"
 
+        # FIX: Evolution API/Baileys often fails to broadcast statuses if we only use 'allContacts: True'.
+        # We explicitly fetch the user's contacts and pass their JIDs to 'statusJidList' to guarantee visibility.
+        if not jid_list or len(jid_list) == 0:
+            contacts = await self.get_contacts()
+            if contacts:
+                jid_list = [c["remoteJid"] for c in contacts if "remoteJid" in c]
+            else:
+                jid_list = []
+
         payload = {
             "type": type,
             "content": final_content,
@@ -427,10 +436,12 @@ class EvolutionWhatsAppService(NotificationService):
             "token": str(uuid.uuid4()),  # Unique token for the instance
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
-            "webhook_by_events": False,
-            "readMessages": False,
-            "readStatus": False,
-            "syncFullHistory": False,
+            "reject_call": True,
+            "groups_ignore": True,
+            "always_online": False,
+            "read_messages": False,
+            "read_status": False,
+            "sync_full_history": False,
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
@@ -462,6 +473,12 @@ class EvolutionWhatsAppService(NotificationService):
             "token": self.api_key,  # Use api_key as token
             "qrcode": True,
             "integration": "WHATSAPP-BAILEYS",
+            "reject_call": True,
+            "groups_ignore": True,
+            "always_online": False,
+            "read_messages": False,
+            "read_status": False,
+            "sync_full_history": False,
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
@@ -507,6 +524,39 @@ class EvolutionWhatsAppService(NotificationService):
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp QR Code: %s", exc)
             return ""
+
+    async def request_pairing_code(self, phone: str) -> Optional[str]:
+        """
+        Requests a pairing code for a phone number.
+        """
+        # FIX: Baileys often returns codes that get rejected by WhatsApp if the socket is stuck 
+        # in QR mode or an orphaned reconnect loop. Logging out first resets the socket cleanly.
+        try:
+            await self.logout_instance()
+        except Exception:
+            pass
+
+        import asyncio
+        await asyncio.sleep(1) # wait for socket teardown
+        
+        clean_phone = self._clean_phone(phone)
+        url = f"{self.base_url}/instance/connect/{self.instance}?number={clean_phone}"
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get(url, headers=self._headers())
+                if response.status_code >= 400:
+                    logger.error(
+                        "Evolution Pairing Code Error (%s): %s",
+                        response.status_code,
+                        response.text,
+                    )
+                response.raise_for_status()
+                data = response.json()
+                # Evolution v2 via GET returns {"pairingCode": "ABCD-EFGH", "code": "..."}
+                return data.get("pairingCode") or data.get("code")
+        except Exception as exc:
+            logger.error("Failed to request pairing code for %s: %s", phone, exc)
+            return None
 
     async def set_presence(
         self, phone: str, presence: str = "composing", delay: int = 1200

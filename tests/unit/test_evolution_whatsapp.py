@@ -138,9 +138,10 @@ async def test_send_status_returns_false_on_5xx(svc, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_send_status_returns_true_on_timeout(svc, mock_client):
+async def test_send_status_returns_false_on_timeout(svc, mock_client):
+    """Timeout on sendStatus is treated as failure since delivery is uncertain."""
     mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("timed out"))
-    assert await svc.send_status("hello world", type="text") is True
+    assert await svc.send_status("hello world", type="text") is False
 
 
 @pytest.mark.asyncio
@@ -163,8 +164,10 @@ async def test_create_instance_payload(svc, mock_client):
     args, kwargs = mock_client.post.call_args
     payload = kwargs["json"]
     assert payload["instanceName"] == "test_inst"
-    assert payload["syncFullHistory"] is True
-    assert payload["webhook_by_events"] is False
+    assert payload["sync_full_history"] is False
+    assert payload["reject_call"] is True
+    assert payload["read_messages"] is False
+    assert payload["read_status"] is False
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

@@ -4,81 +4,130 @@
 {% block page_subtitle %}Gerencie múltiplas contas WhatsApp e automatize seus disparos em todas elas.{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem;">
     <h2 style="font-size: 1.5rem; color: white;">Minhas Contas WhatsApp</h2>
     <button onclick="showNewInstanceModal()" class="btn btn-primary">+ Adicionar Conta</button>
 </div>
 
-<!-- Toast Container -->
-<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
-
-<div id="instances-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+<div id="instances-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
     {% for inst in instances %}
-    <div class="card instance-card" id="instance-{{ inst.id }}" style="border: 1px solid var(--border); transition: var(--transition);">
+    <div class="glass-card animate-item" id="instance-{{ inst.id }}" style="border: 1px solid var(--border); transition: var(--transition); padding: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
             <div style="display: flex; gap: 1rem; align-items: center;">
-                <div class="inst-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">📱</div>
+                <div class="inst-icon" style="width: 48px; height: 48px; border-radius: 12px; background: var(--primary-shadow); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                </div>
                 <div>
-                    <h3 id="instance-name-title-{{ inst.id }}" style="font-size: 1.1rem; color: white; margin-bottom: 0.25rem;">{{ inst.display_name or inst.name }}</h3>
-                    <div id="status-badge-{{ inst.id }}" class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Verificando...</div>
+                    <h3 id="instance-name-title-{{ inst.id }}" style="font-size: 1.1rem; font-weight: 700; color: white; margin-bottom: 0.25rem;">{{ inst.display_name or inst.name }}</h3>
+                    <div id="status-badge-{{ inst.id }}" class="badge-status" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem;">VERIFICANDO...</div>
                 </div>
             </div>
-            <div style="text-align: right;">
-                <button onclick="showInstanceDetails({{ inst.id }}, '{{ inst.display_name or inst.name }}')" class="btn btn-ghost" style="padding: 4px 8px; font-size: 0.8rem;">Detalhes</button>
-            </div>
+            <button onclick="showInstanceDetails({{ inst.id }}, '{{ inst.display_name or inst.name }}')" class="btn-action" title="Configurações">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
         </div>
 
-        <div id="qr-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--primary); border-radius: 12px; background: rgba(99, 102, 241, 0.03); margin-bottom: 1rem;">
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Escaneie com o seu WhatsApp pelo celular.</p>
-            <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; position: relative; width: 200px; height: 200px;">
+        <div id="qr-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--primary); border-radius: 20px; background: rgba(99, 102, 241, 0.05); margin-bottom: 1.5rem;" class="animate-scale-up">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Escaneie o QR Code no seu celular</p>
+            <div style="background: white; padding: 1rem; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; position: relative; width: 180px; height: 180px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
                 <div id="qr-spinner-{{ inst.id }}" class="spinner" style="border-top-color: var(--primary);"></div>
-                <img id="qr-img-{{ inst.id }}" src="" style="width: 200px; height: 200px; display: none; position: absolute; border-radius: 8px;">
+                <img id="qr-img-{{ inst.id }}" src="" style="width: 160px; height: 160px; display: none; position: absolute; border-radius: 8px;">
             </div>
         </div>
 
-        <div id="active-actions-{{ inst.id }}" style="display: none; gap: 0.5rem; flex-direction: column;">
-            <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border); font-size: 0.9rem;">Ver Grupos e Contatos</button>
-            <button onclick="disconnectInstance({{ inst.id }})" id="btn-disconnect-{{ inst.id }}" class="btn btn-ghost" style="width: 100%; border: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b; font-size: 0.9rem;">Desconectar Sessão</button>
+        <div id="pairing-section-{{ inst.id }}" style="text-align: center; display: none; padding: 2rem; border: 1px dashed var(--secondary); border-radius: 24px; background: rgba(16, 185, 129, 0.05); margin-bottom: 1.5rem;" class="animate-scale-up">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Código de Pareamento</p>
+            <div id="pairing-code-display-{{ inst.id }}" style="font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 900; color: #10b981; letter-spacing: 8px; text-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">
+                ----
+            </div>
+            <p style="margin-top: 1.25rem; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                Vá em <b>Aparelhos Conectados</b> e escolha <br><b>Conectar com número de telefone</b>
+            </p>
+        </div>
+
+        <div id="active-actions-{{ inst.id }}" style="display: none; gap: 0.75rem; flex-direction: column;">
+            <button onclick="fetchGroups({{ inst.id }})" class="btn btn-ghost" style="width: 100%; font-size: 0.85rem; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Ver Grupos e Contatos
+            </button>
+            <button onclick="disconnectInstance({{ inst.id }})" id="btn-disconnect-{{ inst.id }}" class="btn btn-ghost" style="width: 100%; border-color: rgba(239, 68, 68, 0.1); color: #ef4444; font-size: 0.85rem; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
+                Desconectar Conta
+            </button>
         </div>
 
         <div id="inactive-actions-{{ inst.id }}" style="display: block;">
-            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%;">Conectar via QR Code</button>
+            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%; margin-bottom: 0.75rem; height: 44px; font-weight: 700; letter-spacing: 0.5px;">CONECTAR VIA QR CODE</button>
+            <button onclick="showPairingModal({{ inst.id }})" class="btn btn-ghost" style="width: 100%; height: 44px; font-weight: 600;">CONECTAR VIA TELEFONE</button>
         </div>
     </div>
     {% else %}
-    <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: rgba(255,255,255,0.02); border-radius: 20px; border: 2px dashed var(--border);">
-        <div style="font-size: 4rem; margin-bottom: 1.5rem;">🔌</div>
-        <h3 style="color: white; margin-bottom: 0.5rem;">Nenhuma conta WhatsApp vinculada</h3>
-        <p style="color: var(--text-muted); margin-bottom: 2rem;">Crie sua primeira instância para começar a automatizar seus disparos.</p>
-        <button onclick="showNewInstanceModal()" class="btn btn-primary">Criar Nova Instância</button>
+    <div style="grid-column: 1 / -1; text-align: center; padding: 6rem 2rem; background: rgba(0,0,0,0.1); border-radius: 32px; border: 2px dashed var(--border);">
+        <div style="font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.3;">📱</div>
+        <h3 style="color: white; margin-bottom: 0.5rem; font-size: 1.5rem; font-weight: 800;">Nenhuma conta vinculada</h3>
+        <p style="color: var(--text-muted); margin-bottom: 2.5rem; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+            Adicione sua primeira conta WhatsApp para começar a automatizar seus disparos de produtos e status profissionais.
+        </p>
+        <button onclick="showNewInstanceModal()" class="btn btn-primary" style="padding: 1rem 2rem; font-weight: 800;">ADICIONAR PRIMEIRA CONTA</button>
     </div>
     {% endfor %}
 </div>
 
 <!-- New Instance Modal -->
-<div id="new-instance-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1.5rem; overflow-y: auto;">
-    <div class="card animate-scale-up" style="width: 100%; max-width: 400px; border: 1px solid var(--primary); box-shadow: 0 0 30px rgba(99, 102, 241, 0.2); max-height: 90vh; overflow-y: auto;">
-        <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Nova Instância WhatsApp</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Dê um nome amigável para esta conexão (ex: 'Comercial 01').</p>
-        <form id="new-inst-form" onsubmit="event.preventDefault(); createInstance();">
-            <div class="form-group">
-                <label class="form-label">Nome da Instância</label>
-                <input type="text" id="new-inst-name" class="form-input" placeholder="Departamento Comercial" required>
+<div id="new-instance-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); z-index: 10000; align-items: center; justify-content: center; padding: 1.5rem;">
+    <div class="glass-card animate-scale-up" style="width: 100%; max-width: 420px; border: 1px solid var(--primary-glow); padding: 2.5rem;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+            <h2 style="font-weight: 800; font-size: 1.5rem; color: #fff;">Nova Instância</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Dê um nome para identificar sua conta</p>
+        </div>
+        <form onsubmit="event.preventDefault(); createInstance();">
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label class="form-label">Nome de Exibição</label>
+                <input type="text" id="new-inst-name" class="form-input" style="background: rgba(0,0,0,0.2); border-color: var(--border);" placeholder="Ex: Comercial Principal" required>
             </div>
-            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                <button type="button" onclick="hideNewInstanceModal()" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
-                <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 2;">Provisionar Conta</button>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="hideNewInstanceModal()" class="btn btn-ghost" style="flex: 1;">CANCELAR</button>
+                <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 1.5; font-weight: 800;">CRIAR AGORA</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Pairing Modal -->
+<div id="pairing-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); z-index: 10000; align-items: center; justify-content: center; padding: 1.5rem;">
+    <div class="glass-card animate-scale-up" style="width: 100%; max-width: 420px; border: 1px solid var(--secondary); padding: 2.5rem;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
+            <h2 style="font-weight: 800; font-size: 1.5rem; color: #fff;">Vincular por Telefone</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Informe o número para gerar o token</p>
+        </div>
+        <form onsubmit="event.preventDefault(); requestPairingCode();">
+            <input type="hidden" id="pairing-inst-id">
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label class="form-label">Número (DDI+DDD+NÚMERO)</label>
+                <input type="text" id="pairing-phone" class="form-input" style="background: rgba(0,0,0,0.2); border-color: var(--border); font-family: monospace; font-size: 1.1rem; text-align: center;" placeholder="5598912345678" required>
+                <div style="margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    Use o prefixo 55 para números do Brasil.
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="hidePairingModal()" class="btn btn-ghost" style="flex: 1;">CANCELAR</button>
+                <button type="submit" id="btn-gen-pairing" class="btn btn-primary" style="flex: 1.5; font-weight: 800;">GERAR TOKEN</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Instance Details Modal -->
-<div id="details-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1.5rem; overflow-y: auto;">
-    <div class="card animate-scale-up" style="width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.5);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.25rem; color: white;">Configurações da Instância</h2>
-            <button onclick="hideDetailsModal()" class="btn btn-ghost btn-sm">Fechar</button>
+<div id="details-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); z-index: 10000; align-items: center; justify-content: center; padding: 1.5rem;">
+    <div class="glass-card animate-scale-up" style="width: 100%; max-width: 450px; border: 1px solid var(--border); padding: 2.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2 style="font-weight: 800; font-size: 1.25rem; color: #fff;">Configurações</h2>
+            <button onclick="hideDetailsModal()" class="btn-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
 
         <form onsubmit="event.preventDefault(); renameInstance();">
@@ -111,69 +160,7 @@
     </div>
 </div>
 
-<!-- Custom Confirm Modal -->
-<div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center;">
-    <div style="background: #1e1e2f; padding: 2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 400px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-        <div style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
-        <h3 style="color: #ffffff; margin-bottom: 1rem; font-size: 1.4rem; font-weight: 600;">Confirmar Ação</h3>
-        <p id="confirm-message" style="color: #e5e7eb; margin-bottom: 2rem; font-size: 1.1rem; line-height: 1.6; font-weight: 400;"></p>
-        <div style="display: flex; gap: 1rem; justify-content: center;">
-            <button id="btn-confirm-cancel" class="btn btn-ghost" style="flex: 1; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);">Cancelar</button>
-            <button id="btn-confirm-ok" class="btn btn-primary" style="flex: 1; background: #ef4444; color: white; border: none; font-weight: bold;">Confirmar</button>
-        </div>
-    </div>
-</div>
-
 <script>
-let confirmCallback = null;
-
-function showConfirm(message, callback) {
-    document.getElementById('confirm-message').innerText = message;
-    document.getElementById('confirm-modal').style.display = 'flex';
-    confirmCallback = callback;
-}
-
-document.getElementById('btn-confirm-cancel').onclick = () => {
-    document.getElementById('confirm-modal').style.display = 'none';
-    confirmCallback = null;
-};
-
-document.getElementById('btn-confirm-ok').onclick = () => {
-    document.getElementById('confirm-modal').style.display = 'none';
-    if (confirmCallback) confirmCallback();
-    confirmCallback = null;
-};
-
-function showToast(message, type = 'error') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    const bgColor = type === 'success' ? '#10b981' : '#ef4444';
-    const icon = type === 'success' ? '✓' : '⚠️';
-    
-    toast.style = `
-        background: ${bgColor}; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 500;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateX(100%);
-        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        display: flex; align-items: center; gap: 10px; font-size: 0.95rem;
-    `;
-    toast.innerHTML = `<span style="font-weight: 800;">${icon}</span> <span>${message}</span>`;
-    
-    container.appendChild(toast);
-    
-    requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateX(0)';
-    });
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-
 async function checkInstanceStatus(id) {
     try {
         const res = await fetch(`/whatsapp/status/${id}`);
@@ -242,6 +229,56 @@ async function connectInstance(id) {
     }
 }
 
+function showPairingModal(id) {
+    document.getElementById('pairing-inst-id').value = id;
+    document.getElementById('pairing-modal').style.display = 'flex';
+}
+
+function hidePairingModal() {
+    document.getElementById('pairing-modal').style.display = 'none';
+}
+
+async function requestPairingCode() {
+    const id = document.getElementById('pairing-inst-id').value;
+    const phone = document.getElementById('pairing-phone').value;
+    const btn = document.getElementById('btn-gen-pairing');
+    const display = document.getElementById(`pairing-code-display-${id}`);
+    const section = document.getElementById(`pairing-section-${id}`);
+    const qrSection = document.getElementById(`qr-section-${id}`);
+
+    btn.disabled = true;
+    btn.innerText = 'Gerando...';
+
+    const formData = new FormData();
+    formData.append('phone', phone);
+
+    try {
+        const res = await fetch(`/whatsapp/connect-phone/${id}`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success && data.code) {
+            display.innerText = data.code;
+            section.style.display = 'block';
+            qrSection.style.display = 'none';
+            hidePairingModal();
+            showToast('Código gerado! Digite no seu celular.', 'success');
+
+            // Poll for connection
+            const poll = setInterval(async () => {
+                const res = await fetch(`/whatsapp/status/${id}`);
+                const status = await res.json();
+                if (status.connected) {
+                    clearInterval(poll);
+                    updateInstanceUI(id, status);
+                    showToast('Conta conectada via código!', 'success');
+                }
+            }, 5000);
+        } else {
+            showToast(data.error || 'Falha ao solicitar código.', 'error');
+        }
+    } catch (e) { showToast('Erro de rede ao solicitar código.', 'error'); }
+    finally { btn.disabled = false; btn.innerText = 'Gerar Código'; }
+}
+
 async function deleteInstance(id) {
     showConfirm('Tem certeza que deseja excluir permanentemente esta instância WhatsApp? Esta ação não pode ser desfeita.', async () => {
         const btn = document.getElementById('btn-delete-inst');
@@ -260,7 +297,7 @@ async function deleteInstance(id) {
                 hideDetailsModal();
                 showToast('Instância excluída com sucesso.', 'success');
                 
-                if (document.querySelectorAll('.instance-card').length === 0) {
+                if (document.querySelectorAll('.glass-card.animate-item').length === 0) {
                     setTimeout(() => window.location.reload(), 1500);
                 }
             } else {
@@ -465,7 +502,7 @@ function hideTargetsModal() { document.getElementById('targets-modal').style.dis
 // Init
 document.addEventListener('DOMContentLoaded', () => {
     // Move modals out of stacking context traps
-    const modals = ['new-instance-modal', 'details-modal', 'targets-modal', 'confirm-modal'];
+    const modals = ['new-instance-modal', 'details-modal', 'targets-modal', 'pairing-modal'];
     modals.forEach(id => {
         const m = document.getElementById(id);
         if (m) document.body.appendChild(m);
@@ -481,5 +518,21 @@ document.addEventListener('DOMContentLoaded', () => {
 .instance-card:hover { transform: translateY(-4px); border-color: var(--primary) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+
+/* mobile-first: default is 1 column, scale up for larger screens */
+@media (min-width: 768px) {
+    #instances-grid { grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)) !important; }
+}
+
+/* mobile modal adjustments */
+@media (max-width: 480px) {
+    #new-instance-modal > div,
+    #pairing-modal > div,
+    #details-modal > div,
+    #targets-modal > div {
+        padding: 1.5rem !important;
+        max-width: 100% !important;
+    }
+}
 </style>
 {% endblock %}

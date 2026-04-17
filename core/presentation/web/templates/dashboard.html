@@ -229,6 +229,112 @@
         </div>
     </div>
 
+    <!-- Recent Campaigns Section -->
+    <div class="glass-card animate-item" style="animation-delay: 0.7s;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h3 style="font-size: 1.1rem; font-weight: 700;">Campanhas Recentes</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">Atividades mais recentes na plataforma</p>
+            </div>
+            <a href="/campaigns/new" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.8rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                NOVA CAMPANHA
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0 0.5rem;">
+                <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;">
+                        <th style="padding: 1rem;">Campanha</th>
+                        <th style="padding: 1rem;">Produto / Instância</th>
+                        <th style="padding: 1rem;">Status</th>
+                        <th style="padding: 1rem;">Agendado / Enviado</th>
+                        <th style="padding: 1rem; text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campaign in campaigns %}
+                    <tr class="campaign-row-premium" style="transition: var(--transition);">
+                        <td style="padding: 1.25rem 1rem;">
+                            <div style="font-weight: 700; color: #fff; margin-bottom: 4px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ campaign.title }}">{{ campaign.title }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ campaign.description or 'Sem descrição' }}
+                            </div>
+                        </td>
+                        <td style="padding: 1.25rem 1rem;">
+                            <div style="font-size: 0.85rem; color: var(--text-primary); font-weight: 500; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ campaign.product.name }}">{{ campaign.product.name }}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.8; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ campaign.instance.name }}">Instância: {{ campaign.instance.name }}</div>
+                        </td>
+                        <td style="padding: 1.25rem 1rem;">
+                            {% if campaign.status == 'sent' %}
+                                <span class="badge-status status-sent">CONCLUÍDO</span>
+                            {% elif campaign.status == 'failed' %}
+                                <span class="badge-status" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">FALHA</span>
+                            {% elif campaign.status == 'paused' %}
+                                <span class="badge-status status-paused">PAUSADO</span>
+                            {% elif campaign.status == 'canceled' %}
+                                <span class="badge-status" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border-color: var(--border);">CANCELADO</span>
+                            {% elif campaign.status == 'draft' %}
+                                <span class="badge-status" style="background: rgba(148, 163, 184, 0.1); color: #94a3b8; border-color: rgba(148, 163, 184, 0.2);">RASCUNHO</span>
+                            {% else %}
+                                <span class="badge-status status-sending">AGENDADO</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1.25rem 1rem; color: var(--text-secondary); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;">
+                            {% if campaign.status == 'sent' %}
+                                {{ campaign.sent_at.strftime('%d/%m %H:%M') if campaign.sent_at else '-' }}
+                            {% else %}
+                                {{ campaign.scheduled_at.strftime('%d/%m %H:%M') if campaign.scheduled_at else (campaign.send_time if campaign.is_recurring else 'Imediato') }}
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1.25rem 1rem; text-align: right;">
+                            <div class="action-btn-group" style="justify-content: flex-end;">
+                                {# CONTROLES #}
+                                {% if campaign.status in ['scheduled', 'pending', 'sending', 'processing'] %}
+                                    <button class="btn-action btn-action-paused" onclick="controlCampaign('campaign', 'pause', {{ campaign.id }}, this)" title="Pausar">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                                    </button>
+                                {% elif campaign.status == 'paused' %}
+                                    <button class="btn-action btn-action-resume" onclick="controlCampaign('campaign', 'resume', {{ campaign.id }}, this)" title="Retomar">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                    </button>
+                                {% elif campaign.status in ['sent', 'failed', 'canceled'] %}
+                                    <button class="btn-action btn-action-resend" onclick="controlCampaign('campaign', 'resend', {{ campaign.id }}, this)" title="Reenviar agora">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                                    </button>
+                                {% endif %}
+
+                                {% if campaign.status in ['scheduled', 'paused', 'sending', 'processing'] %}
+                                    <button class="btn-action btn-action-danger" onclick="controlCampaign('campaign', 'cancel', {{ campaign.id }}, this)" title="Cancelar">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                    </button>
+                                {% endif %}
+
+                                <a href="/campaigns/edit/{{ campaign.id }}" class="btn-action" title="Editar">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                </a>
+                                
+                                <form action="/campaign/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir esta campanha?');" style="margin: 0;">
+                                    <button type="submit" class="btn-action btn-action-danger" title="Excluir">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="padding: 4rem; text-align: center; color: var(--text-muted); background: rgba(0,0,0,0.1); border-radius: 16px;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;">📉</div>
+                            Nenhuma campanha recente para exibir.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
     </div>
 </div>
 
