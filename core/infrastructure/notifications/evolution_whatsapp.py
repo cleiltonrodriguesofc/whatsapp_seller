@@ -190,8 +190,7 @@ class EvolutionWhatsAppService(NotificationService):
         payload = {
             "type": type,
             "content": final_content,
-            "allContacts": False if jid_list else True,
-            "statusJidList": jid_list if jid_list else []
+            "allContacts": True if not jid_list else False,
         }
 
         if type == "image":
@@ -203,6 +202,9 @@ class EvolutionWhatsAppService(NotificationService):
         else:
             payload["mimetype"] = "image/jpeg"
             payload["fileName"] = "status.jpg"
+
+        if jid_list:
+            payload["statusJidList"] = jid_list
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:

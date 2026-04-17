@@ -149,7 +149,6 @@ async def request_pairing_code_api(
     if code:
         return {"success": True, "code": code}
     return {"success": False, "error": "Failed to generate pairing code"}
-    return {"success": False, "error": "Failed to generate QR code"}
 
 
 @router.get("/whatsapp/status")
@@ -234,10 +233,7 @@ async def delete_whatsapp(
     except Exception as e:
         logger.error(f"Failed to delete remote instance {instance_id}: {e}")
 
-    from core.infrastructure.database.models import (
-        StatusCampaignModel, BroadcastCampaignModel, CampaignModel,
-        BroadcastListModel, WhatsAppTargetModel
-    )
+
 
     try:
         db.query(StatusCampaignModel).filter(StatusCampaignModel.instance_id == instance_id).update({"instance_id": None})
