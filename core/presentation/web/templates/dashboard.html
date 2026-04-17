@@ -229,6 +229,89 @@
         </div>
     </div>
 
+    <!-- Recent Campaigns Section -->
+    <div class="glass-card animate-item" style="animation-delay: 0.7s;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h3 style="font-size: 1.1rem;">Campanhas Recentes</h3>
+            <a href="/campaigns/new" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 8px;">NOVA CAMPANHA</a>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <th style="padding: 1rem;">Campanha</th>
+                        <th style="padding: 1rem;">Produto / Instância</th>
+                        <th style="padding: 1rem;">Status</th>
+                        <th style="padding: 1rem;">Agendado / Enviado</th>
+                        <th style="padding: 1rem; text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campaign in campaigns %}
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 1rem;">
+                            <div style="font-weight: 700; color: #fff;">{{ campaign.title }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ campaign.custom_message or 'Mensagem do produto' }}</div>
+                        </td>
+                        <td style="padding: 1rem;">
+                            <div style="font-size: 0.85rem;">{{ campaign.product.name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">ID Instância: {{ campaign.instance_id }}</div>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if campaign.status == 'sent' %}
+                                <span style="color: var(--success); font-size: 0.75rem; font-weight: 700;">● CONCLUÍDO</span>
+                            {% elif campaign.status == 'failed' %}
+                                <span style="color: var(--error); font-size: 0.75rem; font-weight: 700;">● FALHOU</span>
+                            {% elif campaign.status == 'paused' %}
+                                <span style="color: #f59e0b; font-size: 0.75rem; font-weight: 700;">● PAUSADO</span>
+                            {% elif campaign.status == 'canceled' %}
+                                <span style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700;">● CANCELADO</span>
+                            {% elif campaign.status == 'draft' %}
+                                <span style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700;">● RASCUNHO</span>
+                            {% else %}
+                                <span style="color: var(--primary); font-size: 0.75rem; font-weight: 700;">● AGENDADO</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
+                            {% if campaign.status == 'sent' %}
+                                {{ campaign.sent_at.strftime('%d/%m %H:%M') if campaign.sent_at else '-' }}
+                            {% else %}
+                                {{ campaign.scheduled_at.strftime('%d/%m %H:%M') if campaign.scheduled_at else (campaign.send_time if campaign.is_recurring else 'Imediato') }}
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem; text-align: right;">
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                                {# CONTROLES #}
+                                {% if campaign.status in ['scheduled', 'pending', 'sending', 'processing'] %}
+                                    <button onclick="controlCampaign('campaign', 'pause', {{ campaign.id }})" style="background:none; border:none; color: #f59e0b; cursor:pointer;" title="Pausar">⏸</button>
+                                {% elif campaign.status == 'paused' %}
+                                    <button onclick="controlCampaign('campaign', 'resume', {{ campaign.id }})" style="background:none; border:none; color: #10b981; cursor:pointer;" title="Retomar">▶️</button>
+                                {% elif campaign.status in ['sent', 'failed', 'canceled'] %}
+                                    <button onclick="controlCampaign('campaign', 'resend', {{ campaign.id }})" style="background:none; border:none; color: var(--primary); cursor:pointer;" title="Reenviar agora">🔄</button>
+                                {% endif %}
+
+                                {% if campaign.status in ['scheduled', 'paused', 'sending', 'processing'] %}
+                                    <button onclick="controlCampaign('campaign', 'cancel', {{ campaign.id }})" style="background:none; border:none; color: var(--text-muted); cursor:pointer;" title="Cancelar Agendamento">⛔</button>
+                                {% endif %}
+
+                                <a href="/campaigns/edit/{{ campaign.id }}" style="text-decoration:none;" title="Editar">✏️</a>
+                                
+                                <form action="/campaign/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir esta campanha?');" style="margin: 0; display: inline;">
+                                    <button type="submit" style="background:none; border:none; color: #ef4444; cursor:pointer; padding: 0;">🗑️</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="padding: 3rem; text-align: center; color: var(--text-muted);">Nenhuma campanha recente para exibir.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
     </div>
 </div>
 

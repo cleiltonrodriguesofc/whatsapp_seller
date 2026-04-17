@@ -63,6 +63,10 @@
             <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.2);">FALHOU</span>
         {% elif campaign.status.value == 'processing' or campaign.status.value == 'sending' %}
             <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); border: 1px solid rgba(59, 130, 246, 0.2);">ENVIANDO...</span>
+        {% elif campaign.status.value == 'paused' %}
+            <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2);">PAUSADO</span>
+        {% elif campaign.status.value == 'canceled' %}
+            <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border);">CANCELADO</span>
         {% elif campaign.status.value == 'draft' %}
             <span class="badge" style="background: rgba(255, 191, 0, 0.1); color: #ffbf00; border: 1px solid rgba(255, 191, 0, 0.2);">RASCUNHO</span>
         {% else %}
@@ -70,12 +74,29 @@
         {% endif %}
 
         <div style="display: flex; gap: 0.5rem;">
-            <a href="/status_campaigns/duplicate/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Duplicar (Reenviar)">📄</a>
-            <a href="/status_campaigns/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Ver Detalhes">👁️</a>
-            {% if campaign.status.value in ['draft', 'scheduled', 'pending'] %}
-            <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Editar">✏️</a>
+            {# CONTROLES PRINCIPAIS #}
+            
+            {% if campaign.status.value in ['scheduled', 'pending', 'sending', 'processing'] %}
+                {# PAUSE #}
+                <button onclick="controlCampaign('status_campaigns', 'pause', {{ campaign.id }})" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 8px;" title="Pausar">⏸</button>
+            {% elif campaign.status.value == 'paused' %}
+                {# RESUME #}
+                <button onclick="controlCampaign('status_campaigns', 'resume', {{ campaign.id }})" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(16,185,129,0.2); color: #10b981; border-radius: 8px;" title="Retomar">▶️</button>
+            {% elif campaign.status.value in ['sent', 'failed', 'canceled'] %}
+                {# RESEND #}
+                <button onclick="controlCampaign('status_campaigns', 'resend', {{ campaign.id }})" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--primary); color: var(--primary); border-radius: 8px;" title="Reenviar agora">🔄</button>
             {% endif %}
-            <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente? A imagem também será removida do storage.');" style="margin: 0;">
+
+            {% if campaign.status.value in ['scheduled', 'pending', 'paused', 'sending', 'processing'] %}
+                {# CANCEL #}
+                <button onclick="controlCampaign('status_campaigns', 'cancel', {{ campaign.id }})" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.1); color: var(--text-muted); border-radius: 8px;" title="Cancelar Agendamentos">⛔</button>
+            {% endif %}
+
+            {# EDIT - SEMPRE VISÍVEL #}
+            <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; border-color: var(--border); border-radius: 8px;" title="Editar">✏️</a>
+            
+            {# DELETE #}
+            <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente?');" style="margin: 0;">
                 <button type="submit" class="btn btn-ghost" style="padding: 8px 12px; font-size: 0.8rem; color: #ef4444; border-color: rgba(239,68,68,0.2); border-radius: 8px;" title="Excluir">🗑️</button>
             </form>
         </div>
@@ -96,7 +117,6 @@
         {% for campaign in draft_list | sort(attribute="created_at", reverse=True) %}
             {{ status_card(campaign) }}
         {% endfor %}
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem;">Estes status ainda não foram agendados e não serão enviados.</p>
     </div>
     {% endif %}
     
@@ -114,13 +134,27 @@
     </div>
     {% endif %}
 
+    <!-- 1.5 SEÇÃO: PAUSADOS -->
+    {% set paused_list = campaigns | selectattr("status.value", "equalto", "paused") | list %}
+    {% if paused_list %}
+    <div style="margin-bottom: 3rem;">
+        <h3 style="font-size: 1rem; color: #f59e0b; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>⏸️ Status Pausados</span>
+            <span style="background: #f59e0b; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 100px;">{{ paused_list|length }}</span>
+        </h3>
+        {% for campaign in paused_list %}
+            {{ status_card(campaign) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- 2. SEÇÃO: EM PROCESSAMENTO -->
     {% set processing_list = (campaigns | selectattr("status.value", "equalto", "processing") | list) + (campaigns | selectattr("status.value", "equalto", "sending") | list) %}
     {% if processing_list %}
     <div style="margin-bottom: 3rem;">
         <h3 style="font-size: 1rem; color: var(--info); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
             <span>🔄 Sendo Enviados</span>
-            <span class="spinner" style="width:14px; height:14px; border-width: 2px;"></span>
+            <div class="spinner" style="width:14px; height:14px; border-width: 2px; border-top-color: var(--info);"></div>
         </h3>
         {% for campaign in processing_list %}
             {{ status_card(campaign) }}
@@ -129,7 +163,7 @@
     {% endif %}
 
     <!-- 3. SEÇÃO: HISTÓRICO -->
-    {% set finished_list = (campaigns | selectattr("status.value", "equalto", "sent") | list) + (campaigns | selectattr("status.value", "equalto", "failed") | list) %}
+    {% set finished_list = (campaigns | selectattr("status.value", "equalto", "sent") | list) + (campaigns | selectattr("status.value", "equalto", "failed") | list) + (campaigns | selectattr("status.value", "equalto", "canceled") | list) %}
     <div style="margin-bottom: 3rem;">
         <h3 style="font-size: 1rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.25rem;">
             ✅ Histórico de Envios

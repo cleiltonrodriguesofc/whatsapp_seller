@@ -97,14 +97,24 @@ async def send_campaign(campaign: Campaign, db) -> None:
         message = message.replace(campaign.product.affiliate_link, cloaked_link)
 
     try:
-        success = await humanized_sender.send_campaign_humanized(
+        result = await humanized_sender.send_campaign_humanized(
             targets=campaign.target_groups,
             content=message,
             media_url=campaign.product.image_url,
+            campaign_id=campaign.id,
+            db=db,
         )
-        campaign.status = (
-            DomainCampaignStatus.SENT if success else DomainCampaignStatus.FAILED
-        )
+        # If it returns a dict, handle it. If it was paused/canceled mid-loop, 
+        # result['status'] will be 'paused' or 'canceled'.
+        if isinstance(result, dict):
+            status_map = {
+                "completed": DomainCampaignStatus.SENT,
+                "paused": DomainCampaignStatus.PAUSED,
+                "canceled": DomainCampaignStatus.CANCELED,
+            }
+            campaign.status = status_map.get(result.get("status"), DomainCampaignStatus.FAILED)
+        else:
+            campaign.status = DomainCampaignStatus.SENT if result else DomainCampaignStatus.FAILED
     except Exception as e:
         logger.error("error during humanized campaign send: %s", e, exc_info=True)
         campaign.status = DomainCampaignStatus.FAILED
@@ -381,7 +391,7 @@ async def campaign_scheduler_loop() -> None:
                 db.query(CampaignModel)
                 .filter(
                     CampaignModel.is_recurring,
-                    CampaignModel.status != "failed",
+                    CampaignModel.status.notin_(["failed", "paused", "canceled"]),
                 )
                 .all()
             )
@@ -456,7 +466,7 @@ async def campaign_scheduler_loop() -> None:
                 db.query(StatusCampaignModel)
                 .filter(
                     StatusCampaignModel.is_recurring,
-                    StatusCampaignModel.status.notin_(["failed", "sending"]),
+                    StatusCampaignModel.status.notin_(["failed", "sending", "paused", "canceled"]),
                 )
                 .all()
             )
@@ -516,7 +526,7 @@ async def campaign_scheduler_loop() -> None:
                 db.query(BroadcastCampaignModel)
                 .filter(
                     BroadcastCampaignModel.is_recurring,
-                    BroadcastCampaignModel.status != "failed",
+                    BroadcastCampaignModel.status.notin_(["failed", "paused", "canceled"]),
                 )
                 .all()
             )

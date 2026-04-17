@@ -166,6 +166,43 @@
         // Poll every 30 seconds
         setInterval(updateSidebarStatus, 30000);
         updateSidebarStatus(); // Initial check
+
+        // Global Campaign Control Helper
+        async function controlCampaign(router, action, id) {
+            if (!confirm(`Deseja realmente aplicar a ação '${action}' nesta campanha?`)) return;
+            
+            try {
+                // Determine the correct path based on router and action
+                let path = "";
+                if (router === 'status_campaigns') {
+                    path = `/status_campaigns/${action}/${id}`;
+                } else if (router === 'broadcast') {
+                    path = `/broadcast/campaigns/${id}/${action}`;
+                } else {
+                    path = `/campaign/${action}/${id}`;
+                }
+
+                const res = await fetch(path, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // Feedback visual immediately
+                    if (window.showToast) {
+                        showToast(`Ação ${action} realizada com sucesso!`, 'success');
+                    } else {
+                        alert('Ação realizada com sucesso!');
+                    }
+                    
+                    // Reload after a delay to show the new state
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    alert('Erro: ' + (data.error || 'Falha ao processar comando.'));
+                }
+            } catch (e) {
+                console.error('Control error:', e);
+                alert('Erro de conexão ao processar comando.');
+            }
+        }
     </script>
 </body>
 

@@ -24,13 +24,20 @@ class HumanizedSender:
         self.max_delay = 120  # seconds
 
     async def send_campaign_humanized(
-        self, targets: List[str], content: str, media_url: Optional[str] = None
+        self,
+        targets: List[str],
+        content: str,
+        media_url: Optional[str] = None,
+        campaign_id: Optional[int] = None,
+        db=None,
     ):
         """
         Sends a message to a list of targets with human-like delays and spintax variations.
+        If campaign_id and db are provided, checks for PAUSED/CANCELED status between sends.
         """
         from core.infrastructure.utils.image_utils import get_optimized_base64
         from core.infrastructure.utils.text_utils import parse_spintax
+        from core.infrastructure.database.models import CampaignModel
 
         optimized_media = None
         if media_url:
@@ -41,7 +48,31 @@ class HumanizedSender:
                 logger.error("Failed to optimize media for humanized send: %s", e)
 
         all_success = True
+        sent_count = 0
+        
         for i, target in enumerate(targets):
+            # 0. Check for pause/cancel signal
+            if db and campaign_id:
+                try:
+                    # refresh to get latest status from other workers/requests
+                    db.expire_all()
+                    current = db.query(CampaignModel).get(campaign_id)
+                    if current and current.status in ["paused", "canceled"]:
+                        logger.info(
+                            "campaign %s is now %s, stopping loop at %d/%d",
+                            campaign_id,
+                            current.status,
+                            i,
+                            len(targets),
+                        )
+                        return {
+                            "status": current.status,
+                            "sent": sent_count,
+                            "total": len(targets),
+                        }
+                except Exception as e:
+                    logger.warning("failed to check campaign status during loop: %s", e)
+
             # 1. Simulate Typing/Presence (only if not sending to status)
             if target != "status@broadcast":
                 try:
@@ -67,6 +98,7 @@ class HumanizedSender:
                 success = await self.svc.send_text(target, personalized_content)
 
             if success:
+                sent_count += 1
                 logger.info(
                     "humanized send ok to %s (%d/%d)",
                     target,
@@ -86,4 +118,8 @@ class HumanizedSender:
                 )
                 await asyncio.sleep(jitter)
 
-        return all_success
+        return {
+            "status": "completed" if all_success else "failed",
+            "sent": sent_count,
+            "total": len(targets),
+        }

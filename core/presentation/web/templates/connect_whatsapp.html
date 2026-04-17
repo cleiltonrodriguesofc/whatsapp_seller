@@ -30,9 +30,16 @@
 
         <div id="qr-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--primary); border-radius: 12px; background: rgba(99, 102, 241, 0.03); margin-bottom: 1rem;">
             <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Escaneie com o seu WhatsApp pelo celular.</p>
-            <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; position: relative; width: 200px; height: 200px;">
+            <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; position: relative; width: 200px; height: 200px; margin: 0 auto;">
                 <div id="qr-spinner-{{ inst.id }}" class="spinner" style="border-top-color: var(--primary);"></div>
                 <img id="qr-img-{{ inst.id }}" src="" style="width: 200px; height: 200px; display: none; position: absolute; border-radius: 8px;">
+            </div>
+        </div>
+
+        <div id="pairing-section-{{ inst.id }}" style="text-align: center; display: none; padding: 1.5rem; border: 1px solid var(--secondary); border-radius: 12px; background: rgba(99, 102, 241, 0.03); margin-bottom: 1rem;">
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Digite este código no seu WhatsApp: <b>Dispositivos Conectados > Conectar com número de telefone</b></p>
+            <div id="pairing-code-display-{{ inst.id }}" style="font-family: monospace; font-size: 2rem; font-weight: 800; color: var(--primary); letter-spacing: 5px; background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
+                ----
             </div>
         </div>
 
@@ -42,7 +49,8 @@
         </div>
 
         <div id="inactive-actions-{{ inst.id }}" style="display: block;">
-            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%;">Conectar via QR Code</button>
+            <button onclick="connectInstance({{ inst.id }})" class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;">Conectar via QR Code</button>
+            <button onclick="showPairingModal({{ inst.id }})" class="btn btn-ghost" style="width: 100%; border: 1px solid var(--border);">Conectar via Telefone</button>
         </div>
     </div>
     {% else %}
@@ -68,6 +76,26 @@
             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                 <button type="button" onclick="hideNewInstanceModal()" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
                 <button type="submit" id="btn-create-inst" class="btn btn-primary" style="flex: 2;">Provisionar Conta</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Pairing Modal -->
+<div id="pairing-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1.5rem;">
+    <div class="card animate-scale-up" style="width: 100%; max-width: 400px; border: 1px solid var(--primary);">
+        <h2 style="margin-bottom: 1rem; font-size: 1.25rem;">Conectar via WhatsApp</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Deverá inserir este número para gerar um código de pareamento de 8 dígitos.</p>
+        <form onsubmit="event.preventDefault(); requestPairingCode();">
+            <input type="hidden" id="pairing-inst-id">
+            <div class="form-group">
+                <label class="form-label">Número de Telefone (com DDD)</label>
+                <input type="text" id="pairing-phone" class="form-input" placeholder="ex: 5598912345678" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Não esqueça do 55 (Brasil).</small>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="button" onclick="hidePairingModal()" class="btn btn-ghost" style="flex: 1;">Cancelar</button>
+                <button type="submit" id="btn-gen-pairing" class="btn btn-primary" style="flex: 2;">Gerar Código</button>
             </div>
         </form>
     </div>
@@ -240,6 +268,56 @@ async function connectInstance(id) {
         showToast('Falha ao gerar QR Code. Verifique a conexão.', 'error'); 
         qrSection.style.display = 'none';
     }
+}
+
+function showPairingModal(id) {
+    document.getElementById('pairing-inst-id').value = id;
+    document.getElementById('pairing-modal').style.display = 'flex';
+}
+
+function hidePairingModal() {
+    document.getElementById('pairing-modal').style.display = 'none';
+}
+
+async function requestPairingCode() {
+    const id = document.getElementById('pairing-inst-id').value;
+    const phone = document.getElementById('pairing-phone').value;
+    const btn = document.getElementById('btn-gen-pairing');
+    const display = document.getElementById(`pairing-code-display-${id}`);
+    const section = document.getElementById(`pairing-section-${id}`);
+    const qrSection = document.getElementById(`qr-section-${id}`);
+
+    btn.disabled = true;
+    btn.innerText = 'Gerando...';
+
+    const formData = new FormData();
+    formData.append('phone', phone);
+
+    try {
+        const res = await fetch(`/whatsapp/connect-phone/${id}`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success && data.code) {
+            display.innerText = data.code;
+            section.style.display = 'block';
+            qrSection.style.display = 'none';
+            hidePairingModal();
+            showToast('Código gerado! Digite no seu celular.', 'success');
+
+            // Poll for connection
+            const poll = setInterval(async () => {
+                const res = await fetch(`/whatsapp/status/${id}`);
+                const status = await res.json();
+                if (status.connected) {
+                    clearInterval(poll);
+                    updateInstanceUI(id, status);
+                    showToast('Conta conectada via código!', 'success');
+                }
+            }, 5000);
+        } else {
+            showToast(data.error || 'Falha ao solicitar código.', 'error');
+        }
+    } catch (e) { showToast('Erro de rede ao solicitar código.', 'error'); }
+    finally { btn.disabled = false; btn.innerText = 'Gerar Código'; }
 }
 
 async function deleteInstance(id) {
@@ -465,7 +543,7 @@ function hideTargetsModal() { document.getElementById('targets-modal').style.dis
 // Init
 document.addEventListener('DOMContentLoaded', () => {
     // Move modals out of stacking context traps
-    const modals = ['new-instance-modal', 'details-modal', 'targets-modal', 'confirm-modal'];
+    const modals = ['new-instance-modal', 'details-modal', 'targets-modal', 'confirm-modal', 'pairing-modal'];
     modals.forEach(id => {
         const m = document.getElementById(id);
         if (m) document.body.appendChild(m);

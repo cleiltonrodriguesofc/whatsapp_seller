@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request, Form, Query, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -779,6 +779,77 @@ async def _save_campaign(request, db, current_user, campaign_id=None):
     )
 
     return RedirectResponse(url="/broadcast/campaigns", status_code=303)
+
+
+@router.post("/campaigns/{campaign_id}/pause")
+async def pause_broadcast_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import BroadcastCampaignModel
+    campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "paused"
+    db.commit()
+    return {"success": True, "status": "paused"}
+
+
+@router.post("/campaigns/{campaign_id}/resume")
+async def resume_broadcast_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import BroadcastCampaignModel
+    campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "scheduled"
+    db.commit()
+    return {"success": True, "status": "scheduled"}
+
+
+@router.post("/campaigns/{campaign_id}/cancel")
+async def cancel_broadcast_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import BroadcastCampaignModel
+    campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "canceled"
+    db.commit()
+    return {"success": True, "status": "canceled"}
+
+
+@router.post("/campaigns/{campaign_id}/resend")
+async def resend_broadcast_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+):
+    from core.infrastructure.database.models import BroadcastCampaignModel
+    campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    campaign.status = "scheduled"
+    campaign.sent_at = None
+    campaign.sent_count = 0
+    campaign.failed_count = 0
+    if not campaign.is_recurring:
+        from core.infrastructure.utils.timezone import now_sp
+        campaign.scheduled_at = now_sp()
+        
+    db.commit()
+    return {"success": True, "status": "scheduled"}
 
 
 @router.post("/campaigns/{campaign_id}/delete")

@@ -21,6 +21,10 @@
                 <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(16, 185, 129, 0.2);">✅ Concluído</span>
             {% elif campaign.status.value in ['processing', 'sending'] %}
                 <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(59, 130, 246, 0.2);">🔄 Enviando...</span>
+            {% elif campaign.status.value == 'paused' %}
+                <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(245, 158, 11, 0.2);">⏸️ Pausado</span>
+            {% elif campaign.status.value == 'canceled' %}
+                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); font-size: 0.9rem; padding: 6px 16px; border: 1px solid var(--border);">⛔ Cancelado</span>
             {% elif campaign.status.value == 'failed' %}
                 <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(239, 68, 68, 0.2);">❌ Falhou</span>
             {% elif campaign.status.value == 'draft' %}
@@ -132,11 +136,26 @@
     </div>
 
     <!-- Actions Footer -->
-    <div style="margin-top: 3rem; display: flex; gap: 1rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 2rem;">
-        <a href="/status_campaigns" class="btn btn-ghost">← Voltar para Status</a>
-        {% if campaign.status.value in ['draft', 'scheduled', 'pending'] %}
-        <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">✏️ Editar</a>
+    <div style="margin-top: 3rem; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 2rem;">
+        <a href="/status_campaigns" class="btn btn-ghost" style="margin-right: auto;">← Voltar para Status</a>
+        
+        {% if campaign.status.value in ['scheduled', 'pending', 'sending', 'processing'] %}
+            <button onclick="controlCampaign('status_campaigns', 'pause', {{ campaign.id }})" class="btn btn-ghost" style="border-color: #f59e0b; color: #f59e0b;">⏸ Pausar</button>
+        {% elif campaign.status.value == 'paused' %}
+            <button onclick="controlCampaign('status_campaigns', 'resume', {{ campaign.id }})" class="btn btn-primary" style="background: #10b981; border-color: #10b981;">▶️ Retomar</button>
+        {% elif campaign.status.value in ['sent', 'failed', 'canceled'] %}
+            <button onclick="controlCampaign('status_campaigns', 'resend', {{ campaign.id }})" class="btn btn-primary">🔄 Reenviar Agora</button>
         {% endif %}
+
+        {% if campaign.status.value in ['scheduled', 'pending', 'paused', 'sending', 'processing'] %}
+            <button onclick="controlCampaign('status_campaigns', 'cancel', {{ campaign.id }})" class="btn btn-ghost" style="border-color: var(--border); color: var(--text-muted);">⛔ Cancelar Agendamento</button>
+        {% endif %}
+
+        <a href="/status_campaigns/edit/{{ campaign.id }}" class="btn btn-ghost" style="border-color: var(--border);">✏️ Editar</a>
+        
+        <form action="/status_campaigns/delete/{{ campaign.id }}" method="post" onsubmit="return confirm('Excluir este status definitivamente?');" style="margin: 0;">
+            <button type="submit" class="btn btn-ghost" style="border-color: #ef4444; color: #ef4444;">🗑️ Excluir</button>
+        </form>
     </div>
 
 </div>

@@ -83,6 +83,8 @@ class CampaignStatus(Enum):
     SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
+    PAUSED = "paused"
+    CANCELED = "canceled"
 
 
 @dataclass

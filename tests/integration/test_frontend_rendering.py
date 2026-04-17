@@ -42,8 +42,8 @@ def login_user(client, db_session, email="frontend@test.com"):
 # ── status list ───────────────────────────────────────────────────────────────
 
 
-def test_status_list_shows_duplicate_button(client, db_session):
-    """The status list page must render the duplicate button for each campaign."""
+def test_status_list_shows_campaign_controls(client, db_session):
+    """The status list page must render control buttons (resend, edit) for sent campaigns."""
     user = login_user(client, db_session, email="status_list_fe@test.com")
     instance = InstanceModel(user_id=user.id, name="inst_fe", status="connected")
     db_session.add(instance)
@@ -57,10 +57,10 @@ def test_status_list_shows_duplicate_button(client, db_session):
 
     response = client.get("/status_campaigns")
     assert response.status_code == 200
-    assert (
-        "duplicate" in response.text.lower()
-        or "/status_campaigns/duplicate/" in response.text
-    )
+    # sent campaigns should show the resend action and edit link
+    assert "resend" in response.text.lower() or "controlCampaign" in response.text
+    assert f"/status_campaigns/edit/{campaign.id}" in response.text
+
 
 
 def test_status_editor_has_existing_image_url_for_campaign_with_image(

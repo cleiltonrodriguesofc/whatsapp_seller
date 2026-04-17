@@ -53,6 +53,10 @@
                         <span class="status-pill status-scheduled">Agendado</span>
                         {% elif campaign.status == 'failed' %}
                         <span class="status-pill status-failed">Falhou</span>
+                        {% elif campaign.status == 'paused' %}
+                        <span class="status-pill status-paused">Pausado</span>
+                        {% elif campaign.status == 'canceled' %}
+                        <span class="status-pill status-canceled">Cancelado</span>
                         {% else %}
                         <span class="status-pill status-draft">Rascunho</span>
                         {% endif %}
@@ -78,11 +82,23 @@
                     </td>
                     <td style="padding: 1rem;">
                         <div style="display: flex; gap: 0.75rem; align-items: center;">
-                            <a href="/broadcast/campaigns/duplicate/{{ campaign.id }}" class="btn-icon" style="color: var(--primary); text-decoration: none;" title="Duplicar (Reenviar)">📄</a>
-                            <a href="/broadcast/campaigns/{{ campaign.id }}" class="btn-icon" style="color: var(--text-secondary); text-decoration: none;" title="Ver Detalhes">👁️</a>
-                            {% if campaign.status in ['scheduled', 'draft'] %}
-                            <a href="/broadcast/campaigns/edit/{{ campaign.id }}" class="btn-icon" style="color: var(--primary); text-decoration: none;" title="Editar">✏️</a>
+                            {# CONTROLES PRINCIPAIS #}
+                            {% if campaign.status in ['scheduled', 'sending', 'processing'] %}
+                                <button onclick="controlCampaign('broadcast', 'pause', {{ campaign.id }})" class="btn-icon" style="color: #f59e0b; background: none; border: none; cursor: pointer;" title="Pausar">⏸</button>
+                            {% elif campaign.status == 'paused' %}
+                                <button onclick="controlCampaign('broadcast', 'resume', {{ campaign.id }})" class="btn-icon" style="color: #10b981; background: none; border: none; cursor: pointer;" title="Retomar">▶️</button>
+                            {% elif campaign.status in ['sent', 'failed', 'canceled'] %}
+                                <button onclick="controlCampaign('broadcast', 'resend', {{ campaign.id }})" class="btn-icon" style="color: var(--primary); background: none; border: none; cursor: pointer;" title="Reenviar agora">🔄</button>
                             {% endif %}
+
+                            {% if campaign.status in ['scheduled', 'paused', 'sending', 'processing'] %}
+                                <button onclick="controlCampaign('broadcast', 'cancel', {{ campaign.id }})" class="btn-icon" style="color: var(--text-muted); background: none; border: none; cursor: pointer;" title="Cancelar Envio">⛔</button>
+                            {% endif %}
+
+                            {# OUTROS #}
+                            <a href="/broadcast/campaigns/{{ campaign.id }}" class="btn-icon" style="color: var(--text-secondary); text-decoration: none;" title="Ver Detalhes">👁️</a>
+                            <a href="/broadcast/campaigns/edit/{{ campaign.id }}" class="btn-icon" style="color: var(--primary); text-decoration: none;" title="Editar">✏️</a>
+                            
                             <form action="/broadcast/campaigns/{{ campaign.id }}/delete" method="post" onsubmit="return confirm('Excluir esta campanha?');" style="margin: 0;">
                                 <button type="submit" class="btn-icon" style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0;" title="Excluir">🗑️</button>
                             </form>
@@ -114,7 +130,9 @@
 }
 .status-sent { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .status-sending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; animation: pulse 2s infinite; }
+.status-paused { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px dotted #f59e0b; }
 .status-scheduled { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.status-canceled { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
 .status-failed { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 .status-draft { background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
 
