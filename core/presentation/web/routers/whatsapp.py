@@ -221,7 +221,27 @@ async def delete_whatsapp(
         instance=instance_model.name,
         apikey=instance_model.apikey,
     )
-    await whatsapp_service.delete_instance()
+    try:
+        await whatsapp_service.delete_instance()
+    except Exception as e:
+        logger.error(f"Failed to delete remote instance {instance_id}: {e}")
+        # Continue local deletion even if remote fails (e.g. 404 already deleted remote)
+
+    from core.infrastructure.database.models import (
+        StatusCampaignModel, BroadcastCampaignModel, CampaignModel,
+        BroadcastListModel, WhatsAppTargetModel
+    )
+
+    # Clean up dependent models to prevent ForeignKeyViolation
+    try:
+        db.query(StatusCampaignModel).filter(StatusCampaignModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(CampaignModel).filter(CampaignModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(BroadcastListModel).filter(BroadcastListModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(WhatsAppTargetModel).filter(WhatsAppTargetModel.instance_id == instance_id).delete()
+        db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.instance_id == instance_id).delete()
+    except Exception as e:
+        logger.warning(f"Error handling cascades for instance {instance_id}: {e}")
+
     db.delete(instance_model)
     db.commit()
 

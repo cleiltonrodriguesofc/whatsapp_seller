@@ -18,19 +18,19 @@
         </div>
         <div>
             {% if campaign.status.value == 'sent' %}
-                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(16, 185, 129, 0.2);">✅ Concluído</span>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(16, 185, 129, 0.2);">✅ CONCLUÍDO</span>
             {% elif campaign.status.value in ['processing', 'sending'] %}
-                <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(59, 130, 246, 0.2);">🔄 Enviando...</span>
+                <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--info); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(59, 130, 246, 0.2);">🔄 ENVIANDO...</span>
             {% elif campaign.status.value == 'paused' %}
-                <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(245, 158, 11, 0.2);">⏸️ Pausado</span>
+                <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(245, 158, 11, 0.2);">⏸️ PAUSADO</span>
             {% elif campaign.status.value == 'canceled' %}
-                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); font-size: 0.9rem; padding: 6px 16px; border: 1px solid var(--border);">⛔ Cancelado</span>
+                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); font-size: 0.9rem; padding: 6px 16px; border: 1px solid var(--border);">⛔ CANCELADO</span>
             {% elif campaign.status.value == 'failed' %}
-                <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(239, 68, 68, 0.2);">❌ Falhou</span>
+                <span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--error); font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(239, 68, 68, 0.2);">❌ FALHA</span>
             {% elif campaign.status.value == 'draft' %}
-                <span class="badge" style="background: rgba(255, 191, 0, 0.1); color: #ffbf00; font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(255, 191, 0, 0.2);">Rascunho</span>
+                <span class="badge" style="background: rgba(255, 191, 0, 0.1); color: #ffbf00; font-size: 0.9rem; padding: 6px 16px; border: 1px solid rgba(255, 191, 0, 0.2);">RASCUNHO</span>
             {% else %}
-                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); font-size: 0.9rem; padding: 6px 16px; border: 1px solid var(--border);">Agendado</span>
+                <span class="badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); font-size: 0.9rem; padding: 6px 16px; border: 1px solid var(--border);">AGENDADO</span>
             {% endif %}
         </div>
     </div>
