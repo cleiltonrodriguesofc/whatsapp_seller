@@ -574,7 +574,7 @@ class TestCampaignControlUI:
 
         response = client.get(f"/status_campaigns/{campaign.id}")
         assert response.status_code == 200
-        assert "Pausado" in response.text
+        assert "PAUSADO" in response.text
         assert "resume" in response.text.lower()
 
     def test_status_detail_shows_canceled_badge(self, client, db_session):
@@ -592,8 +592,8 @@ class TestCampaignControlUI:
 
         response = client.get(f"/status_campaigns/{campaign.id}")
         assert response.status_code == 200
-        assert "Cancelado" in response.text
-        assert "Reenviar" in response.text
+        assert "CANCELADO" in response.text
+        assert "REENVIAR" in response.text.upper()
 
     def test_edit_always_available_for_sent_status(self, client, db_session):
         """edit link must be present regardless of campaign status."""
@@ -648,7 +648,7 @@ class TestCampaignControlUI:
 
         response = client.get("/broadcast/campaigns")
         assert response.status_code == 200
-        assert "Pausado" in response.text
+        assert "PAUSADO" in response.text
 
     def test_broadcast_list_shows_canceled_pill(self, client, db_session):
         user = login_user(client, db_session, email="ui_bc_c@test.com")
@@ -667,7 +667,7 @@ class TestCampaignControlUI:
 
         response = client.get("/broadcast/campaigns")
         assert response.status_code == 200
-        assert "Cancelado" in response.text
+        assert "CANCELADO" in response.text
 
     def test_global_control_js_is_available(self, client, db_session):
         """controlCampaign function must be defined in base.html for all pages."""

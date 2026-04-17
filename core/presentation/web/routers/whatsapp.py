@@ -229,25 +229,24 @@ async def delete_whatsapp(
         instance=instance_model.name,
         apikey=instance_model.apikey,
     )
-    await whatsapp_service.delete_instance()
+    try:
+        await whatsapp_service.delete_instance()
+    except Exception as e:
+        logger.error(f"Failed to delete remote instance {instance_id}: {e}")
 
-    # nullify all fk references before deleting to avoid IntegrityError
-    db.query(StatusCampaignModel).filter(
-        StatusCampaignModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    db.query(CampaignModel).filter(
-        CampaignModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    db.query(WhatsAppTargetModel).filter(
-        WhatsAppTargetModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    db.query(BroadcastListModel).filter(
-        BroadcastListModel.instance_id == instance_id
-    ).update({"instance_id": None})
-    # broadcast_campaigns has NOT NULL fk — delete orphaned campaigns
-    db.query(BroadcastCampaignModel).filter(
-        BroadcastCampaignModel.instance_id == instance_id
-    ).delete()
+    from core.infrastructure.database.models import (
+        StatusCampaignModel, BroadcastCampaignModel, CampaignModel,
+        BroadcastListModel, WhatsAppTargetModel
+    )
+
+    try:
+        db.query(StatusCampaignModel).filter(StatusCampaignModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(CampaignModel).filter(CampaignModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(BroadcastListModel).filter(BroadcastListModel.instance_id == instance_id).update({"instance_id": None})
+        db.query(WhatsAppTargetModel).filter(WhatsAppTargetModel.instance_id == instance_id).delete()
+        db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.instance_id == instance_id).delete()
+    except Exception as e:
+        logger.warning(f"Error handling cascades for instance {instance_id}: {e}")
 
     db.delete(instance_model)
     db.commit()
