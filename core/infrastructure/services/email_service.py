@@ -41,7 +41,7 @@ class EmailService:
                     <p>Recebemos uma solicitação para redefinir a senha da sua conta.</p>
                     <p>Para prosseguir com a alteração, clique no botão abaixo:</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{reset_link}" 
+                        <a href="{reset_link}"
                            style="background-color: #6366f1; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                            Redefinir Minha Senha
                         </a>

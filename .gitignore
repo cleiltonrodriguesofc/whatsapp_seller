@@ -38,6 +38,8 @@ ENV/
 .DS_Store
 Thumbs.db
 clubedomilcomapi/
+cadastro/
+scratch/
 *.db
 *.sqlite3
 .env

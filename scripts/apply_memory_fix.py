@@ -33,7 +33,7 @@ def apply_memory_optimizations():
         return
 
     print(f"Found {len(instances)} instances recorded globally.")
-    
+
     settings_payload = {
         "rejectCall": True,
         "msgCall": "",
@@ -49,7 +49,7 @@ def apply_memory_optimizations():
         instance_name = inst.get("name")
         if not instance_name:
             continue
-            
+
         print(f"Applying memory isolation fixes to instance: {instance_name}...")
         try:
             res = requests.post(f"{api_url}/settings/set/{instance_name}", headers=headers, json=settings_payload)

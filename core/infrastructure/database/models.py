@@ -300,3 +300,48 @@ class ActivityLogModel(Base):
     timestamp = Column(DateTime, default=now_sp)
 
     user = relationship("UserModel")
+
+
+# ── birthday messaging ────────────────────────────────────────────────────────
+
+
+class BirthdayContactModel(Base):
+    __tablename__ = "birthday_contacts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)
+    phone = Column(String, nullable=False)
+    birth_date = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel")
+
+
+class BirthdayTemplateModel(Base):
+    __tablename__ = "birthday_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)
+    content = Column(Text, nullable=False)  # supports {nome} placeholder
+    media_url = Column(String, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel")
+
+
+class BirthdayLogModel(Base):
+    __tablename__ = "birthday_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    contact_id = Column(Integer, ForeignKey("birthday_contacts.id"), nullable=True)
+    recipient_name = Column(String, nullable=False)
+    recipient_phone = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    status = Column(String, default="pending", index=True)  # "pending" | "sent" | "failed"
+    error_message = Column(Text, nullable=True)
+    sent_at = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel")
+    contact = relationship("BirthdayContactModel")

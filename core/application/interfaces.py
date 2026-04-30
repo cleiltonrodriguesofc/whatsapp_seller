@@ -58,3 +58,13 @@ class AIService(ABC):
     @abstractmethod
     async def chat(self, message: str, context: Optional[str] = None) -> str:
         pass
+
+
+class AffiliateGateway(ABC):
+    """
+    interface for fetching affiliate product offers from external marketplaces.
+    """
+
+    @abstractmethod
+    async def get_offers(self, min_discount_percent: float = 20.0) -> list:
+        ...

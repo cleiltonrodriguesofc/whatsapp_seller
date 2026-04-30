@@ -422,7 +422,7 @@ async def delete_status_campaign(
     )
 
     return RedirectResponse(url="/status_campaigns", status_code=303)
-    
+
 @router.post("/status_campaigns/pause/{campaign_id}")
 async def pause_status_campaign(
     campaign_id: int,
@@ -433,7 +433,7 @@ async def pause_status_campaign(
     campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "paused"
     db.commit()
     return {"success": True, "status": "paused"}
@@ -449,7 +449,7 @@ async def resume_status_campaign(
     campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "scheduled"
     db.commit()
     return {"success": True, "status": "scheduled"}
@@ -465,7 +465,7 @@ async def cancel_status_campaign(
     campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "canceled"
     db.commit()
     return {"success": True, "status": "canceled"}
@@ -481,12 +481,17 @@ async def resend_status_campaign(
     campaign = db.query(StatusCampaignModel).filter(StatusCampaignModel.id == campaign_id, StatusCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
+    # prevent duplicate sends if already in progress
+    if campaign.status == "sending":
+        return {"success": False, "error": "Campaign is already being sent"}
+
     campaign.status = "scheduled"
     campaign.sent_at = None
     if not campaign.is_recurring:
         from core.infrastructure.utils.timezone import now_sp
         campaign.scheduled_at = now_sp()
-        
+
     db.commit()
     return {"success": True, "status": "scheduled"}
+

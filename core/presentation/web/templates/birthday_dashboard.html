@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block page_title %}Aniversariantes{% endblock %}
+{% block page_subtitle %}Envio automático de mensagens de aniversário para seus contatos.{% endblock %}
+
+{% block content %}
+<style>
+    .birthday-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .birthday-stat-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .birthday-stat-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+    }
+    .birthday-stat-value { font-size: 1.75rem; font-weight: 800; color: white; }
+    .birthday-stat-label { font-size: 0.85rem; color: var(--text-secondary); }
+
+    .section-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .section-title { font-size: 1.15rem; font-weight: 700; color: white; }
+
+    .contact-table { width: 100%; border-collapse: collapse; }
+    .contact-table th {
+        text-align: left; padding: 0.75rem 1rem;
+        color: var(--text-secondary); font-size: 0.8rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--border);
+    }
+    .contact-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        font-size: 0.9rem; color: var(--text-primary);
+    }
+    .contact-table tr:hover { background: rgba(255,255,255,0.03); }
+
+    .badge-active { background: rgba(16,185,129,0.15); color: #10b981; padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+    .badge-inactive { background: rgba(239,68,68,0.15); color: #ef4444; padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+    .badge-sent { background: rgba(16,185,129,0.15); color: #10b981; padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+    .badge-failed { background: rgba(239,68,68,0.15); color: #ef4444; padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+    .badge-pending { background: rgba(234,179,8,0.15); color: #eab308; padding: 0.25rem 0.65rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+
+    .action-btn {
+        background: none; border: 1px solid var(--border); border-radius: 8px;
+        padding: 0.35rem 0.65rem; cursor: pointer; font-size: 0.8rem;
+        color: var(--text-secondary); transition: all 0.2s ease;
+    }
+    .action-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .action-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
+
+    .template-editor {
+        background: var(--glass-bg); border: 1px solid var(--border);
+        border-radius: 16px; padding: 1.5rem;
+    }
+    .template-editor textarea {
+        width: 100%; min-height: 120px; background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border); border-radius: 10px; padding: 1rem;
+        color: white; font-size: 0.9rem; resize: vertical; font-family: inherit;
+    }
+    .template-editor input[type="text"] {
+        width: 100%; background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem;
+        color: white; font-size: 0.9rem; font-family: inherit;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem; font-weight: 600; }
+
+    .add-contact-form {
+        display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem;
+        align-items: end; margin-bottom: 1.5rem;
+    }
+    .add-contact-form input {
+        width: 100%; background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 1rem;
+        color: white; font-size: 0.9rem;
+    }
+
+    .log-table { max-height: 400px; overflow-y: auto; }
+
+    @media (max-width: 768px) {
+        .birthday-grid { grid-template-columns: 1fr; }
+        .add-contact-form { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- stats -->
+<div class="birthday-grid">
+    <div class="birthday-stat-card">
+        <div class="birthday-stat-icon" style="background: rgba(139,92,246,0.15);">🎂</div>
+        <div>
+            <div class="birthday-stat-value">{{ total_contacts }}</div>
+            <div class="birthday-stat-label">Total de Contatos</div>
+        </div>
+    </div>
+    <div class="birthday-stat-card">
+        <div class="birthday-stat-icon" style="background: rgba(16,185,129,0.15);">✅</div>
+        <div>
+            <div class="birthday-stat-value">{{ active_contacts }}</div>
+            <div class="birthday-stat-label">Contatos Ativos</div>
+        </div>
+    </div>
+</div>
+
+<!-- template editor -->
+<div class="template-editor" style="margin-bottom: 2rem;">
+    <div class="section-header">
+        <div class="section-title">📝 Template de Mensagem</div>
+    </div>
+    <form action="/birthday/template/save" method="post">
+        <div class="form-group">
+            <label class="form-label">Nome do Template</label>
+            <input type="text" name="name" value="{{ template.name if template else 'Parabéns Automático' }}" placeholder="Nome do template">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Mensagem (use <code style="color: var(--primary);">{nome}</code> para o primeiro nome)</label>
+            <textarea name="content" placeholder="Feliz aniversário, {nome}! 🎂🎉 Desejamos tudo de melhor!">{{ template.content if template else '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">URL da Mídia (opcional — imagem/vídeo para enviar junto)</label>
+            <input type="text" name="media_url" value="{{ template.media_url if template and template.media_url else '' }}" placeholder="https://exemplo.com/imagem.jpg">
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn btn-primary" style="font-weight: 700;">💾 SALVAR TEMPLATE</button>
+            {% if has_instance %}
+            <button type="button" class="btn btn-ghost" onclick="dispatchBirthday()" style="font-weight: 600;">🚀 DISPARAR AGORA</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- add contact form -->
+<div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem; border-radius: 16px;">
+    <div class="section-header">
+        <div class="section-title">👤 Adicionar Contato</div>
+        <label class="btn btn-ghost" style="cursor: pointer; font-size: 0.85rem;">
+            📂 Importar CSV
+            <input type="file" id="csv-import" accept=".csv" style="display: none;" onchange="importCSV(this)">
+        </label>
+    </div>
+    <form class="add-contact-form" action="/birthday/contacts/add" method="post">
+        <div>
+            <label class="form-label">Nome</label>
+            <input type="text" name="name" required placeholder="Maria da Silva">
+        </div>
+        <div>
+            <label class="form-label">Telefone</label>
+            <input type="text" name="phone" required placeholder="5511999999999">
+        </div>
+        <div>
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" name="birth_date">
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 0.3rem;">+ Adicionar</button>
+        </div>
+    </form>
+</div>
+
+<!-- contacts table -->
+<div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem; border-radius: 16px;">
+    <div class="section-header">
+        <div class="section-title">📋 Contatos Cadastrados ({{ total_contacts }})</div>
+    </div>
+    {% if contacts %}
+    <div style="overflow-x: auto;">
+        <table class="contact-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Aniversário</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in contacts %}
+                <tr id="contact-row-{{ c.id }}">
+                    <td style="font-weight: 600;">{{ c.name }}</td>
+                    <td>{{ c.phone }}</td>
+                    <td>{{ c.birth_date.strftime('%d/%m/%Y') if c.birth_date else '—' }}</td>
+                    <td>
+                        <span class="{{ 'badge-active' if c.is_active else 'badge-inactive' }}">
+                            {{ 'Ativo' if c.is_active else 'Inativo' }}
+                        </span>
+                    </td>
+                    <td style="display: flex; gap: 0.5rem;">
+                        <button class="action-btn" onclick="toggleContact({{ c.id }})">
+                            {{ '⏸️' if c.is_active else '▶️' }}
+                        </button>
+                        <button class="action-btn danger" onclick="deleteContact({{ c.id }})">🗑️</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🎂</div>
+        <p>Nenhum contato cadastrado ainda.</p>
+        <p style="font-size: 0.85rem;">Adicione contatos acima ou importe via CSV.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- logs -->
+<div class="glass-card" style="padding: 1.5rem; border-radius: 16px;">
+    <div class="section-header">
+        <div class="section-title">📊 Logs de Envio</div>
+        {% if recent_logs %}
+        <button class="action-btn danger" onclick="clearLogs()">🗑️ Limpar Logs</button>
+        {% endif %}
+    </div>
+    {% if recent_logs %}
+    <div class="log-table" style="overflow-x: auto;">
+        <table class="contact-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Status</th>
+                    <th>Data/Hora</th>
+                    <th>Erro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                <tr>
+                    <td>{{ log.recipient_name }}</td>
+                    <td>{{ log.recipient_phone }}</td>
+                    <td>
+                        <span class="badge-{{ log.status }}">{{ log.status.upper() }}</span>
+                    </td>
+                    <td style="font-size: 0.8rem;">{{ log.sent_at.strftime('%d/%m %H:%M') if log.sent_at else '—' }}</td>
+                    <td style="font-size: 0.8rem; color: #ef4444;">{{ log.error_message or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+        <p>Nenhum log de envio ainda.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    async function dispatchBirthday() {
+        showConfirm('Deseja disparar as mensagens de aniversário agora?', async () => {
+            try {
+                const res = await fetch('/birthday/dispatch', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Disparo iniciado em segundo plano!', 'success');
+                } else {
+                    showToast(data.error || 'Erro ao disparar', 'error');
+                }
+            } catch (e) {
+                showToast('Erro de conexão', 'error');
+            }
+        });
+    }
+
+    async function deleteContact(id) {
+        showConfirm('Deseja excluir este contato?', async () => {
+            try {
+                const res = await fetch(`/birthday/contacts/${id}/delete`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById(`contact-row-${id}`).remove();
+                    showToast('Contato excluído', 'success');
+                }
+            } catch (e) {
+                showToast('Erro ao excluir', 'error');
+            }
+        });
+    }
+
+    async function toggleContact(id) {
+        try {
+            const res = await fetch(`/birthday/contacts/${id}/toggle`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Status atualizado', 'success');
+                setTimeout(() => window.location.reload(), 500);
+            }
+        } catch (e) {
+            showToast('Erro ao atualizar', 'error');
+        }
+    }
+
+    async function importCSV(input) {
+        if (!input.files[0]) return;
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        try {
+            const res = await fetch('/birthday/contacts/import', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`${data.imported} contato(s) importado(s)!`, 'success');
+                setTimeout(() => window.location.reload(), 800);
+            }
+        } catch (e) {
+            showToast('Erro ao importar CSV', 'error');
+        }
+    }
+
+    async function clearLogs() {
+        showConfirm('Deseja limpar todos os logs de envio?', async () => {
+            try {
+                const res = await fetch('/birthday/logs/clear', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Logs limpos', 'success');
+                    setTimeout(() => window.location.reload(), 500);
+                }
+            } catch (e) {
+                showToast('Erro ao limpar', 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}

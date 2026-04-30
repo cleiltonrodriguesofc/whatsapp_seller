@@ -19,6 +19,7 @@ from core.infrastructure.database.models import (
     StatusCampaignModel,
     InstanceModel,
     BroadcastCampaignModel,
+    BirthdayTemplateModel,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
@@ -30,8 +31,15 @@ from core.infrastructure.database.session import SessionLocal
 from core.infrastructure.notifications.evolution_whatsapp import (
     EvolutionWhatsAppService,
 )
+from core.application.use_cases.send_birthday_messages import SendBirthdayMessages
+from core.application.use_cases.dispatch_status_offers import DispatchStatusOffers
+from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
 
 logger = logging.getLogger(__name__)
+
+# Global state to prevent duplicate scheduler runs for stateless tasks
+_last_birthday_run = None
+_last_affiliate_run = None
 
 
 async def execute_campaign_task(campaign_id: int) -> None:
@@ -104,7 +112,7 @@ async def send_campaign(campaign: Campaign, db) -> None:
             campaign_id=campaign.id,
             db=db,
         )
-        # If it returns a dict, handle it. If it was paused/canceled mid-loop, 
+        # If it returns a dict, handle it. If it was paused/canceled mid-loop,
         # result['status'] will be 'paused' or 'canceled'.
         if isinstance(result, dict):
             status_map = {
@@ -161,7 +169,7 @@ async def execute_status_campaign_task(campaign_id: int) -> None:
 
 async def send_status_campaign(campaign_id: int) -> None:
     """
-    Sends a status campaign. Uses decoupled DB sessions to prevent IDLE 
+    Sends a status campaign. Uses decoupled DB sessions to prevent IDLE
     transaction drops during the long Evolution API HTTP timeout.
     """
     db = SessionLocal()
@@ -180,7 +188,7 @@ async def send_status_campaign(campaign_id: int) -> None:
             model.sent_at = now_sp()
             db.commit()
             return
-            
+
         instance_name = instance_model.name
         instance_apikey = instance_model.apikey
         image_url = model.image_url
@@ -301,6 +309,53 @@ async def execute_broadcast_campaign_task(campaign_id: int) -> None:
         db.close()
 
 
+async def execute_birthday_task(user_id: int) -> None:
+    """Executes the daily birthday message dispatch for a specific user."""
+    db = SessionLocal()
+    try:
+        use_case = SendBirthdayMessages(db=db, user_id=user_id)
+        await use_case.execute()
+    except Exception as e:
+        logger.error("error in background birthday task for user %s: %s", user_id, e, exc_info=True)
+    finally:
+        db.close()
+
+
+async def execute_affiliate_task(user_id: int, instance_name: str, instance_apikey: str) -> None:
+    """Executes the affiliate offer dispatch for a specific user."""
+    ml_token = os.environ.get("ML_ACCESS_TOKEN")
+    if not ml_token:
+        return
+
+    gateway = MercadoLivreGateway(access_token=ml_token)
+    whatsapp = EvolutionWhatsAppService(
+        instance=instance_name,
+        apikey=instance_apikey,
+    )
+
+    ai_service = None
+    try:
+        from core.infrastructure.ai.openai_service import OpenAIService
+        ai_service = OpenAIService()
+    except Exception:
+        pass
+
+    min_discount = float(os.environ.get("MIN_DISCOUNT_PERCENT", "20"))
+    max_offers = int(os.environ.get("MAX_OFFERS_PER_RUN", "3"))
+
+    use_case = DispatchStatusOffers(
+        gateway=gateway,
+        whatsapp=whatsapp,
+        ai_service=ai_service,
+        min_discount=min_discount,
+    )
+
+    try:
+        await use_case.execute(max_offers=max_offers)
+    except Exception as e:
+        logger.error("error in background affiliate task for user %s: %s", user_id, e, exc_info=True)
+
+
 async def campaign_scheduler_loop() -> None:
     """
     Background task that checks and dispatches scheduled/recurring campaigns every minute.
@@ -326,6 +381,29 @@ async def campaign_scheduler_loop() -> None:
             now = now_sp()
             current_time_str = now.strftime("%H:%M")
             current_day_str = now.strftime("%a").lower()
+
+            # birthday check (runs once per day at 09:00)
+            global _last_birthday_run
+            if current_time_str == "09:00" and _last_birthday_run != now.strftime("%Y-%m-%d"):
+                _last_birthday_run = now.strftime("%Y-%m-%d")
+                logger.info("scheduler: running daily birthday check")
+                active_templates = db.query(BirthdayTemplateModel).filter(BirthdayTemplateModel.is_enabled == True).all()
+                for tpl in active_templates:
+                    asyncio.create_task(execute_birthday_task(tpl.user_id))
+
+            # affiliate check (runs at configured hours)
+            global _last_affiliate_run
+            dispatch_hours_str = os.environ.get("STATUS_DISPATCH_HOURS", "9,12,18")
+            dispatch_hours = [f"{h.strip().zfill(2)}:00" for h in dispatch_hours_str.split(",")]
+            current_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
+
+            if current_time_str in dispatch_hours and _last_affiliate_run != current_run_signature:
+                _last_affiliate_run = current_run_signature
+                logger.info("scheduler: running affiliate dispatch for %s", current_time_str)
+                # Find all connected instances
+                instances = db.query(InstanceModel).filter(InstanceModel.status == "connected").all()
+                for inst in instances:
+                    asyncio.create_task(execute_affiliate_task(inst.user_id, inst.name, inst.apikey))
 
             # one-off campaigns
             one_off_campaigns = (

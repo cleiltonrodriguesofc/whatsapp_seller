@@ -178,19 +178,14 @@ class EvolutionWhatsAppService(NotificationService):
         if type == "image" and not is_url and not content.startswith("data:"):
             final_content = f"data:image/jpeg;base64,{content}"
 
-        # FIX: Evolution API/Baileys often fails to broadcast statuses if we only use 'allContacts: True'.
-        # We explicitly fetch the user's contacts and pass their JIDs to 'statusJidList' to guarantee visibility.
-        if not jid_list or len(jid_list) == 0:
-            contacts = await self.get_contacts()
-            if contacts:
-                jid_list = [c["remoteJid"] for c in contacts if "remoteJid" in c]
-            else:
-                jid_list = []
+        # when no specific targets are provided, use allContacts mode
+        # (avoids sending thousands of jids which causes the api to time out)
+        use_all_contacts = not jid_list or len(jid_list) == 0
 
         payload = {
             "type": type,
             "content": final_content,
-            "allContacts": True if not jid_list else False,
+            "allContacts": use_all_contacts,
         }
 
         if type == "image":
@@ -203,37 +198,42 @@ class EvolutionWhatsAppService(NotificationService):
             payload["mimetype"] = "image/jpeg"
             payload["fileName"] = "status.jpg"
 
-        if jid_list:
+        if not use_all_contacts:
             payload["statusJidList"] = jid_list
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            import time
+            t0 = time.monotonic()
+            async with httpx.AsyncClient(timeout=httpx.Timeout(600.0, connect=30.0)) as client:
                 response = await client.post(url, json=payload, headers=self._headers())
+                elapsed = round(time.monotonic() - t0, 1)
                 if response.status_code >= 500:
                     logger.error(
-                        "evolution api sendstatus server error (%s): %s | payload keys: %s",
+                        "evolution api sendstatus server error (%s) after %ss: %s | payload keys: %s",
                         response.status_code,
+                        elapsed,
                         response.text[:300],
                         list(payload.keys()),
                     )
                     return False
                 if response.status_code >= 400:
-                    # 4xx means the api rejected our request — mark as failed
                     logger.error(
-                        "evolution api sendstatus rejected (%s): %s",
+                        "evolution api sendstatus rejected (%s) after %ss: %s",
                         response.status_code,
+                        elapsed,
                         response.text[:300],
                     )
                     return False
                 logger.info(
-                    "whatsapp status update sent (http %s) to %s",
+                    "whatsapp status update sent (http %s) in %ss to %s",
                     response.status_code,
-                    "all contacts" if not jid_list else jid_list,
+                    elapsed,
+                    "all contacts" if use_all_contacts else f"{len(jid_list)} targets",
                 )
                 return True
         except httpx.TimeoutException:
             logger.warning(
-                "evolution api sendstatus timed out, marking as failed (delivery uncertain for %s targets)",
+                "evolution api sendstatus timed out for %s targets",
                 len(jid_list) if jid_list else "all",
             )
             return False
@@ -529,7 +529,7 @@ class EvolutionWhatsAppService(NotificationService):
         """
         Requests a pairing code for a phone number.
         """
-        # FIX: Baileys often returns codes that get rejected by WhatsApp if the socket is stuck 
+        # FIX: Baileys often returns codes that get rejected by WhatsApp if the socket is stuck
         # in QR mode or an orphaned reconnect loop. Logging out first resets the socket cleanly.
         try:
             await self.logout_instance()
@@ -538,7 +538,7 @@ class EvolutionWhatsAppService(NotificationService):
 
         import asyncio
         await asyncio.sleep(1) # wait for socket teardown
-        
+
         clean_phone = self._clean_phone(phone)
         url = f"{self.base_url}/instance/connect/{self.instance}?number={clean_phone}"
         try:

@@ -157,10 +157,27 @@ async def test_send_status_returns_false_on_connect_timeout(svc, mock_client):
 
 
 @pytest.mark.asyncio
+async def test_send_status_payload_with_and_without_jid_list(svc, mock_client):
+    mock_client.post = AsyncMock(return_value=MagicMock(status_code=201, text="ok"))
+    
+    # Test without jid_list (should use allContacts=True)
+    await svc.send_status("hello world", type="text")
+    args, kwargs = mock_client.post.call_args
+    assert kwargs["json"]["allContacts"] is True
+    assert "statusJidList" not in kwargs["json"]
+
+    # Test with jid_list (should use allContacts=False and include statusJidList)
+    await svc.send_status("hello world", type="text", jid_list=["123@s.whatsapp.net"])
+    args, kwargs = mock_client.post.call_args
+    assert kwargs["json"]["allContacts"] is False
+    assert kwargs["json"]["statusJidList"] == ["123@s.whatsapp.net"]
+
+
+@pytest.mark.asyncio
 async def test_create_instance_payload(svc, mock_client):
     mock_client.post = AsyncMock(return_value=MagicMock(status_code=201, json=lambda: {"hash": "abc"}))
     await svc.create_instance("test_inst", display_name="BrowserName")
-    
+
     args, kwargs = mock_client.post.call_args
     payload = kwargs["json"]
     assert payload["instanceName"] == "test_inst"

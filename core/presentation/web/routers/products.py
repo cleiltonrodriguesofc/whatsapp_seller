@@ -96,7 +96,7 @@ async def _save_uploaded_image(
         if user:
             safe_email = user.email.split('@')[0].replace('.', '_').replace('+', '_')
             folder = f"user_{user.id}_{safe_email}"
-        
+
         public_url = await storage_svc.upload_image(
             file_content=raw,
             filename=unique_filename,
