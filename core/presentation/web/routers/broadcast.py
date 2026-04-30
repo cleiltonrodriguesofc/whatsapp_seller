@@ -791,7 +791,7 @@ async def pause_broadcast_campaign(
     campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "paused"
     db.commit()
     return {"success": True, "status": "paused"}
@@ -807,7 +807,7 @@ async def resume_broadcast_campaign(
     campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "scheduled"
     db.commit()
     return {"success": True, "status": "scheduled"}
@@ -823,7 +823,7 @@ async def cancel_broadcast_campaign(
     campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "canceled"
     db.commit()
     return {"success": True, "status": "canceled"}
@@ -839,7 +839,7 @@ async def resend_broadcast_campaign(
     campaign = db.query(BroadcastCampaignModel).filter(BroadcastCampaignModel.id == campaign_id, BroadcastCampaignModel.user_id == current_user.id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     campaign.status = "scheduled"
     campaign.sent_at = None
     campaign.sent_count = 0
@@ -847,7 +847,7 @@ async def resend_broadcast_campaign(
     if not campaign.is_recurring:
         from core.infrastructure.utils.timezone import now_sp
         campaign.scheduled_at = now_sp()
-        
+
     db.commit()
     return {"success": True, "status": "scheduled"}
 

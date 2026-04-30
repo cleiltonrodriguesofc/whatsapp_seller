@@ -33,6 +33,8 @@ from core.presentation.web.routers import (
     billing,
     referral,
     admin,
+    birthday,
+    affiliate,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -245,3 +247,5 @@ app.include_router(static_pages.router)
 app.include_router(billing.router)
 app.include_router(referral.router)
 app.include_router(admin.router)
+app.include_router(birthday.router)
+app.include_router(affiliate.router)

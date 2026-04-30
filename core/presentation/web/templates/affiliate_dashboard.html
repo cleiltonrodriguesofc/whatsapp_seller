@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block page_title %}Ofertas de Afiliado{% endblock %}
+{% block page_subtitle %}Publique ofertas com desconto automaticamente no Status do WhatsApp.{% endblock %}
+
+{% block content %}
+<style>
+    .affiliate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .config-card {
+        background: var(--glass-bg); border: 1px solid var(--border);
+        border-radius: 16px; padding: 1.5rem;
+    }
+    .config-card-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .config-card-title { font-size: 1rem; font-weight: 700; color: white; margin-bottom: 0.25rem; }
+    .config-card-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+    .config-card-label { font-size: 0.8rem; color: var(--text-secondary); }
+
+    .status-indicator {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.4rem 0.85rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600;
+    }
+    .status-connected { background: rgba(16,185,129,0.15); color: #10b981; }
+    .status-disconnected { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+    .dispatch-section {
+        background: var(--glass-bg); border: 1px solid var(--border);
+        border-radius: 16px; padding: 2rem; text-align: center;
+        margin-bottom: 2rem;
+    }
+    .dispatch-section h3 { font-size: 1.2rem; font-weight: 700; color: white; margin-bottom: 0.5rem; }
+    .dispatch-section p { color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+    .info-card {
+        background: var(--glass-bg); border: 1px solid var(--border);
+        border-radius: 16px; padding: 1.5rem;
+    }
+    .info-card h4 { font-size: 1rem; font-weight: 700; color: white; margin-bottom: 1rem; }
+    .info-list { list-style: none; padding: 0; }
+    .info-list li {
+        display: flex; align-items: flex-start; gap: 0.75rem;
+        padding: 0.65rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+        font-size: 0.9rem; color: var(--text-secondary);
+    }
+    .info-list li:last-child { border-bottom: none; }
+    .info-list .emoji { font-size: 1.1rem; flex-shrink: 0; }
+
+    .env-hint {
+        background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);
+        border-radius: 12px; padding: 1rem 1.25rem; margin-top: 1rem;
+        font-size: 0.85rem; color: #93c5fd;
+    }
+    .env-hint code {
+        background: rgba(0,0,0,0.3); padding: 0.15rem 0.4rem;
+        border-radius: 4px; font-size: 0.8rem; color: #a5b4fc;
+    }
+</style>
+
+<!-- config overview -->
+<div class="affiliate-grid">
+    <div class="config-card">
+        <div class="config-card-icon" style="background: rgba(139,92,246,0.15);">🔗</div>
+        <div class="config-card-title">Mercado Livre API</div>
+        <span class="status-indicator {{ 'status-connected' if config.ml_token_configured else 'status-disconnected' }}">
+            {{ '✅ Configurado' if config.ml_token_configured else '❌ Não configurado' }}
+        </span>
+    </div>
+    <div class="config-card">
+        <div class="config-card-icon" style="background: rgba(16,185,129,0.15);">📉</div>
+        <div class="config-card-title">Desconto Mínimo</div>
+        <div class="config-card-value">{{ config.min_discount }}%</div>
+        <div class="config-card-label">Apenas ofertas acima deste desconto</div>
+    </div>
+    <div class="config-card">
+        <div class="config-card-icon" style="background: rgba(234,179,8,0.15);">📦</div>
+        <div class="config-card-title">Ofertas por Rodada</div>
+        <div class="config-card-value">{{ config.max_offers }}</div>
+        <div class="config-card-label">Máximo de ofertas por disparo</div>
+    </div>
+    <div class="config-card">
+        <div class="config-card-icon" style="background: rgba(59,130,246,0.15);">⏰</div>
+        <div class="config-card-title">Horários do Cron</div>
+        <div class="config-card-value" style="font-size: 1.1rem;">{{ config.dispatch_hours }}</div>
+        <div class="config-card-label">Horas do dia para disparo automático</div>
+    </div>
+</div>
+
+<!-- manual dispatch -->
+<div class="dispatch-section">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🛒</div>
+    <h3>Disparar Ofertas Manualmente</h3>
+    <p>Busca ofertas com desconto no Mercado Livre e posta no seu Status do WhatsApp automaticamente.</p>
+    {% if has_instance and config.ml_token_configured %}
+    <button class="btn btn-primary" onclick="dispatchOffers()" style="font-weight: 800; font-size: 1rem; padding: 0.85rem 2.5rem;">
+        🚀 DISPARAR OFERTAS AGORA
+    </button>
+    {% elif not has_instance %}
+    <div class="status-indicator status-disconnected" style="font-size: 0.95rem;">
+        ⚠️ Conecte uma instância WhatsApp primeiro
+    </div>
+    {% else %}
+    <div class="status-indicator status-disconnected" style="font-size: 0.95rem;">
+        ⚠️ Configure o ML_ACCESS_TOKEN no ambiente
+    </div>
+    {% endif %}
+</div>
+
+<!-- setup guide -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <div class="info-card">
+        <h4>🔧 Como Configurar</h4>
+        <ul class="info-list">
+            <li>
+                <span class="emoji">1️⃣</span>
+                <span>Crie uma conta de desenvolvedor no <strong style="color: white;">Mercado Livre</strong></span>
+            </li>
+            <li>
+                <span class="emoji">2️⃣</span>
+                <span>Cadastre-se no programa de <strong style="color: white;">Afiliados</strong> do ML</span>
+            </li>
+            <li>
+                <span class="emoji">3️⃣</span>
+                <span>Gere um <strong style="color: white;">Access Token</strong> com permissões de leitura</span>
+            </li>
+            <li>
+                <span class="emoji">4️⃣</span>
+                <span>Adicione o token na variável de ambiente <code>ML_ACCESS_TOKEN</code></span>
+            </li>
+        </ul>
+        <div class="env-hint">
+            💡 Variáveis necessárias no <code>.env</code>:<br>
+            <code>ML_ACCESS_TOKEN</code> · <code>MIN_DISCOUNT_PERCENT</code> · <code>MAX_OFFERS_PER_RUN</code> · <code>STATUS_DISPATCH_HOURS</code>
+        </div>
+    </div>
+
+    <div class="info-card">
+        <h4>📋 Como Funciona</h4>
+        <ul class="info-list">
+            <li>
+                <span class="emoji">🔍</span>
+                <span>O sistema busca produtos com desconto no seu catálogo de afiliado</span>
+            </li>
+            <li>
+                <span class="emoji">🤖</span>
+                <span>A IA gera uma mensagem de marketing curta e atraente (se OPENAI_API_KEY estiver configurado)</span>
+            </li>
+            <li>
+                <span class="emoji">📱</span>
+                <span>A oferta é postada automaticamente no seu <strong style="color: white;">Status do WhatsApp</strong></span>
+            </li>
+            <li>
+                <span class="emoji">⏰</span>
+                <span>O cron automático roda nos horários configurados (padrão: 9h, 12h, 18h)</span>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    async function dispatchOffers() {
+        showConfirm('Deseja buscar e postar ofertas de afiliado agora?', async () => {
+            try {
+                const res = await fetch('/affiliate/dispatch', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Disparo de ofertas iniciado!', 'success');
+                } else {
+                    showToast(data.error || 'Erro ao disparar', 'error');
+                }
+            } catch (e) {
+                showToast('Erro de conexão', 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}

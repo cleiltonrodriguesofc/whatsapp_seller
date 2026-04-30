@@ -17,7 +17,7 @@ def mock_supabase_client():
 async def test_save_uploaded_image_with_user_isolation(mock_supabase_client):
     # Mock user
     user = UserModel(id=123, email="test.user+tag@gmail.com")
-    
+
     # Generate a real minimal JPEG image
     from PIL import Image as PILImage
     img_buf = io.BytesIO()
@@ -25,14 +25,14 @@ async def test_save_uploaded_image_with_user_isolation(mock_supabase_client):
     img_buf.seek(0)
     file_content = img_buf.getvalue()
     file = UploadFile(filename="test.jpg", file=io.BytesIO(file_content), headers={"content-type": "image/jpeg"})
-    
+
     # Run the function with mocked service
     with patch("core.presentation.web.routers.products.SupabaseStorageService") as MockSvc:
         msg_instance = MockSvc.return_value
         msg_instance.upload_image = AsyncMock(return_value="http://supabase.com/user_123_test_user/uuid.jpg")
 
         result = await _save_uploaded_image(file, user=user)
-        
+
         # Verify folder path generation
         # safe_email = "test_user_tag" (from "test.user+tag".split('@')[0].replace('.','_').replace('+','_'))
         # expected folder = "user_123_test_user_tag"
@@ -46,10 +46,10 @@ async def test_supabase_storage_upload_with_folder_path(mock_supabase_client):
     mock_bucket = MagicMock()
     mock_bucket.upload.return_value = {"path": "folder/name.jpg"}
     mock_supabase_client.storage.from_.return_value = mock_bucket
-    
+
     # Test with folder_path
     await service.upload_image(b"content", "name.jpg", folder_path="my_folder")
-    
+
     # Verify the path sent to upload
     # res = self.client.storage.from_(self.bucket_name).upload(path=unique_name, ...)
     args, kwargs = mock_bucket.upload.call_args

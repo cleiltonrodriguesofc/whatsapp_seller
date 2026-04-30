@@ -212,3 +212,60 @@ class BroadcastCampaign:
     failed_count: int = 0
     id: Optional[int] = None
     created_at: datetime = field(default_factory=now_sp)
+
+
+# ── birthday messaging ────────────────────────────────────────────────────────
+
+
+@dataclass
+class BirthdayContact:
+    """a contact that can receive automated birthday messages."""
+    user_id: int
+    name: str
+    phone: str
+    birth_date: Optional[datetime] = None
+    is_active: bool = True
+    id: Optional[int] = None
+    created_at: datetime = field(default_factory=now_sp)
+
+
+@dataclass
+class BirthdayTemplate:
+    """a reusable message template for birthday greetings."""
+    user_id: int
+    name: str
+    content: str  # supports {nome} placeholder
+    media_url: Optional[str] = None
+    is_enabled: bool = True
+    id: Optional[int] = None
+    created_at: datetime = field(default_factory=now_sp)
+
+
+@dataclass
+class BirthdayLog:
+    """log entry for each birthday message send attempt."""
+    user_id: int
+    contact_id: int
+    recipient_name: str
+    recipient_phone: str
+    content: str
+    status: str = "pending"  # "pending" | "sent" | "failed"
+    error_message: Optional[str] = None
+    id: Optional[int] = None
+    sent_at: datetime = field(default_factory=now_sp)
+
+
+# ── affiliate offers ──────────────────────────────────────────────────────────
+
+
+@dataclass
+class AffiliateOffer:
+    """an affiliate product offer with discount information."""
+    title: str
+    original_price: float
+    discount_price: float
+    discount_percent: float
+    affiliate_link: str
+    image_url: Optional[str] = None
+    coupon_code: Optional[str] = None
+    source: str = "mercadolivre"

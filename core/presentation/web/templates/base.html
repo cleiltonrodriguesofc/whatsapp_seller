@@ -53,6 +53,12 @@
             <a href="/broadcast/groups" class="nav-item {{ 'active' if is_groups else '' }}">
                 <span class="nav-item-icon">🏢</span> Grupos
             </a>
+            <a href="/birthday" class="nav-item {{ 'active' if '/birthday' in request.url.path else '' }}">
+                <span class="nav-item-icon">🎂</span> Aniversários
+            </a>
+            <a href="/affiliate" class="nav-item {{ 'active' if '/affiliate' in request.url.path else '' }}">
+                <span class="nav-item-icon">🛒</span> Afiliados
+            </a>
 
             {#
             <a href="/dashboard/billing" class="nav-item {{ 'active' if '/billing' in request.url.path else '' }}">

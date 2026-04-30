@@ -49,7 +49,7 @@ class HumanizedSender:
 
         all_success = True
         sent_count = 0
-        
+
         for i, target in enumerate(targets):
             # 0. Check for pause/cancel signal
             if db and campaign_id:
