@@ -35,6 +35,7 @@ from core.presentation.web.routers import (
     admin,
     birthday,
     affiliate,
+    shortener,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -249,3 +250,4 @@ app.include_router(referral.router)
 app.include_router(admin.router)
 app.include_router(birthday.router)
 app.include_router(affiliate.router)
+app.include_router(shortener.router)

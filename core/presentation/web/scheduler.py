@@ -20,6 +20,7 @@ from core.infrastructure.database.models import (
     InstanceModel,
     BroadcastCampaignModel,
     BirthdayTemplateModel,
+    AffiliateConfigModel,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
@@ -33,13 +34,13 @@ from core.infrastructure.notifications.evolution_whatsapp import (
 )
 from core.application.use_cases.send_birthday_messages import SendBirthdayMessages
 from core.application.use_cases.dispatch_status_offers import DispatchStatusOffers
-from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
+from core.infrastructure.gateways.magalu_gateway import MagaluGateway
 
 logger = logging.getLogger(__name__)
 
 # Global state to prevent duplicate scheduler runs for stateless tasks
 _last_birthday_run = None
-_last_affiliate_run = None
+_affiliate_runs_by_user = {}
 
 
 async def execute_campaign_task(campaign_id: int) -> None:
@@ -321,13 +322,17 @@ async def execute_birthday_task(user_id: int) -> None:
         db.close()
 
 
-async def execute_affiliate_task(user_id: int, instance_name: str, instance_apikey: str) -> None:
+async def execute_affiliate_task(
+    user_id: int, instance_name: str, instance_apikey: str,
+    storefront_slug: str, categories: list[str],
+    min_discount: float, max_offers: int,
+    store_type: str = "magalu",
+    theme_color: str = "#0088ff",
+    tagline: str = "tem na minha loja",
+) -> None:
     """Executes the affiliate offer dispatch for a specific user."""
-    ml_token = os.environ.get("ML_ACCESS_TOKEN")
-    if not ml_token:
-        return
-
-    gateway = MercadoLivreGateway(access_token=ml_token)
+    import asyncio as _asyncio
+    gateway = MagaluGateway(storefront_slug=storefront_slug)
     whatsapp = EvolutionWhatsAppService(
         instance=instance_name,
         apikey=instance_apikey,
@@ -340,18 +345,83 @@ async def execute_affiliate_task(user_id: int, instance_name: str, instance_apik
     except Exception:
         pass
 
-    min_discount = float(os.environ.get("MIN_DISCOUNT_PERCENT", "20"))
-    max_offers = int(os.environ.get("MAX_OFFERS_PER_RUN", "3"))
-
-    use_case = DispatchStatusOffers(
-        gateway=gateway,
-        whatsapp=whatsapp,
-        ai_service=ai_service,
-        min_discount=min_discount,
-    )
-
     try:
-        await use_case.execute(max_offers=max_offers)
+        offers = await gateway.get_offers(
+            categories=categories,
+            min_discount_percent=min_discount,
+            max_offers=max_offers,
+        )
+
+        if not offers:
+            logger.info("[affiliate-scheduler] no qualifying offers for user %s", user_id)
+            return
+
+        from core.infrastructure.utils.shortener import get_or_create_shortlink
+        
+        for offer in offers:
+            # build status message
+            short_link_url = get_or_create_shortlink(db, offer.affiliate_link, storefront_slug)
+            
+            copy = None
+            if ai_service:
+                try:
+                    copy = await ai_service.generate_affiliate_copy(
+                        title=offer.title,
+                        price=offer.price,
+                        old_price=offer.old_price,
+                        discount=offer.discount_percent,
+                        link=short_link_url,
+                    )
+                except Exception:
+                    pass
+
+            if not copy:
+                old_fmt = ""
+                if offer.old_price:
+                    old_fmt = f"~~R$ {offer.old_price:,.2f}~~  ".replace(",", "X").replace(".", ",").replace("X", ".")
+                price_fmt = f"R$ {offer.price:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                copy = (
+                    f"🔥 *{offer.title}*\n\n"
+                    f"{old_fmt}💰 *{price_fmt}*\n"
+                    f"📉 *{offer.discount_percent:.0f}% OFF*\n\n"
+                    f"👉 {short_link_url}"
+                )
+
+            try:
+                import base64
+                from core.infrastructure.image.promo_card_generator import generate_promo_card
+                card_bytes = await generate_promo_card(
+                    title=offer.title,
+                    price=offer.price,
+                    old_price=offer.old_price,
+                    discount_percent=offer.discount_percent,
+                    image_url=offer.image_url,
+                    storefront_name=storefront_slug,
+                    store_type=store_type,
+                    theme_color=theme_color,
+                    tagline=tagline,
+                    installment_text=offer.installment_text,
+                    pix_discount_text=offer.pix_discount_text,
+                )
+                
+                if card_bytes:
+                    b64_img = base64.b64encode(card_bytes).decode("utf-8")
+                    await whatsapp.send_status(
+                        content=b64_img,
+                        type="image",
+                        caption=copy
+                    )
+                else:
+                    raise Exception("failed to generate card bytes")
+            except Exception as e:
+                logger.error("[affiliate-scheduler] error generating card: %s", e)
+                # fallback to text only
+                await whatsapp.send_status(content=copy)
+
+            logger.info("[affiliate-scheduler] posted: %s (%.0f%% off)", offer.title[:40], offer.discount_percent)
+            await _asyncio.sleep(5)
+
+        logger.info("[affiliate-scheduler] dispatch complete for user %s: %d offers", user_id, len(offers))
     except Exception as e:
         logger.error("error in background affiliate task for user %s: %s", user_id, e, exc_info=True)
 
@@ -392,18 +462,36 @@ async def campaign_scheduler_loop() -> None:
                     asyncio.create_task(execute_birthday_task(tpl.user_id))
 
             # affiliate check (runs at configured hours)
-            global _last_affiliate_run
-            dispatch_hours_str = os.environ.get("STATUS_DISPATCH_HOURS", "9,12,18")
-            dispatch_hours = [f"{h.strip().zfill(2)}:00" for h in dispatch_hours_str.split(",")]
-            current_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
-
-            if current_time_str in dispatch_hours and _last_affiliate_run != current_run_signature:
-                _last_affiliate_run = current_run_signature
-                logger.info("scheduler: running affiliate dispatch for %s", current_time_str)
-                # Find all connected instances
-                instances = db.query(InstanceModel).filter(InstanceModel.status == "connected").all()
-                for inst in instances:
-                    asyncio.create_task(execute_affiliate_task(inst.user_id, inst.name, inst.apikey))
+            global _affiliate_runs_by_user
+            active_affiliate_configs = db.query(AffiliateConfigModel).all()
+            for config in active_affiliate_configs:
+                if not config.storefront_slug:
+                    continue
+                
+                dispatch_hours_str = config.dispatch_hours or "9,12,18"
+                dispatch_hours = [f"{h.strip().zfill(2)}:00" for h in dispatch_hours_str.split(",")]
+                current_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
+                
+                user_last_run = _affiliate_runs_by_user.get(config.user_id)
+                if current_time_str in dispatch_hours and user_last_run != current_run_signature:
+                    _affiliate_runs_by_user[config.user_id] = current_run_signature
+                    logger.info("scheduler: running affiliate dispatch for user %s at %s", config.user_id, current_time_str)
+                    
+                    instance = db.query(InstanceModel).filter(InstanceModel.user_id == config.user_id, InstanceModel.status == "connected").first()
+                    if instance:
+                        categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
+                        asyncio.create_task(execute_affiliate_task(
+                            user_id=config.user_id,
+                            instance_name=instance.name,
+                            instance_apikey=instance.apikey,
+                            storefront_slug=config.storefront_slug,
+                            categories=categories,
+                            min_discount=config.min_discount_percent,
+                            max_offers=config.max_offers_per_run,
+                            store_type=config.store_type or "magalu",
+                            theme_color=config.theme_color or "#0088ff",
+                            tagline=config.tagline or "tem na minha loja",
+                        ))
 
             # one-off campaigns
             one_off_campaigns = (

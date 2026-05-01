@@ -1,165 +1,295 @@
 {% extends "base.html" %}
-
-{% block page_title %}Ofertas de Afiliado{% endblock %}
-{% block page_subtitle %}Publique ofertas com desconto automaticamente no Status do WhatsApp.{% endblock %}
-
+{% block title %}Afiliado Magalu{% endblock %}
 {% block content %}
-<style>
-    .affiliate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-    .config-card {
-        background: var(--glass-bg); border: 1px solid var(--border);
-        border-radius: 16px; padding: 1.5rem;
-    }
-    .config-card-icon {
-        width: 48px; height: 48px; border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.5rem; margin-bottom: 1rem;
-    }
-    .config-card-title { font-size: 1rem; font-weight: 700; color: white; margin-bottom: 0.25rem; }
-    .config-card-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
-    .config-card-label { font-size: 0.8rem; color: var(--text-secondary); }
 
-    .status-indicator {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        padding: 0.4rem 0.85rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600;
+<style>
+    .config-section {
+        background: var(--card-bg); border: 1px solid var(--border);
+        border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
     }
-    .status-connected { background: rgba(16,185,129,0.15); color: #10b981; }
-    .status-disconnected { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .config-section h3 { margin: 0 0 1.25rem 0; font-size: 1.1rem; }
+    .form-label {
+        color: var(--text-secondary); font-size: 0.85rem;
+        margin-bottom: 0.35rem; display: block; font-weight: 500;
+    }
+    .form-input {
+        width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+        color: white; padding: 0.7rem 0.85rem; border-radius: 8px;
+        font-size: 0.95rem; transition: border 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-input::placeholder { color: rgba(255,255,255,0.3); }
+
+    .category-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.6rem;
+    }
+    .category-chip {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.55rem 0.8rem; border-radius: 10px;
+        background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+        cursor: pointer; transition: all 0.2s; user-select: none;
+        font-size: 0.85rem; color: var(--text-secondary);
+    }
+    .category-chip:hover { border-color: var(--accent); color: white; }
+    .category-chip input[type="checkbox"] { accent-color: var(--accent); }
+    .category-chip.active {
+        background: rgba(139, 92, 246, 0.15);
+        border-color: var(--accent); color: white;
+    }
+
+    .storefront-preview {
+        margin-top: 0.5rem; padding: 0.5rem 0.75rem;
+        background: rgba(139, 92, 246, 0.1); border-radius: 8px;
+        font-size: 0.8rem; color: #a5b4fc; word-break: break-all;
+    }
+    .storefront-preview a { color: #c4b5fd; text-decoration: underline; }
 
     .dispatch-section {
-        background: var(--glass-bg); border: 1px solid var(--border);
+        background: var(--card-bg); border: 1px solid var(--border);
         border-radius: 16px; padding: 2rem; text-align: center;
-        margin-bottom: 2rem;
     }
-    .dispatch-section h3 { font-size: 1.2rem; font-weight: 700; color: white; margin-bottom: 0.5rem; }
-    .dispatch-section p { color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem; }
 
+    .info-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
     .info-card {
-        background: var(--glass-bg); border: 1px solid var(--border);
-        border-radius: 16px; padding: 1.5rem;
+        background: var(--card-bg); border: 1px solid var(--border);
+        border-radius: 16px; padding: 1.25rem;
     }
-    .info-card h4 { font-size: 1rem; font-weight: 700; color: white; margin-bottom: 1rem; }
-    .info-list { list-style: none; padding: 0; }
+    .info-card h4 { margin: 0 0 0.75rem 0; }
+    .info-list { list-style: none; padding: 0; margin: 0; }
     .info-list li {
-        display: flex; align-items: flex-start; gap: 0.75rem;
-        padding: 0.65rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-        font-size: 0.9rem; color: var(--text-secondary);
+        display: flex; align-items: flex-start; gap: 0.6rem;
+        padding: 0.4rem 0; font-size: 0.85rem; color: var(--text-secondary);
     }
-    .info-list li:last-child { border-bottom: none; }
-    .info-list .emoji { font-size: 1.1rem; flex-shrink: 0; }
+    .info-list .emoji { flex-shrink: 0; font-size: 1rem; }
 
-    .env-hint {
-        background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);
-        border-radius: 12px; padding: 1rem 1.25rem; margin-top: 1rem;
-        font-size: 0.85rem; color: #93c5fd;
-    }
-    .env-hint code {
-        background: rgba(0,0,0,0.3); padding: 0.15rem 0.4rem;
-        border-radius: 4px; font-size: 0.8rem; color: #a5b4fc;
+    @media (max-width: 768px) {
+        .info-grid { grid-template-columns: 1fr; }
+        .category-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     }
 </style>
 
-<!-- config overview -->
-<div class="affiliate-grid">
-    <div class="config-card">
-        <div class="config-card-icon" style="background: rgba(139,92,246,0.15);">🔗</div>
-        <div class="config-card-title">Mercado Livre API</div>
-        <span class="status-indicator {{ 'status-connected' if config.ml_token_configured else 'status-disconnected' }}">
-            {{ '✅ Configurado' if config.ml_token_configured else '❌ Não configurado' }}
-        </span>
-    </div>
-    <div class="config-card">
-        <div class="config-card-icon" style="background: rgba(16,185,129,0.15);">📉</div>
-        <div class="config-card-title">Desconto Mínimo</div>
-        <div class="config-card-value">{{ config.min_discount }}%</div>
-        <div class="config-card-label">Apenas ofertas acima deste desconto</div>
-    </div>
-    <div class="config-card">
-        <div class="config-card-icon" style="background: rgba(234,179,8,0.15);">📦</div>
-        <div class="config-card-title">Ofertas por Rodada</div>
-        <div class="config-card-value">{{ config.max_offers }}</div>
-        <div class="config-card-label">Máximo de ofertas por disparo</div>
-    </div>
-    <div class="config-card">
-        <div class="config-card-icon" style="background: rgba(59,130,246,0.15);">⏰</div>
-        <div class="config-card-title">Horários do Cron</div>
-        <div class="config-card-value" style="font-size: 1.1rem;">{{ config.dispatch_hours }}</div>
-        <div class="config-card-label">Horas do dia para disparo automático</div>
-    </div>
+<!-- ── config form ──────────────────────────────────────────── -->
+<div class="config-section">
+    <h3>⚙️ Configurações do Parceiro Magalu</h3>
+    <form id="affiliateConfigForm" onsubmit="saveConfig(event)">
+
+        <!-- storefront slug -->
+        <div style="margin-bottom: 1.25rem;">
+            <label class="form-label">Nome da sua loja no Magazine Você</label>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--text-secondary); font-size: 0.9rem; white-space: nowrap;">magazinevoce.com.br/magazine</span>
+                <input type="text" id="storefront_slug" class="form-input"
+                       style="flex: 1;"
+                       placeholder="cleiltontec"
+                       value="{{ config.storefront_slug }}">
+            </div>
+            {% if config.storefront_slug %}
+            <div class="storefront-preview">
+                🔗 Sua vitrine: <a href="https://www.magazinevoce.com.br/magazine{{ config.storefront_slug }}/" target="_blank">
+                    magazinevoce.com.br/magazine{{ config.storefront_slug }}/
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- categories -->
+        <div style="margin-bottom: 1.25rem;">
+            <label class="form-label">Categorias para buscar ofertas</label>
+            <div class="category-grid" id="categoryGrid">
+                {% for key, label in available_categories.items() %}
+                <label class="category-chip {{ 'active' if key in config.categories else '' }}"
+                       data-key="{{ key }}"
+                       onclick="toggleCategory(this)">
+                    <input type="checkbox" value="{{ key }}"
+                           {{ 'checked' if key in config.categories else '' }}
+                           style="pointer-events: none;">
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- visual customization -->
+        <h4 style="margin-bottom: 1rem; margin-top: 1.5rem; color: #a855f7;">🎨 Personalização da Arte</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+                <label class="form-label">Tipo de Loja (Design)</label>
+                <select id="store_type" class="form-input">
+                    <option value="magalu" {% if config.store_type == 'magalu' %}selected{% endif %}>Magalu</option>
+                    <option value="generica" {% if config.store_type == 'generica' %}selected{% endif %}>Genérica / Outra (Oculta Logo)</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Cor de Fundo da Arte (CSS/Hex)</label>
+                <input type="text" id="theme_color" class="form-input"
+                       placeholder="#0088ff" value="{{ config.theme_color }}">
+            </div>
+            <div style="grid-column: span 2;">
+                <label class="form-label">Frase de Destaque (Tagline)</label>
+                <input type="text" id="tagline" class="form-input"
+                       placeholder="tem na minha loja" value="{{ config.tagline }}">
+            </div>
+        </div>
+
+        <!-- numeric settings -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+                <label class="form-label">Desconto Mínimo (%)</label>
+                <input type="number" id="min_discount" class="form-input"
+                       placeholder="10" value="{{ config.min_discount }}" min="1" max="90">
+            </div>
+            <div>
+                <label class="form-label">Ofertas por Rodada</label>
+                <input type="number" id="max_offers" class="form-input"
+                       placeholder="5" value="{{ config.max_offers }}" min="1" max="20">
+            </div>
+            <div>
+                <label class="form-label">Horários do Cron</label>
+                <input type="text" id="dispatch_hours" class="form-input"
+                       placeholder="9,12,18" value="{{ config.dispatch_hours }}">
+            </div>
+        </div>
+
+        <div style="text-align: right;">
+            <button type="submit" class="btn btn-primary" style="font-weight: 600; padding: 0.65rem 1.5rem;">
+                💾 Salvar Configurações
+            </button>
+        </div>
+    </form>
 </div>
 
-<!-- manual dispatch -->
+<!-- ── manual dispatch ──────────────────────────────────────── -->
 <div class="dispatch-section">
-    <div style="font-size: 3rem; margin-bottom: 1rem;">🛒</div>
+    <div style="font-size: 3rem; margin-bottom: 0.75rem;">🛒</div>
     <h3>Disparar Ofertas Manualmente</h3>
-    <p>Busca ofertas com desconto no Mercado Livre e posta no seu Status do WhatsApp automaticamente.</p>
-    {% if has_instance and config.ml_token_configured %}
-    <button class="btn btn-primary" onclick="dispatchOffers()" style="font-weight: 800; font-size: 1rem; padding: 0.85rem 2.5rem;">
+    <p style="color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Busca ofertas com desconto na sua vitrine Magalu e posta no seu Status do WhatsApp.
+    </p>
+    {% if has_instance and config.configured %}
+    <button class="btn btn-primary" onclick="dispatchOffers()"
+            style="font-weight: 800; font-size: 1rem; padding: 0.85rem 2.5rem; background: #10b981; border: none;">
         🚀 DISPARAR OFERTAS AGORA
     </button>
     {% elif not has_instance %}
-    <div class="status-indicator status-disconnected" style="font-size: 0.95rem;">
+    <div style="color: #f59e0b; font-size: 0.95rem;">
         ⚠️ Conecte uma instância WhatsApp primeiro
     </div>
     {% else %}
-    <div class="status-indicator status-disconnected" style="font-size: 0.95rem;">
-        ⚠️ Configure o ML_ACCESS_TOKEN no ambiente
+    <div style="color: #f59e0b; font-size: 0.95rem;">
+        ⚠️ Configure o nome da sua loja Magalu acima
     </div>
     {% endif %}
 </div>
 
-<!-- setup guide -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+<!-- ── info cards ────────────────────────────────────────────── -->
+<div class="info-grid" style="margin-top: 1.5rem;">
     <div class="info-card">
         <h4>🔧 Como Configurar</h4>
         <ul class="info-list">
             <li>
                 <span class="emoji">1️⃣</span>
-                <span>Crie uma conta de desenvolvedor no <strong style="color: white;">Mercado Livre</strong></span>
+                <span>Cadastre-se como <strong style="color: white;">Parceiro Magalu</strong> (Influenciador)</span>
             </li>
             <li>
                 <span class="emoji">2️⃣</span>
-                <span>Cadastre-se no programa de <strong style="color: white;">Afiliados</strong> do ML</span>
+                <span>Acesse sua loja em <strong style="color: white;">magazinevoce.com.br</strong></span>
             </li>
             <li>
                 <span class="emoji">3️⃣</span>
-                <span>Gere um <strong style="color: white;">Access Token</strong> com permissões de leitura</span>
+                <span>Copie o <strong style="color: white;">nome da sua loja</strong> (ex: cleiltontec)</span>
             </li>
             <li>
                 <span class="emoji">4️⃣</span>
-                <span>Adicione o token na variável de ambiente <code>ML_ACCESS_TOKEN</code></span>
+                <span>Cole no campo acima, escolha as categorias e salve!</span>
             </li>
         </ul>
-        <div class="env-hint">
-            💡 Variáveis necessárias no <code>.env</code>:<br>
-            <code>ML_ACCESS_TOKEN</code> · <code>MIN_DISCOUNT_PERCENT</code> · <code>MAX_OFFERS_PER_RUN</code> · <code>STATUS_DISPATCH_HOURS</code>
-        </div>
     </div>
-
     <div class="info-card">
-        <h4>📋 Como Funciona</h4>
+        <h4>🤖 Como Funciona</h4>
         <ul class="info-list">
             <li>
                 <span class="emoji">🔍</span>
-                <span>O sistema busca produtos com desconto no seu catálogo de afiliado</span>
+                <span>O sistema busca ofertas com desconto nas categorias selecionadas</span>
+            </li>
+            <li>
+                <span class="emoji">🔗</span>
+                <span>Os links de afiliado são gerados automaticamente com sua vitrine</span>
             </li>
             <li>
                 <span class="emoji">🤖</span>
-                <span>A IA gera uma mensagem de marketing curta e atraente (se OPENAI_API_KEY estiver configurado)</span>
+                <span>A IA gera uma mensagem de marketing atraente para cada oferta</span>
             </li>
             <li>
                 <span class="emoji">📱</span>
-                <span>A oferta é postada automaticamente no seu <strong style="color: white;">Status do WhatsApp</strong></span>
+                <span>As ofertas são postadas no seu <strong style="color: white;">Status do WhatsApp</strong></span>
             </li>
             <li>
                 <span class="emoji">⏰</span>
-                <span>O cron automático roda nos horários configurados (padrão: 9h, 12h, 18h)</span>
+                <span>O cron roda nos horários configurados automaticamente</span>
             </li>
         </ul>
     </div>
 </div>
 
 <script>
+    function toggleCategory(chip) {
+        const cb = chip.querySelector('input[type="checkbox"]');
+        cb.checked = !cb.checked;
+        chip.classList.toggle('active', cb.checked);
+    }
+
+    function getSelectedCategories() {
+        const chips = document.querySelectorAll('#categoryGrid input[type="checkbox"]:checked');
+        return Array.from(chips).map(cb => cb.value);
+    }
+
+    async function saveConfig(e) {
+        e.preventDefault();
+
+        const cats = getSelectedCategories();
+        if (cats.length === 0) {
+            showToast('Selecione pelo menos uma categoria', 'error');
+            return;
+        }
+
+        const slug = document.getElementById('storefront_slug').value.trim();
+        if (!slug) {
+            showToast('Preencha o nome da sua loja', 'error');
+            return;
+        }
+
+        const payload = {
+            storefront_slug: slug,
+            categories: cats,
+            min_discount: parseFloat(document.getElementById('min_discount').value) || 10.0,
+            max_offers: parseInt(document.getElementById('max_offers').value) || 5,
+            dispatch_hours: document.getElementById('dispatch_hours').value || '9,12,18',
+            store_type: document.getElementById('store_type').value,
+            theme_color: document.getElementById('theme_color').value || '#0088ff',
+            tagline: document.getElementById('tagline').value || 'tem na minha loja'
+        };
+
+        try {
+            const res = await fetch('/affiliate/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error || 'Erro ao salvar', 'error');
+            }
+        } catch (error) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+
     async function dispatchOffers() {
         showConfirm('Deseja buscar e postar ofertas de afiliado agora?', async () => {
             try {
