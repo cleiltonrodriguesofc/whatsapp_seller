@@ -395,7 +395,7 @@ class EvolutionWhatsAppService(NotificationService):
     async def get_status(self) -> dict:
         url = f"{self.base_url}/instance/connectionState/{self.instance}"
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.get(url, headers=self._headers())
                 if response.status_code == 404:
                     return {"status": "not_found", "connected": False}
