@@ -40,6 +40,13 @@ USER appuser
 # Copy installed packages from builder
 COPY --from=builder /root/.local /home/appuser/.local
 
+# Install Playwright Chromium for Magalu scraper
+RUN /home/appuser/.local/bin/playwright install chromium
+# To install OS dependencies for Chromium, we briefly switch back to root
+USER root
+RUN /home/appuser/.local/bin/playwright install-deps chromium
+USER appuser
+
 # Copy application source code
 COPY --chown=appuser:appuser . .
 

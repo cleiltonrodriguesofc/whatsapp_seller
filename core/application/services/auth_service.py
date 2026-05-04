@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "your-secret-key-change-it-in-prod")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 PASSWORD_RESET_EXPIRE_HOURS = 1
 
 if SECRET_KEY == "your-secret-key-change-it-in-prod":

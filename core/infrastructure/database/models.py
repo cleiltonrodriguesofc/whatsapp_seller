@@ -345,3 +345,56 @@ class BirthdayLogModel(Base):
 
     user = relationship("UserModel")
     contact = relationship("BirthdayContactModel")
+
+# ── affiliate configuration ───────────────────────────────────────────────────
+
+class AffiliateConfigModel(Base):
+    __tablename__ = "affiliate_configs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False, unique=True)
+    storefront_slug = Column(String, nullable=True)  # e.g. "cleiltontec"
+    categories = Column(String, default="notebook,celular")  # comma-separated category keys
+    min_discount_percent = Column(Float, default=10.0)
+    max_offers_per_run = Column(Integer, default=5)
+    dispatch_hours = Column(String, default="9,12,18")
+    
+    # promo card customization
+    store_type = Column(String, default="magalu")  # magalu, generica
+    theme_color = Column(String, default="#0088ff")
+    tagline = Column(String, default="tem na minha loja")
+    
+    require_approval = Column(Boolean, default=False)
+    preferred_brands = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=now_sp)
+    
+    user = relationship("UserModel")
+
+class AffiliateLogModel(Base):
+    __tablename__ = "affiliate_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    product_title = Column(String, nullable=False)
+    image_url = Column(String, nullable=True)
+    original_url = Column(Text, nullable=False)
+    short_url = Column(String, nullable=True)
+    price = Column(Float, nullable=True)
+    old_price = Column(Float, nullable=True)
+    discount_percent = Column(Float, nullable=True)
+    installment_text = Column(String, nullable=True)
+    pix_discount_text = Column(String, nullable=True)
+    status = Column(String, default="sent", index=True) # "pending", "sent", "failed", "rejected"
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=now_sp)
+
+    user = relationship("UserModel")
+
+class ShortLinkModel(Base):
+    __tablename__ = "short_links"
+    id = Column(Integer, primary_key=True, index=True)
+    hash_id = Column(String, unique=True, index=True, nullable=False)
+    original_url = Column(Text, nullable=False)
+    store_name = Column(String, nullable=False)
+    clicks = Column(Integer, default=0)
+    created_at = Column(DateTime, default=now_sp)

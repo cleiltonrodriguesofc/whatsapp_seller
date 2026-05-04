@@ -36,7 +36,7 @@ def test_registration_flow(client, db_session):
             "/register",
             data={
                 "email": "api_test@test.com",
-                "password": "test_password_placeholder",
+                "password": "test_password123",
                 "business_name": "API Business",
                 "terms_accepted": "on",
             },
@@ -71,7 +71,7 @@ def test_successful_login(client, db_session):
     auth = AuthService()
     user = UserModel(
         email="auth_test@test.com",
-        hashed_password=auth.hash_password("test_password_placeholder"),
+        hashed_password=auth.hash_password("test_password123"),
     )
     db_session.add(user)
     db_session.commit()
@@ -80,7 +80,7 @@ def test_successful_login(client, db_session):
         "/login",
         data={
             "username": "auth_test@test.com",
-            "password": "test_password_placeholder",
+            "password": "test_password123",
         },
         follow_redirects=True,
     )

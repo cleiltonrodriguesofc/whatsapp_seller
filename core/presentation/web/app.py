@@ -8,10 +8,15 @@ Background tasks live in core/presentation/web/scheduler.py.
 import asyncio
 import logging
 import os
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from core.presentation.web.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -35,6 +40,7 @@ from core.presentation.web.routers import (
     admin,
     birthday,
     affiliate,
+    shortener,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -52,7 +58,44 @@ Base.metadata.create_all(bind=engine)
 # run auto-migrations on startup
 try:
     with engine.connect() as conn:
-        migrations = [
+        migrations = []
+        try:
+            conn.execute(text("SELECT old_price FROM affiliate_logs LIMIT 1"))
+        except Exception:
+            conn.rollback()
+            migrations.append(
+                (
+                    "affiliate_logs",
+                    "old_price",
+                    "ALTER TABLE affiliate_logs ADD COLUMN old_price FLOAT;",
+                )
+            )
+
+        try:
+            conn.execute(text("SELECT installment_text FROM affiliate_logs LIMIT 1"))
+        except Exception:
+            conn.rollback()
+            migrations.append(
+                (
+                    "affiliate_logs",
+                    "installment_text",
+                    "ALTER TABLE affiliate_logs ADD COLUMN installment_text VARCHAR;",
+                )
+            )
+
+        try:
+            conn.execute(text("SELECT pix_discount_text FROM affiliate_logs LIMIT 1"))
+        except Exception:
+            conn.rollback()
+            migrations.append(
+                (
+                    "affiliate_logs",
+                    "pix_discount_text",
+                    "ALTER TABLE affiliate_logs ADD COLUMN pix_discount_text VARCHAR;",
+                )
+            )
+
+        migrations.extend([
             (
                 "products",
                 "click_count",
@@ -135,7 +178,63 @@ try:
                 "reset_token_expiry",
                 "ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP;",
             ),
-        ]
+            (
+                "affiliate_configs",
+                "storefront_slug",
+                "ALTER TABLE affiliate_configs ADD COLUMN storefront_slug VARCHAR;",
+            ),
+            (
+                "affiliate_configs",
+                "categories",
+                "ALTER TABLE affiliate_configs ADD COLUMN categories VARCHAR DEFAULT 'notebook,celular';",
+            ),
+            (
+                "affiliate_configs",
+                "min_discount_percent",
+                "ALTER TABLE affiliate_configs ADD COLUMN min_discount_percent FLOAT DEFAULT 10.0;",
+            ),
+            (
+                "affiliate_configs",
+                "max_offers_per_run",
+                "ALTER TABLE affiliate_configs ADD COLUMN max_offers_per_run INTEGER DEFAULT 5;",
+            ),
+            (
+                "affiliate_configs",
+                "dispatch_hours",
+                "ALTER TABLE affiliate_configs ADD COLUMN dispatch_hours VARCHAR DEFAULT '9,12,18';",
+            ),
+            (
+                "affiliate_configs",
+                "store_type",
+                "ALTER TABLE affiliate_configs ADD COLUMN store_type VARCHAR DEFAULT 'magalu';",
+            ),
+            (
+                "affiliate_configs",
+                "theme_color",
+                "ALTER TABLE affiliate_configs ADD COLUMN theme_color VARCHAR DEFAULT '#0088ff';",
+            ),
+            (
+                "affiliate_configs",
+                "tagline",
+                "ALTER TABLE affiliate_configs ADD COLUMN tagline VARCHAR DEFAULT 'tem na minha loja';",
+            ),
+            (
+                "affiliate_configs",
+                "require_approval",
+                "ALTER TABLE affiliate_configs ADD COLUMN require_approval BOOLEAN DEFAULT FALSE;",
+            ),
+            (
+                "affiliate_logs",
+                "image_url",
+                "ALTER TABLE affiliate_logs ADD COLUMN image_url VARCHAR;",
+            ),
+            (
+                "affiliate_configs",
+                "preferred_brands",
+                "ALTER TABLE affiliate_configs ADD COLUMN preferred_brands VARCHAR;",
+            ),
+        ])
+
 
         for table, column, stmt in migrations:
             try:
@@ -176,12 +275,21 @@ except Exception as e:
 app = FastAPI(
     title="WhatSeller Pro",
     debug=os.environ.get("DEBUG", "false") == "true",
-    docs_url="/api-docs",
-    redoc_url="/api-redoc",
+    docs_url="/api-docs" if os.environ.get("RENDER") != "true" else None,
+    redoc_url="/api-redoc" if os.environ.get("RENDER") != "true" else None,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ── cors middleware ────────────────────────────────────────────────────────────
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 # ── security middleware ────────────────────────────────────────────────────────
 
@@ -249,3 +357,4 @@ app.include_router(referral.router)
 app.include_router(admin.router)
 app.include_router(birthday.router)
 app.include_router(affiliate.router)
+app.include_router(shortener.router)
