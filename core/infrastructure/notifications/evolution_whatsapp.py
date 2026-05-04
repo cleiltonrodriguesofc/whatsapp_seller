@@ -412,14 +412,17 @@ class EvolutionWhatsAppService(NotificationService):
                 instance_data = data.get("instance")
                 if isinstance(instance_data, dict):
                     state = instance_data.get("state", "unknown")
+                    owner = instance_data.get("owner", "")
                 elif isinstance(instance_data, str):
                     state = instance_data
+                    owner = ""
                 else:
                     state = data.get(
                         "state", "unknown"
                     )  # Fallback for different API versions
+                    owner = data.get("owner", "")
 
-                return {"status": state, "connected": state in ["open", "CONNECTED"]}
+                return {"status": state, "connected": state in ["open", "CONNECTED"], "owner": owner}
         except Exception as exc:
             logger.error("Failed to get WhatsApp status: %r", exc)
             return {"status": "error", "connected": False}

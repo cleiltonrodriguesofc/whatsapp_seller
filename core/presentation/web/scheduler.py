@@ -239,20 +239,66 @@ async def send_status_campaign(campaign_id: int) -> None:
             media_content = caption or " "
 
         target_contacts = []
-        target_contacts = []
         if target_contacts_raw:
             try:
                 target_contacts = json.loads(target_contacts_raw)
             except Exception:
                 target_contacts = []
 
-        success = await whatsapp_service.send_status(
-            content=media_content,
-            type="image" if image_url else "text",
-            jid_list=target_contacts if target_contacts else None,
-            backgroundColor=bg_color,
-            caption=caption,
-        )
+        # Se a lista estiver vazia, significa que é para "todos os contatos"
+        if not target_contacts:
+            contacts_data = await whatsapp_service.get_contacts()
+            target_contacts = [c.get("remoteJid") for c in contacts_data if c.get("remoteJid")]
+
+        # Tenta obter o numero do dono (owner) para garantir que apareca no "Meu Status"
+        owner_jid = None
+        try:
+            status_info = await whatsapp_service.get_status()
+            owner_jid = status_info.get("owner", "")
+            if owner_jid and "@s.whatsapp.net" not in owner_jid:
+                owner_jid = f"{owner_jid}@s.whatsapp.net"
+        except Exception as e:
+            logger.warning("Could not fetch owner jid for status: %s", e)
+
+        # Se o owner_jid existir, vamos envia-lo em um chunk separado primeiro
+        if owner_jid:
+            target_contacts = [jid for jid in target_contacts if jid != owner_jid]
+            logger.info("Sending isolated status chunk to Owner JID: %s for visual feedback", owner_jid)
+            owner_success = await whatsapp_service.send_status(
+                content=media_content,
+                type="image" if image_url else "text",
+                jid_list=[owner_jid],
+                backgroundColor=bg_color,
+                caption=caption,
+            )
+            if not owner_success:
+                logger.error("Failed to send isolated status chunk to owner")
+            
+            import asyncio
+            await asyncio.sleep(5)
+
+        # Fatiar os demais contatos em blocos de 250
+        chunk_size = 250
+        success = True
+        for i in range(0, len(target_contacts), chunk_size):
+            chunk = target_contacts[i:i+chunk_size]
+            logger.info("Sending status chunk %s to %s targets...", (i // chunk_size) + 1, len(chunk))
+            chunk_success = await whatsapp_service.send_status(
+                content=media_content,
+                type="image" if image_url else "text",
+                jid_list=chunk,
+                backgroundColor=bg_color,
+                caption=caption,
+            )
+            if not chunk_success:
+                success = False
+                logger.error("Failed to send status chunk %s", (i // chunk_size) + 1)
+            
+            if i + chunk_size < len(target_contacts):
+                # Pausa entre lotes
+                import asyncio
+                await asyncio.sleep(5)
+
         final_status = "sent" if success else "failed"
     except Exception as e:
         logger.error("error during status campaign send: %s", e, exc_info=True)
