@@ -83,6 +83,8 @@ async def test_send_status_campaign_marks_sent_on_success():
     ):
         mock_svc_instance = MockSvc.return_value
         mock_svc_instance.send_status = AsyncMock(return_value=True)
+        mock_svc_instance.get_status = AsyncMock(return_value={"owner": "5511999999999"})
+        mock_svc_instance.get_contacts = AsyncMock(return_value=[{"remoteJid": "5511888888888@s.whatsapp.net"}])
 
         from core.presentation.web.scheduler import send_status_campaign
 
