@@ -345,3 +345,33 @@ class BirthdayLogModel(Base):
 
     user = relationship("UserModel")
     contact = relationship("BirthdayContactModel")
+
+# ── affiliate configuration ───────────────────────────────────────────────────
+
+class AffiliateConfigModel(Base):
+    __tablename__ = "affiliate_configs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False, unique=True)
+    storefront_slug = Column(String, nullable=True)  # e.g. "cleiltontec"
+    categories = Column(String, default="notebook,celular")  # comma-separated category keys
+    min_discount_percent = Column(Float, default=10.0)
+    max_offers_per_run = Column(Integer, default=5)
+    dispatch_hours = Column(String, default="9,12,18")
+    
+    # promo card customization
+    store_type = Column(String, default="magalu")  # magalu, generica
+    theme_color = Column(String, default="#0088ff")
+    tagline = Column(String, default="tem na minha loja")
+    
+    created_at = Column(DateTime, default=now_sp)
+    
+    user = relationship("UserModel")
+
+class ShortLinkModel(Base):
+    __tablename__ = "short_links"
+    id = Column(Integer, primary_key=True, index=True)
+    hash_id = Column(String, unique=True, index=True, nullable=False)
+    original_url = Column(Text, nullable=False)
+    store_name = Column(String, nullable=False)
+    clicks = Column(Integer, default=0)
+    created_at = Column(DateTime, default=now_sp)
