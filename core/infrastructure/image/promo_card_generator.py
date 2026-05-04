@@ -192,12 +192,13 @@ async def generate_promo_card(
                 display: flex; flex-direction: column;
             }}
             .product-image-container {{
-                width: 100%; height: 550px;
+                width: 100%; height: 580px;
                 display: flex; align-items: center; justify-content: center;
-                margin-bottom: 35px;
+                margin-bottom: 25px;
             }}
             .product-image {{
                 width: 100%; height: 100%; object-fit: contain;
+                transform: scale(1.05);
             }}
 
             .product-title {{
@@ -315,20 +316,24 @@ async def generate_promo_card(
     """
 
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(
-                viewport={'width': 1080, 'height': 1920},
-                device_scale_factor=1
-            )
-            await page.set_content(html_content, wait_until="networkidle")
-            
-            # Wait for fonts and rendering
-            await page.wait_for_timeout(1000)
-            
-            screenshot = await page.screenshot(type="png")
-            await browser.close()
-            return screenshot
+        import asyncio
+        
+        def _render_sync(html):
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(
+                    viewport={'width': 1080, 'height': 1920},
+                    device_scale_factor=1
+                )
+                page.set_content(html, wait_until="networkidle")
+                page.wait_for_timeout(1000)
+                screenshot = page.screenshot(type="png")
+                browser.close()
+                return screenshot
+
+        screenshot = await asyncio.to_thread(_render_sync, html_content)
+        return screenshot
     except Exception as e:
         logger.error("[promo-card] playwright generation failed: %s", e)
         return b""

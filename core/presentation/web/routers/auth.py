@@ -180,6 +180,17 @@ async def reset_password_action(
             },
         )
 
+    if len(password) < 8 or not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
+        return templates.TemplateResponse(
+            request=request,
+            name="reset_password.html",
+            context={
+                "error": "A senha deve ter no mínimo 8 caracteres, contendo letras e números.",
+                "title": "Nova Senha",
+                "token": token,
+            },
+        )
+
     user.hashed_password = auth_service.hash_password(password)
     user.reset_token = None
     user.reset_token_expiry = None
@@ -228,6 +239,16 @@ async def register_action(
             name="register.html",
             context={
                 "error": "Você precisa aceitar os Termos de Uso.",
+                "title": "Register",
+            },
+        )
+        
+    if len(password) < 8 or not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={
+                "error": "A senha deve ter no mínimo 8 caracteres, contendo letras e números.",
                 "title": "Register",
             },
         )

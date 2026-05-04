@@ -480,6 +480,17 @@ async def campaign_scheduler_loop() -> None:
     while True:
         # Give some time for migrations/startup to complete if needed
         db = SessionLocal()
+        
+        # Keep-alive ping for Evolution API on Render (prevents sleep)
+        try:
+            import httpx
+            import os
+            base_url = os.environ.get("EVOLUTION_API_URL", "http://evolution-api:8080").rstrip("/")
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                await client.get(base_url)
+        except Exception as ping_err:
+            logger.debug(f"Evolution API ping failed: {ping_err}")
+            
         try:
             # Check if tables exist before querying (basic resilience)
             # This prevents sqlite3.OperationalError: no such table: campaigns

@@ -363,8 +363,31 @@ class AffiliateConfigModel(Base):
     theme_color = Column(String, default="#0088ff")
     tagline = Column(String, default="tem na minha loja")
     
+    require_approval = Column(Boolean, default=False)
+    preferred_brands = Column(String, nullable=True)
+    
     created_at = Column(DateTime, default=now_sp)
     
+    user = relationship("UserModel")
+
+class AffiliateLogModel(Base):
+    __tablename__ = "affiliate_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    product_title = Column(String, nullable=False)
+    image_url = Column(String, nullable=True)
+    original_url = Column(Text, nullable=False)
+    short_url = Column(String, nullable=True)
+    price = Column(Float, nullable=True)
+    old_price = Column(Float, nullable=True)
+    discount_percent = Column(Float, nullable=True)
+    installment_text = Column(String, nullable=True)
+    pix_discount_text = Column(String, nullable=True)
+    status = Column(String, default="sent", index=True) # "pending", "sent", "failed", "rejected"
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=now_sp)
+
     user = relationship("UserModel")
 
 class ShortLinkModel(Base):

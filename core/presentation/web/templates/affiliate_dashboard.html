@@ -69,6 +69,40 @@
         .info-grid { grid-template-columns: 1fr; }
         .category-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     }
+
+    .log-console {
+        background: #0f172a;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-top: 1.5rem;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.85rem;
+        max-height: 300px;
+        overflow-y: auto;
+        color: #e2e8f0;
+    }
+    .log-entry {
+        margin-bottom: 0.4rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding-bottom: 0.4rem;
+    }
+    .log-time { color: #64748b; margin-right: 0.5rem; }
+    .log-status-sent { color: #10b981; }
+    .log-status-failed { color: #ef4444; }
+    .log-status-info { color: #3b82f6; }
+
+    .offer-card {
+        background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px; padding: 1rem; margin-bottom: 1rem;
+        display: flex; gap: 1rem; align-items: flex-start;
+        font-family: var(--font-body);
+    }
+    .offer-img { width: 80px; height: 80px; object-fit: contain; border-radius: 8px; background: white; flex-shrink: 0; }
+    .offer-details { flex: 1; min-width: 0; }
+    .offer-title { font-weight: bold; color: white; margin-bottom: 0.25rem; font-size: 0.95rem; white-space: normal; }
+    .offer-price { color: #fbbf24; font-weight: bold; font-size: 1.1rem; }
+    .offer-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 </style>
 
 <!-- ── config form ──────────────────────────────────────────── -->
@@ -127,10 +161,15 @@
                 <input type="text" id="theme_color" class="form-input"
                        placeholder="#0088ff" value="{{ config.theme_color }}">
             </div>
-            <div style="grid-column: span 2;">
+            <div>
                 <label class="form-label">Frase de Destaque (Tagline)</label>
                 <input type="text" id="tagline" class="form-input"
                        placeholder="tem na minha loja" value="{{ config.tagline }}">
+            </div>
+            <div>
+                <label class="form-label">Marcas Preferidas (Busca Específica)</label>
+                <input type="text" id="preferred_brands" class="form-input"
+                       placeholder="Ex: asus, samsung, acer" value="{{ config.preferred_brands }}">
             </div>
         </div>
 
@@ -150,6 +189,14 @@
                 <label class="form-label">Horários do Cron</label>
                 <input type="text" id="dispatch_hours" class="form-input"
                        placeholder="9,12,18" value="{{ config.dispatch_hours }}">
+            </div>
+            
+            <div style="grid-column: span 3; display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                <input type="checkbox" id="require_approval" style="width: 1.2rem; height: 1.2rem; accent-color: #10b981;"
+                       {{ 'checked' if config.require_approval else '' }}>
+                <label for="require_approval" style="color: white; font-weight: 500; cursor: pointer;">
+                    Modo Manual: Trazer para cá e eu autorizar o envio (Recomendado)
+                </label>
             </div>
         </div>
 
@@ -182,6 +229,17 @@
         ⚠️ Configure o nome da sua loja Magalu acima
     </div>
     {% endif %}
+
+    <!-- live logs -->
+    <div id="logContainer" style="display: none; margin-top: 2rem; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 1.1rem;">🛰️ Painel de Ofertas & Logs</h4>
+            <span class="badge" id="logBadge" style="background: var(--accent); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem;">ativo</span>
+        </div>
+        <div class="log-console" id="logConsole" style="max-height: 600px;">
+            <div style="color: #64748b; text-align: center; padding: 2rem;">Aguardando início do robô...</div>
+        </div>
+    </div>
 </div>
 
 <!-- ── info cards ────────────────────────────────────────────── -->
@@ -269,7 +327,9 @@
             dispatch_hours: document.getElementById('dispatch_hours').value || '9,12,18',
             store_type: document.getElementById('store_type').value,
             theme_color: document.getElementById('theme_color').value || '#0088ff',
-            tagline: document.getElementById('tagline').value || 'tem na minha loja'
+            tagline: document.getElementById('tagline').value || 'tem na minha loja',
+            preferred_brands: document.getElementById('preferred_brands').value || '',
+            require_approval: document.getElementById('require_approval').checked
         };
 
         try {
@@ -297,6 +357,7 @@
                 const data = await res.json();
                 if (data.success) {
                     showToast('Disparo de ofertas iniciado!', 'success');
+                    startLogPolling();
                 } else {
                     showToast(data.error || 'Erro ao disparar', 'error');
                 }
@@ -305,5 +366,172 @@
             }
         });
     }
+
+    let pollingInterval = null;
+    function startLogPolling() {
+        document.getElementById('logContainer').style.display = 'block';
+        if (pollingInterval) clearInterval(pollingInterval);
+        
+        fetchLogs(); // initial fetch
+        pollingInterval = setInterval(fetchLogs, 3000);
+        
+        // stop polling after 10 minutes to save resources
+        setTimeout(() => stopLogPolling(), 600000);
+    }
+
+    function stopLogPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+            document.getElementById('logBadge').innerText = 'finalizado';
+            document.getElementById('logBadge').style.background = '#64748b';
+        }
+    }
+
+    async function fetchLogs() {
+        try {
+            const res = await fetch('/affiliate/logs');
+            const logs = await res.json();
+            const console = document.getElementById('logConsole');
+            
+            if (logs.length === 0) {
+                console.innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">Nenhum log encontrado.</div>';
+                return;
+            }
+
+            console.innerHTML = logs.map(log => {
+                if (log.status === 'info') {
+                    return `<div class="log-entry"><span class="log-time">[${log.created_at}]</span><span class="log-status-info">[INFO]</span> <span>${log.product_title}</span></div>`;
+                }
+
+                let actions = '';
+                let statusBadge = `<span class="badge" style="background: ${log.status === 'sent' ? '#10b981' : (log.status === 'failed' ? '#ef4444' : (log.status === 'rejected' ? '#64748b' : '#3b82f6'))}">${log.status.toUpperCase()}</span>`;
+                
+                if (log.status === 'pending') {
+                    statusBadge = `<span class="badge" style="background: #f59e0b">PENDENTE</span>`;
+                    actions = `
+                        <div class="offer-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" onclick="previewOffer(${log.id})" id="btn-preview-${log.id}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #3b82f6; border: none;">🔍 Ver Prévia</button>
+                            <button class="btn btn-primary" onclick="approveOffer(${log.id})" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #10b981; border: none;">✅ Postar no Status</button>
+                            <button class="btn btn-secondary" onclick="rejectOffer(${log.id})" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: #ef4444; border: none;">❌ Descartar</button>
+                        </div>
+                        <div id="preview-${log.id}" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                            <!-- Preview Content will go here -->
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="offer-card" id="card-${log.id}">
+                        ${log.image_url ? `<img src="${log.image_url}" class="offer-img">` : `<div class="offer-img" style="display:flex;align-items:center;justify-content:center;background:#1e293b;color:#64748b;font-size:0.7rem">Sem img</div>`}
+                        <div class="offer-details">
+                            <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                <div class="offer-title">${log.product_title}</div>
+                                <div>${statusBadge}</div>
+                            </div>
+                            <div class="offer-price">
+                                R$ ${log.price ? log.price.toFixed(2).replace('.', ',') : '0,00'} 
+                                <span style="font-size:0.8rem;color:#a855f7">(${log.discount_percent}% OFF)</span>
+                            </div>
+                            <div style="font-size:0.8rem; color:#94a3b8; margin-top:0.2rem;">
+                                ${log.short_url ? `Link: <a href="${log.short_url}" target="_blank" style="color:#60a5fa">${log.short_url}</a>` : ''}
+                            </div>
+                            ${log.error ? `<div style="color: #ef4444; font-size: 0.8rem; margin-top: 0.2rem;">Erro: ${log.error}</div>` : ''}
+                            ${actions}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (e) {
+            console.innerHTML = '<div style="color: #ef4444; text-align: center;">Erro ao carregar ofertas.</div>';
+        }
+    }
+    
+    async function previewOffer(logId) {
+        const previewContainer = document.getElementById(`preview-${logId}`);
+        const btn = document.getElementById(`btn-preview-${logId}`);
+        
+        if (previewContainer.style.display === 'block') {
+            previewContainer.style.display = 'none';
+            return;
+        }
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Gerando...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/affiliate/offers/${logId}/preview`);
+            const data = await res.json();
+            
+            if (data.success) {
+                previewContainer.style.display = 'block';
+                const formattedCopy = data.copy ? data.copy.replace(/\n/g, '<br>') : "Erro ao gerar copy";
+                
+                let imgHtml = '';
+                if (data.image_b64) {
+                    imgHtml = `<img src="data:image/png;base64,${data.image_b64}" style="max-width: 100%; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.2);">`;
+                }
+
+                previewContainer.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 0.5rem; color: #a5b4fc;">🎨 Arte Gerada:</div>
+                    ${imgHtml}
+                    <div style="font-weight: bold; margin-bottom: 0.5rem; color: #a5b4fc;">📝 Copy (Texto):</div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 6px; font-family: sans-serif; font-size: 0.9rem; line-height: 1.4;">
+                        ${formattedCopy}
+                    </div>
+                `;
+            } else {
+                console.error("Preview API error:", data);
+                showToast(data.error || 'Erro ao gerar prévia', 'error');
+            }
+        } catch(e) {
+            console.error("Preview exception:", e);
+            showToast('Erro de conexão ou falha ao gerar a prévia. Verifique o console.', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    async function approveOffer(logId) {
+        try {
+            const res = await fetch(`/affiliate/offers/${logId}/approve`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Oferta enviada para postagem!', 'success');
+                fetchLogs();
+            } else {
+                showToast(data.error || 'Erro ao aprovar', 'error');
+            }
+        } catch(e) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+
+    async function rejectOffer(logId) {
+        try {
+            const res = await fetch(`/affiliate/offers/${logId}/reject`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Oferta descartada.', 'info');
+                fetchLogs();
+            } else {
+                showToast(data.error || 'Erro ao descartar', 'error');
+            }
+        } catch(e) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+
+    // if there are already logs, show them on load
+    window.addEventListener('DOMContentLoaded', () => {
+        fetch('/affiliate/logs').then(r => r.json()).then(logs => {
+            if (logs.length > 0) {
+                document.getElementById('logContainer').style.display = 'block';
+                fetchLogs();
+            }
+        });
+    });
 </script>
 {% endblock %}

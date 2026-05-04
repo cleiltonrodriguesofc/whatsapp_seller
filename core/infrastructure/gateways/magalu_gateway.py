@@ -64,6 +64,7 @@ class MagaluGateway:
         categories: list[str],
         min_discount_percent: float = 10.0,
         max_offers: int = 5,
+        preferred_brands: str = "",
     ) -> list[MagaluOffer]:
         """
         returns a list of product offers from the configured storefront.
@@ -85,16 +86,29 @@ class MagaluGateway:
 
         # fetch fresh data
         all_offers = []
+        brands = [b.strip() for b in preferred_brands.split(",") if b.strip()] if preferred_brands else []
+
         for cat_key in categories:
             cat = CATEGORY_MAP.get(cat_key)
             if not cat:
-                logger.warning("[magalu] unknown category: %s", cat_key)
+                logger.warning("[magalu] unknown category key: %s", cat_key)
                 continue
-            try:
-                offers = await self._fetch_category(cat["path"], cat["label"])
-                all_offers.extend(offers)
-            except Exception as e:
-                logger.error("[magalu] error fetching category %s: %s", cat_key, e)
+            
+            if brands:
+                for brand in brands:
+                    base_path = cat['path'].rstrip('/')
+                    search_path = f"{base_path}%20{brand.replace(' ', '%20')}/"
+                    try:
+                        offers = await self._fetch_category(search_path, f"{cat['label']} {brand}")
+                        all_offers.extend(offers)
+                    except Exception as e:
+                        logger.error("[magalu] error fetching category %s with brand %s: %s", cat_key, brand, e)
+            else:
+                try:
+                    offers = await self._fetch_category(cat["path"], cat["label"])
+                    all_offers.extend(offers)
+                except Exception as e:
+                    logger.error("[magalu] error fetching category %s: %s", cat_key, e)
 
         # sort by discount descending
         all_offers.sort(key=lambda o: o.discount_percent, reverse=True)
@@ -110,18 +124,17 @@ class MagaluGateway:
         filtered = [o for o in all_offers if o.discount_percent >= min_discount_percent]
         return filtered[:max_offers]
 
-    async def _fetch_category(self, search_path: str, category_label: str) -> list[MagaluOffer]:
-        """uses playwright to browse a category and extract products."""
-        from playwright.async_api import async_playwright
+    def _fetch_category_sync(self, search_path: str, category_label: str) -> list[dict]:
+        """uses sync playwright to browse a category and extract products to bypass asyncio issues on windows."""
+        from playwright.sync_api import sync_playwright
 
-        offers = []
         url = f"{self.store_url}/{search_path}"
         logger.info("[magalu] fetching %s", url)
 
         try:
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch(headless=True)
-                context = await browser.new_context(
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True)
+                context = browser.new_context(
                     user_agent=(
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -130,14 +143,18 @@ class MagaluGateway:
                     viewport={"width": 1366, "height": 768},
                     locale="pt-BR",
                 )
-                page = await context.new_page()
+                page = context.new_page()
 
                 # navigate and wait for product cards to render
-                await page.goto(url, wait_until="load", timeout=30000)
-                await page.wait_for_timeout(3000)  # extra time for JS rendering
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                except Exception as e:
+                    logger.warning("[magalu] page.goto timeout/error: %s. continuing anyway...", e)
+                
+                page.wait_for_timeout(4000)  # extra time for JS rendering
 
                 # extract product data from the rendered page
-                products = await page.evaluate("""
+                products = page.evaluate("""
                     () => {
                         const items = [];
                         const seen = new Set();
@@ -240,12 +257,18 @@ class MagaluGateway:
                     }
                 """)
 
-                await browser.close()
+                browser.close()
+                return products
 
         except Exception as e:
             logger.error("[magalu] playwright error: %s", e)
             return []
 
+    async def _fetch_category(self, search_path: str, category_label: str) -> list[MagaluOffer]:
+        """uses playwright to browse a category and extract products."""
+        products = await asyncio.to_thread(self._fetch_category_sync, search_path, category_label)
+        
+        offers = []
         # parse and build offer objects
         for item in products:
             try:
