@@ -1,7 +1,6 @@
 # Stage 1: Build stage
 FROM python:3.11-slim AS builder
 
-# Set environment variables for build
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
@@ -13,38 +12,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies to a local directory
+# Create virtual environment and install dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 
 # Stage 2: Runtime stage
 FROM python:3.11-slim AS runtime
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV PATH=/home/appuser/.local/bin:$PATH
+# Ensure the virtualenv is used by default
+ENV PATH="/opt/venv/bin:$PATH"
+# Centralize Playwright browsers
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 WORKDIR /app
 
-# Install runtime library for PostgreSQL
+# Install runtime library for PostgreSQL and system utils
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Copy virtualenv from builder
+COPY --from=builder /opt/venv /opt/venv
+
 # Create a non-root user
 RUN useradd --create-home appuser
-USER appuser
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /home/appuser/.local
+# Install Playwright Chromium and its OS dependencies
+# This is done as root so it has permissions to install system packages
+RUN playwright install chromium && \
+    playwright install-deps chromium && \
+    # Ensure appuser owns the browsers and the app directory
+    mkdir -p /ms-playwright && \
+    chown -R appuser:appuser /ms-playwright /app
 
-# Install Playwright Chromium for Magalu scraper
-RUN /home/appuser/.local/bin/playwright install chromium
-# To install OS dependencies for Chromium, we briefly switch back to root
-USER root
-RUN /home/appuser/.local/bin/playwright install-deps chromium
 USER appuser
 
 # Copy application source code
