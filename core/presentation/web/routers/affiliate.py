@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
-from core.infrastructure.database.models import InstanceModel, AffiliateConfigModel
+from core.infrastructure.database.models import InstanceModel, AffiliateConfigModel, AffiliateLogModel
 from core.infrastructure.database.session import get_db
 from core.infrastructure.gateways.magalu_gateway import MagaluGateway, CATEGORY_MAP
 from core.infrastructure.image.promo_card_generator import generate_promo_card
@@ -137,7 +137,6 @@ async def get_affiliate_logs(
     user=Depends(login_required),
 ):
     """returns the last 20 affiliate logs for the user."""
-    from core.infrastructure.database.models import AffiliateLogModel
     logs = (
         db.query(AffiliateLogModel)
         .filter(AffiliateLogModel.user_id == user.id)
@@ -190,7 +189,6 @@ async def dispatch_affiliate_offers(
 
     categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
 
-    from core.infrastructure.database.models import AffiliateLogModel
     
     gateway = MagaluGateway(storefront_slug=config.storefront_slug)
     whatsapp = EvolutionWhatsAppService(
@@ -239,7 +237,6 @@ async def dispatch_affiliate_offers(
                 db_session.commit()
 
             with next(get_db()) as db_session:
-                from core.infrastructure.database.models import AffiliateLogModel
                 from datetime import timedelta
                 
                 recent_logs = db_session.query(AffiliateLogModel.product_title).filter(
@@ -394,7 +391,6 @@ async def preview_affiliate_offer(
     user=Depends(login_required),
 ):
     """Generates and returns the promo card and AI copy for preview."""
-    from core.infrastructure.database.models import AffiliateLogModel
     from core.infrastructure.image.promo_card_generator import generate_promo_card
 
     log = db.query(AffiliateLogModel).filter(
@@ -481,7 +477,6 @@ async def approve_affiliate_offer(
     user=Depends(login_required),
 ):
     """Approves a pending offer and sends it to WhatsApp."""
-    from core.infrastructure.database.models import AffiliateLogModel
     from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
     
     log = db.query(AffiliateLogModel).filter(
@@ -587,7 +582,6 @@ async def reject_affiliate_offer(
     db: Session = Depends(get_db),
     user=Depends(login_required),
 ):
-    from core.infrastructure.database.models import AffiliateLogModel
     log = db.query(AffiliateLogModel).filter(
         AffiliateLogModel.id == log_id,
         AffiliateLogModel.user_id == user.id,
