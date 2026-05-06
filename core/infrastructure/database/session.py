@@ -12,6 +12,11 @@ load_dotenv()
 # example: postgresql://user:pass@aws-1-us-west-2.pooler.supabase.com:6543/postgres
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./whatsapp_agent.db")
 
+# supabase transaction-mode pooler requires ssl — inject it if missing
+if "postgresql" in DATABASE_URL and "sslmode" not in DATABASE_URL:
+    separator = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{separator}sslmode=require"
+
 kwargs = {}
 if "sqlite" in DATABASE_URL:
     kwargs["connect_args"] = {"check_same_thread": False}
