@@ -173,6 +173,33 @@
             </div>
         </div>
 
+        <!-- avatar upload -->
+        <div style="margin-bottom: 1.25rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
+            <label class="form-label" style="margin-bottom: 0.5rem;">📸 Sua Foto (Avatar no Card Promocional)</label>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div id="avatarPreview" style="width: 60px; height: 60px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; overflow: hidden; flex-shrink: 0;">
+                    {% if has_avatar %}✅{% else %}👤{% endif %}
+                </div>
+                <div style="flex: 1;">
+                    <input type="file" id="avatarFile" accept="image/jpeg,image/png,image/webp"
+                           style="display: none;" onchange="uploadAvatar(this)">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('avatarFile').click()"
+                            style="padding: 0.45rem 1rem; font-size: 0.85rem; margin-right: 0.5rem;">
+                        📤 {% if has_avatar %}Trocar{% else %}Enviar{% endif %} Foto
+                    </button>
+                    {% if has_avatar %}
+                    <button type="button" class="btn btn-secondary" onclick="deleteAvatar()"
+                            style="padding: 0.45rem 0.8rem; font-size: 0.85rem; background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">
+                        🗑️
+                    </button>
+                    {% endif %}
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                        {% if has_avatar %}✅ Avatar salvo no banco de dados{% else %}Nenhuma foto. Será usado um emoji padrão.{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- numeric settings -->
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
             <div>
@@ -522,6 +549,41 @@
         } catch(e) {
             showToast('Erro de conexão', 'error');
         }
+    }
+
+    // avatar management
+    async function uploadAvatar(input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Imagem muito grande (máx 2MB)', 'error');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch('/affiliate/avatar', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                showToast('Avatar salvo!', 'success');
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                showToast(data.error || 'Erro ao enviar', 'error');
+            }
+        } catch(e) { showToast('Erro de conexão', 'error'); }
+    }
+
+    async function deleteAvatar() {
+        showConfirm('Remover sua foto do card?', async () => {
+            try {
+                const res = await fetch('/affiliate/avatar', { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Avatar removido', 'info');
+                    setTimeout(() => window.location.reload(), 800);
+                }
+            } catch(e) { showToast('Erro de conexão', 'error'); }
+        });
     }
 
     // if there are already logs, show them on load

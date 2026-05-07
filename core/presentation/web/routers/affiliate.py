@@ -5,9 +5,10 @@ and provides manual dispatch trigger.
 """
 
 import asyncio
+import base64
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -74,6 +75,8 @@ async def affiliate_dashboard(
     # build category options for the template
     available_categories = MagaluGateway.get_available_categories()
 
+    has_avatar = bool(config_model and config_model.owner_avatar_b64)
+
     return templates.TemplateResponse(
         request=request,
         name="affiliate_dashboard.html",
@@ -83,6 +86,7 @@ async def affiliate_dashboard(
             "has_instance": instance is not None,
             "config": config,
             "available_categories": available_categories,
+            "has_avatar": has_avatar,
         },
     )
 
@@ -129,6 +133,47 @@ async def save_affiliate_config(
 
     db.commit()
     return JSONResponse({"success": True, "message": "Configurações salvas com sucesso!"})
+
+
+# ── avatar upload ────────────────────────────────────────────────
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    """uploads the store owner avatar and persists it as base64 in the database."""
+    config = db.query(AffiliateConfigModel).filter(
+        AffiliateConfigModel.user_id == user.id
+    ).first()
+
+    if not config:
+        config = AffiliateConfigModel(user_id=user.id)
+        db.add(config)
+
+    contents = await file.read()
+    if len(contents) > 2 * 1024 * 1024:  # 2mb limit
+        return JSONResponse({"success": False, "error": "Imagem muito grande (max 2MB)"}, status_code=400)
+
+    config.owner_avatar_b64 = base64.b64encode(contents).decode("utf-8")
+    db.commit()
+    return JSONResponse({"success": True, "message": "Avatar salvo com sucesso!"})
+
+
+@router.delete("/avatar")
+async def delete_avatar(
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    """removes the stored avatar."""
+    config = db.query(AffiliateConfigModel).filter(
+        AffiliateConfigModel.user_id == user.id
+    ).first()
+    if config:
+        config.owner_avatar_b64 = None
+        db.commit()
+    return JSONResponse({"success": True, "message": "Avatar removido."})
 
 
 @router.get("/logs")
@@ -319,7 +364,6 @@ async def dispatch_affiliate_offers(
 
                 # post to whatsapp status
                 try:
-                    import base64
                     card_bytes = await generate_promo_card(
                         title=offer.title,
                         price=offer.price,
@@ -332,10 +376,11 @@ async def dispatch_affiliate_offers(
                         tagline=config.tagline or "tem na minha loja",
                         installment_text=offer.installment_text,
                         pix_discount_text=offer.pix_discount_text,
+                        owner_avatar_b64=config.owner_avatar_b64 or "",
                     )
                     
                     if card_bytes:
-                        b64_img = base64.b64encode(card_bytes).decode("utf-8")
+                        b64_img = base64.b64encode(card_bytes).decode("utf-8")  # noqa: F841
                         await whatsapp.send_status(
                             content=b64_img,
                             type="image",
@@ -440,7 +485,6 @@ async def preview_affiliate_offer(
                 + f"👉 {log.short_url}"
             )
 
-        import base64
         card_bytes = await generate_promo_card(
             title=log.product_title,
             price=log.price,
@@ -453,6 +497,7 @@ async def preview_affiliate_offer(
             tagline=config.tagline if config else "tem na minha loja",
             installment_text=log.installment_text or "",
             pix_discount_text=log.pix_discount_text or "",
+            owner_avatar_b64=config.owner_avatar_b64 if config else "",
         )
 
         b64_img = ""
@@ -533,7 +578,6 @@ async def approve_affiliate_offer(
                     + f"👉 {log.short_url}"
                 )
 
-            import base64
             card_bytes = await generate_promo_card(
                 title=log.product_title,
                 price=log.price,
@@ -546,6 +590,7 @@ async def approve_affiliate_offer(
                 tagline=config.tagline if config else "tem na minha loja",
                 installment_text=log.installment_text or "",
                 pix_discount_text=log.pix_discount_text or "",
+                owner_avatar_b64=config.owner_avatar_b64 if config else "",
             )
             
             if card_bytes:

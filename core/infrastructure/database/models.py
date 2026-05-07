@@ -366,6 +366,9 @@ class AffiliateConfigModel(Base):
     require_approval = Column(Boolean, default=False)
     preferred_brands = Column(String, nullable=True)
     
+    # owner avatar stored as base64 in db to survive render's ephemeral filesystem
+    owner_avatar_b64 = Column(Text, nullable=True)
+    
     created_at = Column(DateTime, default=now_sp)
     
     user = relationship("UserModel")

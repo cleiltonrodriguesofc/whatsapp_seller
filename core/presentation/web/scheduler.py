@@ -375,6 +375,7 @@ async def execute_affiliate_task(
     store_type: str = "magalu",
     theme_color: str = "#0088ff",
     tagline: str = "tem na minha loja",
+    owner_avatar_b64: str = "",
 ) -> None:
     """Executes the affiliate offer dispatch for a specific user."""
     import asyncio as _asyncio
@@ -448,6 +449,7 @@ async def execute_affiliate_task(
                     tagline=tagline,
                     installment_text=offer.installment_text,
                     pix_discount_text=offer.pix_discount_text,
+                    owner_avatar_b64=owner_avatar_b64,
                 )
                 
                 if card_bytes:
@@ -548,6 +550,7 @@ async def campaign_scheduler_loop() -> None:
                             store_type=config.store_type or "magalu",
                             theme_color=config.theme_color or "#0088ff",
                             tagline=config.tagline or "tem na minha loja",
+                            owner_avatar_b64=config.owner_avatar_b64 or "",
                         ))
 
             # one-off campaigns

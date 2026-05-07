@@ -133,7 +133,21 @@ class MagaluGateway:
 
         try:
             with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True)
+                browser = pw.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-features=IsolateOrigins,site-per-process",
+                        "--disable-infobars",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-accelerated-2d-canvas",
+                        "--disable-gpu",
+                        "--window-size=1366,768",
+                        "--start-maximized",
+                    ],
+                )
                 context = browser.new_context(
                     user_agent=(
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -142,7 +156,42 @@ class MagaluGateway:
                     ),
                     viewport={"width": 1366, "height": 768},
                     locale="pt-BR",
+                    java_script_enabled=True,
+                    bypass_csp=True,
                 )
+                
+                # inject stealth scripts to remove automation fingerprints
+                context.add_init_script("""
+                    // remove webdriver property
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    
+                    // spoof plugins
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5]
+                    });
+                    
+                    // spoof languages
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['pt-BR', 'pt', 'en-US', 'en']
+                    });
+                    
+                    // spoof permissions
+                    const originalQuery = window.navigator.permissions.query;
+                    window.navigator.permissions.query = (parameters) => (
+                        parameters.name === 'notifications' ?
+                            Promise.resolve({ state: Notification.permission }) :
+                            originalQuery(parameters)
+                    );
+                    
+                    // remove chrome automation indicators
+                    window.chrome = { runtime: {} };
+                    
+                    // spoof platform
+                    Object.defineProperty(navigator, 'platform', {
+                        get: () => 'Win32'
+                    });
+                """)
+                
                 page = context.new_page()
 
                 # navigate and wait for product cards to render
@@ -151,7 +200,18 @@ class MagaluGateway:
                 except Exception as e:
                     logger.warning("[magalu] page.goto timeout/error: %s. continuing anyway...", e)
                 
-                page.wait_for_timeout(4000)  # extra time for JS rendering
+                # simulate human-like scrolling to trigger lazy loading
+                page.wait_for_timeout(2000)
+                page.evaluate("window.scrollBy(0, 400)")
+                page.wait_for_timeout(1000)
+                page.evaluate("window.scrollBy(0, 600)")
+                page.wait_for_timeout(2000)
+
+                # check if we hit a captcha page
+                page_title = page.title() or ""
+                if "captcha" in page_title.lower():
+                    logger.warning("[magalu] captcha detected on %s, trying to wait longer...", url)
+                    page.wait_for_timeout(5000)
 
                 # extract product data from the rendered page
                 products = page.evaluate("""
@@ -181,42 +241,40 @@ class MagaluGateway:
                                 if (title.length > 100) title = title.substring(0, 100) + '...';
 
                                 // attempt to find prices via data attributes first
-                                let oldPriceEl = link.querySelector('[data-testid="price-original"]');
-                                let currentPriceEl = link.querySelector('[data-testid="price-value"]');
+                                let oldPriceEl = link.querySelector('[data-testid="price-original"]') || 
+                                                 link.querySelector('[data-testid="price-list"]') ||
+                                                 link.querySelector('.price-original');
+                                
+                                let currentPriceEl = link.querySelector('[data-testid="price-value"]') ||
+                                                     link.querySelector('[data-testid="price-current"]') ||
+                                                     link.querySelector('.price-value');
                                 
                                 let oldPriceText = oldPriceEl ? oldPriceEl.textContent : '';
                                 let priceText = currentPriceEl ? currentPriceEl.textContent : '';
 
                                 // if data-testids fail, fallback to text parsing
-                                if (!priceText) {
-                                    // look for pix price: "ou R$ 899,00 no Pix"
-                                    const pixRegex = /(?:ou\\s+)?(R\\$\\s*[\\d.,]+)\\s*no\\s*Pix/i;
-                                    const pixMatch = allText.match(pixRegex);
-                                    if (pixMatch) {
-                                        priceText = pixMatch[1];
-                                        // the old price is usually the first R$ in the text
-                                        const firstPrice = allText.match(/R\\$\\s*[\\d.,]+/);
-                                        if (firstPrice && firstPrice[0] !== priceText) {
-                                            oldPriceText = firstPrice[0];
-                                        }
-                                    } else {
-                                        // extract ALL R$ values from text
-                                        const priceRegex = /R\$\s*([\d.,]+)/g;
-                                        const priceValues = [];
-                                        let m;
-                                        while ((m = priceRegex.exec(allText)) !== null) {
-                                            priceValues.push(m[0]);
-                                        }
-                                        if (priceValues.length > 0) {
-                                            // if only 1 price, that's it
-                                            if (priceValues.length === 1) {
-                                                priceText = priceValues[0];
-                                            } else {
-                                                // usually the list price is first, then the installment, then the cash price.
-                                                // let's grab the first as oldPrice, and the last as current price if there's >1
-                                                oldPriceText = priceValues[0];
-                                                priceText = priceValues[priceValues.length - 1];
-                                            }
+                                if (!priceText || !oldPriceText) {
+                                    // extract ALL R$ values from text
+                                    const priceRegex = /R\\\$\\s*([\\d.,]+)/g;
+                                    const priceValues = [];
+                                    let m;
+                                    while ((m = priceRegex.exec(allText)) !== null) {
+                                        priceValues.push(m[0]);
+                                    }
+
+                                    if (!priceText && priceValues.length > 0) {
+                                        // usually the last one is the best price (pix or cash)
+                                        priceText = priceValues[priceValues.length - 1];
+                                    }
+
+                                    if (!oldPriceText && priceValues.length > 1) {
+                                        // look for "De: R$" specifically
+                                        const deMatch = allText.match(/De:\s*(R\$\s*[\d.,]+)/i);
+                                        if (deMatch) {
+                                            oldPriceText = deMatch[1];
+                                        } else {
+                                            // fallback to first price found
+                                            oldPriceText = priceValues[0];
                                         }
                                     }
                                 }

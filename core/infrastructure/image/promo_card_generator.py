@@ -41,6 +41,7 @@ async def generate_promo_card(
     tagline: str = "tem na minha loja",
     installment_text: str = "",
     pix_discount_text: str = "",
+    owner_avatar_b64: str = "",
 ) -> bytes:
     """generates a high-quality promotional card matching the magalu influencer style."""
     
@@ -58,17 +59,10 @@ async def generate_promo_card(
     
     installment_str = installment_text if installment_text else ""
 
-    # load user avatar
-    import os
-    avatar_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "avatar.jpg")
+    # build avatar html from db-stored base64 or fallback to emoji
     avatar_html = "👨🏽‍🦱"
-    try:
-        if os.path.exists(avatar_path):
-            with open(avatar_path, "rb") as f:
-                avatar_b64 = base64.b64encode(f.read()).decode("utf-8")
-                avatar_html = f'<img src="data:image/jpeg;base64,{avatar_b64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;">'
-    except Exception as e:
-        logger.warning("[promo-card] could not load avatar.jpg: %s", e)
+    if owner_avatar_b64:
+        avatar_html = f'<img src="data:image/jpeg;base64,{owner_avatar_b64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;">'
 
     logo_html = ""
     if store_type == "magalu":
