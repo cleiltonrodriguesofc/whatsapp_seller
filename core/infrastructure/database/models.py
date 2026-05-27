@@ -352,26 +352,39 @@ class AffiliateConfigModel(Base):
     __tablename__ = "affiliate_configs"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False, unique=True)
+
+    # ── magalu affiliate config ───────────────────────────────────────
     storefront_slug = Column(String, nullable=True)  # e.g. "cleiltontec"
     categories = Column(String, default="notebook,celular")  # comma-separated category keys
     min_discount_percent = Column(Float, default=10.0)
     max_offers_per_run = Column(Integer, default=5)
-    dispatch_hours = Column(String, default="9,12,18")
-    
-    # promo card customization
+    dispatch_hours = Column(String, default="9,12,18")  # status dispatch hours
+    preferred_brands = Column(String, nullable=True)
+
+    # ── mercado livre affiliate config ────────────────────────────────
+    ml_profile_slug = Column(String, nullable=True)   # e.g. "cleiltonrodriguesdossantos"
+    ml_enabled = Column(Boolean, default=False)        # enable/disable ml gateway
+    ml_categories = Column(String, default="notebook,celular")  # ml category keys
+
+    # ── group broadcast config ────────────────────────────────────────
+    group_enabled = Column(Boolean, default=False)     # enable group broadcast
+    group_jids = Column(Text, nullable=True)           # json array of group jids to broadcast to
+    group_dispatch_hours = Column(String, default="9,12,15,18,21")  # group dispatch hours
+
+    # ── promo card customization ──────────────────────────────────────
     store_type = Column(String, default="magalu")  # magalu, generica
     theme_color = Column(String, default="#0088ff")
     tagline = Column(String, default="tem na minha loja")
-    
+
     require_approval = Column(Boolean, default=False)
-    preferred_brands = Column(String, nullable=True)
-    
+
     # owner avatar stored as base64 in db to survive render's ephemeral filesystem
     owner_avatar_b64 = Column(Text, nullable=True)
-    
+
     created_at = Column(DateTime, default=now_sp)
-    
+
     user = relationship("UserModel")
+
 
 class AffiliateLogModel(Base):
     __tablename__ = "affiliate_logs"
@@ -387,7 +400,8 @@ class AffiliateLogModel(Base):
     discount_percent = Column(Float, nullable=True)
     installment_text = Column(String, nullable=True)
     pix_discount_text = Column(String, nullable=True)
-    status = Column(String, default="sent", index=True) # "pending", "sent", "failed", "rejected"
+    source = Column(String, default="magalu")  # "magalu" | "mercadolivre"
+    status = Column(String, default="sent", index=True)  # "pending", "sent", "failed", "rejected"
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=now_sp)
 

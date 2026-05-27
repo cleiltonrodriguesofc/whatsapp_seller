@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Afiliado Magalu{% endblock %}
+{% block title %}Afiliado | Magalu + Mercado Livre{% endblock %}
 {% block content %}
 
 <style>
@@ -103,11 +103,51 @@
     .offer-title { font-weight: bold; color: white; margin-bottom: 0.25rem; font-size: 0.95rem; white-space: normal; }
     .offer-price { color: #fbbf24; font-weight: bold; font-size: 1.1rem; }
     .offer-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+    .source-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.25rem 0.6rem; border-radius: 20px;
+        font-size: 0.78rem; font-weight: 600;
+    }
+    .source-badge-magalu { background: rgba(0,136,255,0.15); color: #60a5fa; border: 1px solid rgba(0,136,255,0.3); }
+    .source-badge-ml { background: rgba(255,230,0,0.12); color: #fbbf24; border: 1px solid rgba(255,210,0,0.3); }
+
+    .toggle-switch {
+        position: relative; display: inline-block;
+        width: 44px; height: 24px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+        position: absolute; cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.1); border-radius: 24px;
+        transition: 0.3s; border: 1px solid var(--border);
+    }
+    .toggle-slider:before {
+        position: absolute; content: "";
+        height: 16px; width: 16px;
+        left: 3px; bottom: 3px;
+        background: rgba(255,255,255,0.6); border-radius: 50%;
+        transition: 0.3s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: rgba(139,92,246,0.5); }
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(20px); background: white;
+    }
+    .group-chip {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.55rem 0.85rem; border-radius: 10px;
+        background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+        cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .group-chip:hover { border-color: #10b981; color: white; }
+    .group-chip input[type="checkbox"] { accent-color: #10b981; }
+    .group-chip.active { background: rgba(16,185,129,0.15); border-color: #10b981; color: white; }
 </style>
 
 <!-- ── config form ──────────────────────────────────────────── -->
 <div class="config-section">
-    <h3>⚙️ Configurações do Parceiro Magalu</h3>
+    <h3>⚙️ Configurações Magalu + Mercado Livre</h3>
     <form id="affiliateConfigForm" onsubmit="saveConfig(event)">
 
         <!-- storefront slug -->
@@ -227,7 +267,90 @@
             </div>
         </div>
 
-        <div style="text-align: right;">
+        <!-- ── mercado livre affiliate section ──────────────────────────── -->
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <h4 style="margin: 0; color: #fbbf24;">🛒 Mercado Livre Afiliados</h4>
+            <label class="toggle-switch" title="Ativar integração ML">
+                <input type="checkbox" id="ml_enabled" {{ 'checked' if config.ml_enabled else '' }}>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div id="mlSection" style="{{ '' if config.ml_enabled else 'opacity:0.4; pointer-events:none;' }}">
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">URL do seu Perfil ML Social</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="color: var(--text-secondary); font-size: 0.9rem; white-space: nowrap;">mercadolivre.com.br/social/</span>
+                    <input type="text" id="ml_profile_slug" class="form-input"
+                           style="flex: 1;"
+                           placeholder="cleiltonrodriguesdossantos"
+                           value="{{ config.ml_profile_slug }}">
+                </div>
+                {% if config.ml_profile_slug %}
+                <div class="storefront-preview">
+                    🔗 Perfil: <a href="https://www.mercadolivre.com.br/social/{{ config.ml_profile_slug }}/lists" target="_blank">
+                        mercadolivre.com.br/social/{{ config.ml_profile_slug }}/lists
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <div style="margin-bottom: 0.5rem;">
+                <label class="form-label">Categorias ML para buscar</label>
+                <div class="category-grid" id="mlCategoryGrid">
+                    {% for key, label in available_ml_categories.items() %}
+                    <label class="category-chip {{ 'active' if key in config.ml_categories else '' }}"
+                           data-key="{{ key }}" onclick="toggleMlCategory(this)">
+                        <input type="checkbox" value="{{ key }}"
+                               {{ 'checked' if key in config.ml_categories else '' }}
+                               style="pointer-events: none;">
+                        {{ label }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ── group broadcast section ───────────────────────────────────── -->
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <h4 style="margin: 0; color: #10b981;">📢 Divulgação em Grupos</h4>
+            <label class="toggle-switch" title="Ativar disparo em grupos">
+                <input type="checkbox" id="group_enabled" {{ 'checked' if config.group_enabled else '' }}>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div id="groupSection" style="{{ '' if config.group_enabled else 'opacity:0.4; pointer-events:none;' }}">
+            {% if available_groups %}
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Grupos para receber as ofertas</label>
+                <div class="category-grid" id="groupGrid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                    {% for group in available_groups %}
+                    <label class="group-chip {{ 'active' if group.id in config.group_jids else '' }}"
+                           data-jid="{{ group.id }}" onclick="toggleGroup(this)">
+                        <input type="checkbox" value="{{ group.id }}"
+                               {{ 'checked' if group.id in config.group_jids else '' }}
+                               style="pointer-events: none;">
+                        👥 {{ group.name }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div style="color: #f59e0b; font-size: 0.85rem; padding: 0.75rem; background: rgba(245,158,11,0.1); border-radius: 8px; border: 1px solid rgba(245,158,11,0.2); margin-bottom: 1rem;">
+                ⚠️ Nenhum grupo encontrado. Certifique-se de estar conectado ao WhatsApp e ter grupos no seu celular.
+            </div>
+            {% endif %}
+            <div style="margin-bottom: 0.5rem;">
+                <label class="form-label">Horários de Disparo nos Grupos</label>
+                <input type="text" id="group_dispatch_hours" class="form-input"
+                       placeholder="9,12,15,18,21" value="{{ config.group_dispatch_hours }}">
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.35rem;">
+                    Separe os horários por vírgula. Os grupos receberão as ofertas automaticamente.
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right; margin-top: 1.5rem;">
             <button type="submit" class="btn btn-primary" style="font-weight: 600; padding: 0.65rem 1.5rem;">
                 💾 Salvar Configurações
             </button>
@@ -326,28 +449,59 @@
         chip.classList.toggle('active', cb.checked);
     }
 
+    function toggleMlCategory(chip) {
+        const cb = chip.querySelector('input[type="checkbox"]');
+        cb.checked = !cb.checked;
+        chip.classList.toggle('active', cb.checked);
+    }
+
+    function toggleGroup(chip) {
+        const cb = chip.querySelector('input[type="checkbox"]');
+        cb.checked = !cb.checked;
+        chip.classList.toggle('active', cb.checked);
+    }
+
     function getSelectedCategories() {
         const chips = document.querySelectorAll('#categoryGrid input[type="checkbox"]:checked');
         return Array.from(chips).map(cb => cb.value);
     }
 
+    function getSelectedMlCategories() {
+        const chips = document.querySelectorAll('#mlCategoryGrid input[type="checkbox"]:checked');
+        return Array.from(chips).map(cb => cb.value);
+    }
+
+    function getSelectedGroupJids() {
+        const chips = document.querySelectorAll('#groupGrid input[type="checkbox"]:checked');
+        return Array.from(chips).map(cb => cb.value);
+    }
+
+    // sync toggle visibility
+    document.getElementById('ml_enabled').addEventListener('change', (e) => {
+        const section = document.getElementById('mlSection');
+        section.style.opacity = e.target.checked ? '1' : '0.4';
+        section.style.pointerEvents = e.target.checked ? '' : 'none';
+    });
+    document.getElementById('group_enabled').addEventListener('change', (e) => {
+        const section = document.getElementById('groupSection');
+        section.style.opacity = e.target.checked ? '1' : '0.4';
+        section.style.pointerEvents = e.target.checked ? '' : 'none';
+    });
+
     async function saveConfig(e) {
         e.preventDefault();
 
         const cats = getSelectedCategories();
-        if (cats.length === 0) {
-            showToast('Selecione pelo menos uma categoria', 'error');
-            return;
-        }
+        const mlEnabled = document.getElementById('ml_enabled').checked;
+        const mlSlug = document.getElementById('ml_profile_slug').value.trim();
 
-        const slug = document.getElementById('storefront_slug').value.trim();
-        if (!slug) {
-            showToast('Preencha o nome da sua loja', 'error');
+        if (!document.getElementById('storefront_slug').value.trim() && !mlSlug) {
+            showToast('Preencha o nome da loja Magalu ou o slug do perfil Mercado Livre', 'error');
             return;
         }
 
         const payload = {
-            storefront_slug: slug,
+            storefront_slug: document.getElementById('storefront_slug').value.trim(),
             categories: cats,
             min_discount: parseFloat(document.getElementById('min_discount').value) || 10.0,
             max_offers: parseInt(document.getElementById('max_offers').value) || 5,
@@ -356,7 +510,15 @@
             theme_color: document.getElementById('theme_color').value || '#0088ff',
             tagline: document.getElementById('tagline').value || 'tem na minha loja',
             preferred_brands: document.getElementById('preferred_brands').value || '',
-            require_approval: document.getElementById('require_approval').checked
+            require_approval: document.getElementById('require_approval').checked,
+            // ml fields
+            ml_profile_slug: mlSlug,
+            ml_enabled: mlEnabled,
+            ml_categories: getSelectedMlCategories(),
+            // group fields
+            group_enabled: document.getElementById('group_enabled').checked,
+            group_jids: getSelectedGroupJids(),
+            group_dispatch_hours: document.getElementById('group_dispatch_hours')?.value || '9,12,15,18,21',
         };
 
         try {

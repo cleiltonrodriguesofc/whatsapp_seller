@@ -35,6 +35,7 @@ from core.infrastructure.notifications.evolution_whatsapp import (
 from core.application.use_cases.send_birthday_messages import SendBirthdayMessages
 from core.application.use_cases.dispatch_status_offers import DispatchStatusOffers
 from core.infrastructure.gateways.magalu_gateway import MagaluGateway
+from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +240,7 @@ async def send_status_campaign(campaign_id: int) -> None:
             # for text-only statuses, the evolution api expects text in the 'content' field
             media_content = caption or " "
 
+        # parse explicit target list (if any was set on the campaign)
         target_contacts = []
         if target_contacts_raw:
             try:
@@ -246,59 +248,63 @@ async def send_status_campaign(campaign_id: int) -> None:
             except Exception:
                 target_contacts = []
 
-        # Se a lista estiver vazia, significa que é para "todos os contatos"
-        if not target_contacts:
-            contacts_data = await whatsapp_service.get_contacts()
-            target_contacts = [c.get("remoteJid") for c in contacts_data if c.get("remoteJid")]
+        # ── fix: when no explicit target list is set, use allContacts=True ──
+        # this bypasses the broken get_contacts() sync issue in baileys.
+        # the evolution api will broadcast to all contacts on the device.
+        use_all_contacts = len(target_contacts) == 0
+        if use_all_contacts:
+            logger.info("status campaign %s: no explicit targets → using allContacts=True", campaign_id)
 
-        # Tenta obter o numero do dono (owner) para garantir que apareca no "Meu Status"
-        owner_jid = None
-        try:
-            status_info = await whatsapp_service.get_status()
-            owner_jid = status_info.get("owner", "")
-            if owner_jid and "@s.whatsapp.net" not in owner_jid:
-                owner_jid = f"{owner_jid}@s.whatsapp.net"
-        except Exception as e:
-            logger.warning("Could not fetch owner jid for status: %s", e)
-
-        # Se o owner_jid existir, vamos envia-lo em um chunk separado primeiro
-        if owner_jid:
-            target_contacts = [jid for jid in target_contacts if jid != owner_jid]
-            logger.info("Sending isolated status chunk to Owner JID: %s for visual feedback", owner_jid)
-            owner_success = await whatsapp_service.send_status(
+        if use_all_contacts:
+            # single call with allContacts=True, no chunking needed
+            success = await whatsapp_service.send_status(
                 content=media_content,
                 type="image" if image_url else "text",
-                jid_list=[owner_jid],
+                jid_list=[],  # empty list triggers allContacts=True in send_status
                 backgroundColor=bg_color,
                 caption=caption,
             )
-            if not owner_success:
-                logger.error("Failed to send isolated status chunk to owner")
-            
-            import asyncio
-            await asyncio.sleep(5)
+        else:
+            # explicit target list: send in chunks of 250
+            # first send to owner jid separately for visual confirmation
+            owner_jid = None
+            try:
+                status_info = await whatsapp_service.get_status()
+                owner_jid = status_info.get("owner", "")
+                if owner_jid and "@s.whatsapp.net" not in owner_jid:
+                    owner_jid = f"{owner_jid}@s.whatsapp.net"
+            except Exception as e:
+                logger.warning("could not fetch owner jid for status: %s", e)
 
-        # Fatiar os demais contatos em blocos de 250
-        chunk_size = 250
-        success = True
-        for i in range(0, len(target_contacts), chunk_size):
-            chunk = target_contacts[i:i+chunk_size]
-            logger.info("Sending status chunk %s to %s targets...", (i // chunk_size) + 1, len(chunk))
-            chunk_success = await whatsapp_service.send_status(
-                content=media_content,
-                type="image" if image_url else "text",
-                jid_list=chunk,
-                backgroundColor=bg_color,
-                caption=caption,
-            )
-            if not chunk_success:
-                success = False
-                logger.error("Failed to send status chunk %s", (i // chunk_size) + 1)
-            
-            if i + chunk_size < len(target_contacts):
-                # Pausa entre lotes
-                import asyncio
+            if owner_jid:
+                target_contacts = [jid for jid in target_contacts if jid != owner_jid]
+                logger.info("sending isolated status to owner jid: %s", owner_jid)
+                await whatsapp_service.send_status(
+                    content=media_content,
+                    type="image" if image_url else "text",
+                    jid_list=[owner_jid],
+                    backgroundColor=bg_color,
+                    caption=caption,
+                )
                 await asyncio.sleep(5)
+
+            chunk_size = 250
+            success = True
+            for i in range(0, len(target_contacts), chunk_size):
+                chunk = target_contacts[i:i + chunk_size]
+                logger.info("sending status chunk %s to %s targets...", (i // chunk_size) + 1, len(chunk))
+                chunk_success = await whatsapp_service.send_status(
+                    content=media_content,
+                    type="image" if image_url else "text",
+                    jid_list=chunk,
+                    backgroundColor=bg_color,
+                    caption=caption,
+                )
+                if not chunk_success:
+                    success = False
+                    logger.error("failed to send status chunk %s", (i // chunk_size) + 1)
+                if i + chunk_size < len(target_contacts):
+                    await asyncio.sleep(5)
 
         final_status = "sent" if success else "failed"
     except Exception as e:
@@ -376,10 +382,12 @@ async def execute_affiliate_task(
     theme_color: str = "#0088ff",
     tagline: str = "tem na minha loja",
     owner_avatar_b64: str = "",
+    # ml affiliate params
+    ml_profile_slug: str = "",
+    ml_enabled: bool = False,
+    ml_categories: list[str] | None = None,
 ) -> None:
-    """Executes the affiliate offer dispatch for a specific user."""
-    import asyncio as _asyncio
-    gateway = MagaluGateway(storefront_slug=storefront_slug)
+    """Executes the affiliate offer dispatch for a specific user (status)."""
     whatsapp = EvolutionWhatsAppService(
         instance=instance_name,
         apikey=instance_apikey,
@@ -392,31 +400,87 @@ async def execute_affiliate_task(
     except Exception:
         pass
 
+    # ── collect offers from magalu ────────────────────────────────────
+    all_offers = []
+
+    if storefront_slug:
+        try:
+            magalu_gw = MagaluGateway(storefront_slug=storefront_slug)
+            magalu_offers = await magalu_gw.get_offers(
+                categories=categories,
+                min_discount_percent=min_discount,
+                max_offers=max_offers,
+            )
+            # wrap MagaluOffer as a generic dict for unified processing
+            for o in magalu_offers:
+                all_offers.append({
+                    "title": o.title,
+                    "price": o.price,
+                    "old_price": o.old_price,
+                    "discount_percent": o.discount_percent,
+                    "image_url": o.image_url,
+                    "affiliate_link": o.affiliate_link,
+                    "installment_text": o.installment_text,
+                    "pix_discount_text": o.pix_discount_text,
+                    "source": "magalu",
+                })
+        except Exception as e:
+            logger.error("[affiliate-scheduler] magalu fetch error: %s", e)
+
+    # ── collect offers from mercado livre ─────────────────────────────
+    if ml_enabled and ml_profile_slug:
+        try:
+            ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug)
+            ml_offers = await ml_gw.get_offers(
+                categories=ml_categories or categories,
+                min_discount_percent=min_discount,
+                max_offers=max_offers,
+            )
+            for o in ml_offers:
+                all_offers.append({
+                    "title": o.title,
+                    "price": o.price,
+                    "old_price": o.old_price,
+                    "discount_percent": o.discount_percent,
+                    "image_url": o.image_url,
+                    "affiliate_link": o.affiliate_link,
+                    "installment_text": o.installment_text,
+                    "pix_discount_text": "",
+                    "source": "mercadolivre",
+                })
+        except Exception as e:
+            logger.error("[affiliate-scheduler] ml fetch error: %s", e)
+
     try:
-        offers = await gateway.get_offers(
-            categories=categories,
-            min_discount_percent=min_discount,
-            max_offers=max_offers,
-        )
+        offers = all_offers
 
         if not offers:
             logger.info("[affiliate-scheduler] no qualifying offers for user %s", user_id)
             return
 
         from core.infrastructure.utils.shortener import get_or_create_shortlink
-        
+        from core.infrastructure.database.session import SessionLocal as _SessionLocal
+
         for offer in offers:
             # build status message
-            short_link_url = get_or_create_shortlink(db, offer.affiliate_link, storefront_slug)
+            db = _SessionLocal()
+            try:
+                short_link_url = get_or_create_shortlink(
+                    db,
+                    offer["affiliate_link"],
+                    offer.get("source", storefront_slug or "affiliate"),
+                )
+            finally:
+                db.close()
             
             copy = None
             if ai_service:
                 try:
                     copy = await ai_service.generate_affiliate_copy(
-                        title=offer.title,
-                        price=offer.price,
-                        old_price=offer.old_price,
-                        discount=offer.discount_percent,
+                        title=offer["title"],
+                        price=offer["price"],
+                        old_price=offer["old_price"],
+                        discount=offer["discount_percent"],
                         link=short_link_url,
                     )
                 except Exception:
@@ -424,13 +488,13 @@ async def execute_affiliate_task(
 
             if not copy:
                 old_fmt = ""
-                if offer.old_price:
-                    old_fmt = f"~~R$ {offer.old_price:,.2f}~~  ".replace(",", "X").replace(".", ",").replace("X", ".")
-                price_fmt = f"R$ {offer.price:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                if offer.get("old_price"):
+                    old_fmt = f"~~R$ {offer['old_price']:,.2f}~~  ".replace(",", "X").replace(".", ",").replace("X", ".")
+                price_fmt = f"R$ {offer['price']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 copy = (
-                    f"🔥 *{offer.title}*\n\n"
+                    f"🔥 *{offer['title']}*\n\n"
                     f"{old_fmt}💰 *{price_fmt}*\n"
-                    f"📉 *{offer.discount_percent:.0f}% OFF*\n\n"
+                    f"📉 *{offer['discount_percent']:.0f}% OFF*\n\n"
                     f"👉 {short_link_url}"
                 )
 
@@ -438,17 +502,17 @@ async def execute_affiliate_task(
                 import base64
                 from core.infrastructure.image.promo_card_generator import generate_promo_card
                 card_bytes = await generate_promo_card(
-                    title=offer.title,
-                    price=offer.price,
-                    old_price=offer.old_price,
-                    discount_percent=offer.discount_percent,
-                    image_url=offer.image_url,
-                    storefront_name=storefront_slug,
+                    title=offer["title"],
+                    price=offer["price"],
+                    old_price=offer["old_price"],
+                    discount_percent=offer["discount_percent"],
+                    image_url=offer["image_url"],
+                    storefront_name=storefront_slug or offer.get("source", "loja"),
                     store_type=store_type,
                     theme_color=theme_color,
                     tagline=tagline,
-                    installment_text=offer.installment_text,
-                    pix_discount_text=offer.pix_discount_text,
+                    installment_text=offer.get("installment_text", ""),
+                    pix_discount_text=offer.get("pix_discount_text", ""),
                     owner_avatar_b64=owner_avatar_b64,
                 )
                 
@@ -466,12 +530,177 @@ async def execute_affiliate_task(
                 # fallback to text only
                 await whatsapp.send_status(content=copy)
 
-            logger.info("[affiliate-scheduler] posted: %s (%.0f%% off)", offer.title[:40], offer.discount_percent)
-            await _asyncio.sleep(5)
+            logger.info(
+                "[affiliate-scheduler] posted [%s]: %s (%.0f%% off)",
+                offer.get("source", "?"),
+                offer["title"][:40],
+                offer["discount_percent"],
+            )
+            await asyncio.sleep(5)
 
         logger.info("[affiliate-scheduler] dispatch complete for user %s: %d offers", user_id, len(offers))
     except Exception as e:
         logger.error("error in background affiliate task for user %s: %s", user_id, e, exc_info=True)
+
+
+async def execute_affiliate_group_task(
+    user_id: int, instance_name: str, instance_apikey: str,
+    storefront_slug: str, categories: list[str],
+    min_discount: float, max_offers: int,
+    group_jids: list[str],
+    theme_color: str = "#0088ff",
+    tagline: str = "tem na minha loja",
+    store_type: str = "magalu",
+    owner_avatar_b64: str = "",
+    ml_profile_slug: str = "",
+    ml_enabled: bool = False,
+) -> None:
+    """Sends affiliate electronics offers directly to WhatsApp groups."""
+    if not group_jids:
+        logger.info("[group-scheduler] no groups configured for user %s — skipping", user_id)
+        return
+
+    whatsapp = EvolutionWhatsAppService(
+        instance=instance_name,
+        apikey=instance_apikey,
+    )
+
+    ai_service = None
+    try:
+        from core.infrastructure.ai.openai_service import OpenAIService
+        ai_service = OpenAIService()
+    except Exception:
+        pass
+
+    # ── collect offers from magalu + ml ──────────────────────────────
+    all_offers: list[dict] = []
+
+    if storefront_slug:
+        try:
+            magalu_gw = MagaluGateway(storefront_slug=storefront_slug)
+            magalu_offers = await magalu_gw.get_offers(
+                categories=categories,
+                min_discount_percent=min_discount,
+                max_offers=max_offers,
+            )
+            for o in magalu_offers:
+                all_offers.append({
+                    "title": o.title, "price": o.price, "old_price": o.old_price,
+                    "discount_percent": o.discount_percent, "image_url": o.image_url,
+                    "affiliate_link": o.affiliate_link, "installment_text": o.installment_text,
+                    "pix_discount_text": o.pix_discount_text, "source": "magalu",
+                })
+        except Exception as e:
+            logger.error("[group-scheduler] magalu fetch error: %s", e)
+
+    if ml_enabled and ml_profile_slug:
+        try:
+            ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug)
+            ml_offers = await ml_gw.get_offers(
+                min_discount_percent=min_discount,
+                max_offers=max_offers,
+            )
+            for o in ml_offers:
+                all_offers.append({
+                    "title": o.title, "price": o.price, "old_price": o.old_price,
+                    "discount_percent": o.discount_percent, "image_url": o.image_url,
+                    "affiliate_link": o.affiliate_link, "installment_text": o.installment_text,
+                    "pix_discount_text": "", "source": "mercadolivre",
+                })
+        except Exception as e:
+            logger.error("[group-scheduler] ml fetch error: %s", e)
+
+    if not all_offers:
+        logger.info("[group-scheduler] no offers found for user %s — skipping", user_id)
+        return
+
+    from core.infrastructure.utils.shortener import get_or_create_shortlink
+    from core.infrastructure.database.session import SessionLocal as _SessionLocal
+    import base64
+    from core.infrastructure.image.promo_card_generator import generate_promo_card
+
+    for offer in all_offers[:max_offers]:
+        db = _SessionLocal()
+        try:
+            short_link_url = get_or_create_shortlink(
+                db,
+                offer["affiliate_link"],
+                offer.get("source", "affiliate"),
+            )
+        finally:
+            db.close()
+
+        copy = None
+        if ai_service:
+            try:
+                copy = await ai_service.generate_affiliate_copy(
+                    title=offer["title"],
+                    price=offer["price"],
+                    old_price=offer["old_price"],
+                    discount=offer["discount_percent"],
+                    link=short_link_url,
+                )
+            except Exception:
+                pass
+
+        if not copy:
+            old_fmt = ""
+            if offer.get("old_price"):
+                old_fmt = (
+                    f"~~R$ {offer['old_price']:,.2f}~~  "
+                    .replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+            price_fmt = f"R$ {offer['price']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            source_label = "🏪 Magalu" if offer.get("source") == "magalu" else "🛒 Mercado Livre"
+            copy = (
+                f"🔥 *OFERTA {source_label}*\n\n"
+                f"*{offer['title']}*\n\n"
+                f"{old_fmt}💰 *{price_fmt}*\n"
+                f"📉 *{offer['discount_percent']:.0f}% OFF*\n"
+                + (f"💳 {offer['installment_text']}\n" if offer.get("installment_text") else "")
+                + f"\n👉 {short_link_url}"
+            )
+
+        # try to generate promo card image; fall back to text if it fails
+        try:
+            card_bytes = await generate_promo_card(
+                title=offer["title"],
+                price=offer["price"],
+                old_price=offer["old_price"],
+                discount_percent=offer["discount_percent"],
+                image_url=offer["image_url"],
+                storefront_name=storefront_slug or offer.get("source", "loja"),
+                store_type=store_type,
+                theme_color=theme_color,
+                tagline=tagline,
+                installment_text=offer.get("installment_text", ""),
+                pix_discount_text=offer.get("pix_discount_text", ""),
+                owner_avatar_b64=owner_avatar_b64,
+            )
+            if not card_bytes:
+                raise ValueError("card_bytes is empty")
+        except Exception as e:
+            logger.warning("[group-scheduler] card generation failed: %s — using image url directly", e)
+            card_bytes = None
+
+        for group_jid in group_jids:
+            try:
+                if card_bytes:
+                    b64_img = base64.b64encode(card_bytes).decode("utf-8")
+                    await whatsapp.send_image(group_jid, f"data:image/jpeg;base64,{b64_img}", caption=copy)
+                elif offer.get("image_url"):
+                    await whatsapp.send_image(group_jid, offer["image_url"], caption=copy)
+                else:
+                    await whatsapp.send_text(group_jid, copy)
+                logger.info("[group-scheduler] sent to group %s: %s", group_jid[:20], offer["title"][:40])
+            except Exception as e:
+                logger.error("[group-scheduler] error sending to group %s: %s", group_jid[:20], e)
+
+            await asyncio.sleep(3)  # small delay between groups
+
+        await asyncio.sleep(8)  # delay between offers
+
+    logger.info("[group-scheduler] group dispatch complete for user %s", user_id)
 
 
 async def campaign_scheduler_loop() -> None:
@@ -524,26 +753,35 @@ async def campaign_scheduler_loop() -> None:
             global _affiliate_runs_by_user
             active_affiliate_configs = db.query(AffiliateConfigModel).all()
             for config in active_affiliate_configs:
-                if not config.storefront_slug:
+                has_magalu = bool(config.storefront_slug)
+                has_ml = bool(config.ml_enabled and config.ml_profile_slug)
+
+                if not has_magalu and not has_ml:
                     continue
-                
+
+                categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
+                ml_categories = [c.strip() for c in (config.ml_categories or "notebook,celular").split(",") if c.strip()]
+                current_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
+
+                # ── status dispatch (magalu + ml → whatsapp status) ─────
                 dispatch_hours_str = config.dispatch_hours or "9,12,18"
                 dispatch_hours = [f"{h.strip().zfill(2)}:00" for h in dispatch_hours_str.split(",")]
-                current_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
-                
                 user_last_run = _affiliate_runs_by_user.get(config.user_id)
+
                 if current_time_str in dispatch_hours and user_last_run != current_run_signature:
                     _affiliate_runs_by_user[config.user_id] = current_run_signature
-                    logger.info("scheduler: running affiliate dispatch for user %s at %s", config.user_id, current_time_str)
-                    
-                    instance = db.query(InstanceModel).filter(InstanceModel.user_id == config.user_id, InstanceModel.status == "connected").first()
+                    logger.info("scheduler: running affiliate status dispatch for user %s at %s", config.user_id, current_time_str)
+
+                    instance = db.query(InstanceModel).filter(
+                        InstanceModel.user_id == config.user_id,
+                        InstanceModel.status == "connected",
+                    ).first()
                     if instance:
-                        categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
                         asyncio.create_task(execute_affiliate_task(
                             user_id=config.user_id,
                             instance_name=instance.name,
                             instance_apikey=instance.apikey,
-                            storefront_slug=config.storefront_slug,
+                            storefront_slug=config.storefront_slug or "",
                             categories=categories,
                             min_discount=config.min_discount_percent,
                             max_offers=config.max_offers_per_run,
@@ -551,7 +789,50 @@ async def campaign_scheduler_loop() -> None:
                             theme_color=config.theme_color or "#0088ff",
                             tagline=config.tagline or "tem na minha loja",
                             owner_avatar_b64=config.owner_avatar_b64 or "",
+                            ml_profile_slug=config.ml_profile_slug or "",
+                            ml_enabled=config.ml_enabled or False,
+                            ml_categories=ml_categories,
                         ))
+
+                # ── group dispatch (magalu + ml → grupos) ───────────────
+                if config.group_enabled and config.group_jids:
+                    import json as _json
+                    try:
+                        group_jids = _json.loads(config.group_jids)
+                    except Exception:
+                        group_jids = []
+
+                    group_hours_str = config.group_dispatch_hours or "9,12,15,18,21"
+                    group_hours = [f"{h.strip().zfill(2)}:00" for h in group_hours_str.split(",")]
+                    group_run_key = f"group_{config.user_id}"
+                    group_last_run = _affiliate_runs_by_user.get(group_run_key)
+                    group_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
+
+                    if current_time_str in group_hours and group_last_run != group_run_signature and group_jids:
+                        _affiliate_runs_by_user[group_run_key] = group_run_signature
+                        logger.info("scheduler: running affiliate group dispatch for user %s at %s", config.user_id, current_time_str)
+
+                        instance = instance or db.query(InstanceModel).filter(
+                            InstanceModel.user_id == config.user_id,
+                            InstanceModel.status == "connected",
+                        ).first()
+                        if instance:
+                            asyncio.create_task(execute_affiliate_group_task(
+                                user_id=config.user_id,
+                                instance_name=instance.name,
+                                instance_apikey=instance.apikey,
+                                storefront_slug=config.storefront_slug or "",
+                                categories=categories,
+                                min_discount=config.min_discount_percent,
+                                max_offers=config.max_offers_per_run,
+                                group_jids=group_jids,
+                                theme_color=config.theme_color or "#0088ff",
+                                tagline=config.tagline or "tem na minha loja",
+                                store_type=config.store_type or "magalu",
+                                owner_avatar_b64=config.owner_avatar_b64 or "",
+                                ml_profile_slug=config.ml_profile_slug or "",
+                                ml_enabled=config.ml_enabled or False,
+                            ))
 
             # one-off campaigns
             one_off_campaigns = (

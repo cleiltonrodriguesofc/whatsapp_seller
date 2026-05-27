@@ -44,8 +44,14 @@ async def affiliate_dashboard(
 
     if config_model:
         active_cats = [c.strip() for c in (config_model.categories or "").split(",") if c.strip()]
+        ml_cats = [c.strip() for c in (config_model.ml_categories or "").split(",") if c.strip()]
+        import json
+        try:
+            group_jids = json.loads(config_model.group_jids or "[]") if config_model.group_jids else []
+        except Exception:
+            group_jids = []
         config = {
-            "configured": bool(config_model.storefront_slug),
+            "configured": bool(config_model.storefront_slug) or bool(config_model.ml_profile_slug),
             "storefront_slug": config_model.storefront_slug or "",
             "categories": active_cats,
             "min_discount": config_model.min_discount_percent,
@@ -56,6 +62,14 @@ async def affiliate_dashboard(
             "tagline": config_model.tagline or "tem na minha loja",
             "require_approval": config_model.require_approval or False,
             "preferred_brands": config_model.preferred_brands or "",
+            # ml fields
+            "ml_profile_slug": config_model.ml_profile_slug or "",
+            "ml_enabled": config_model.ml_enabled or False,
+            "ml_categories": ml_cats,
+            # group fields
+            "group_enabled": config_model.group_enabled or False,
+            "group_jids": group_jids,
+            "group_dispatch_hours": config_model.group_dispatch_hours or "9,12,15,18,21",
         }
     else:
         config = {
@@ -70,12 +84,40 @@ async def affiliate_dashboard(
             "tagline": "tem na minha loja",
             "require_approval": False,
             "preferred_brands": "",
+            # ml fields
+            "ml_profile_slug": "",
+            "ml_enabled": False,
+            "ml_categories": ["notebook", "celular"],
+            # group fields
+            "group_enabled": False,
+            "group_jids": [],
+            "group_dispatch_hours": "9,12,15,18,21",
         }
 
     # build category options for the template
     available_categories = MagaluGateway.get_available_categories()
+    from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
+    available_ml_categories = MercadoLivreGateway.get_available_categories()
 
     has_avatar = bool(config_model and config_model.owner_avatar_b64)
+
+    # fetch available groups from the connected instance
+    available_groups = []
+    if instance:
+        try:
+            from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+            ws = EvolutionWhatsAppService(instance=instance.name, apikey=instance.apikey)
+            raw_groups = await ws.get_groups()
+            if isinstance(raw_groups, list):
+                for g in raw_groups:
+                    gid = g.get("id") or g.get("remoteJid") or ""
+                    if gid:
+                        available_groups.append({
+                            "id": gid,
+                            "name": g.get("subject") or g.get("name") or gid.split("@")[0],
+                        })
+        except Exception as e:
+            logger.warning("could not fetch groups for affiliate dashboard: %s", e)
 
     return templates.TemplateResponse(
         request=request,
@@ -86,7 +128,9 @@ async def affiliate_dashboard(
             "has_instance": instance is not None,
             "config": config,
             "available_categories": available_categories,
+            "available_ml_categories": available_ml_categories,
             "has_avatar": has_avatar,
+            "available_groups": available_groups,
         },
     )
 
@@ -94,16 +138,24 @@ async def affiliate_dashboard(
 # ── save config ──────────────────────────────────────────────────
 
 class AffiliateConfigSchema(BaseModel):
-    storefront_slug: str
-    categories: list[str]
-    min_discount: float
-    max_offers: int
-    dispatch_hours: str
+    storefront_slug: str = ""
+    categories: list[str] = []
+    min_discount: float = 10.0
+    max_offers: int = 5
+    dispatch_hours: str = "9,12,18"
     store_type: str = "magalu"
     theme_color: str = "#0088ff"
     tagline: str = "tem na minha loja"
     require_approval: bool = False
     preferred_brands: str = ""
+    # ml affiliate
+    ml_profile_slug: str = ""
+    ml_enabled: bool = False
+    ml_categories: list[str] = []
+    # group broadcast
+    group_enabled: bool = False
+    group_jids: list[str] = []
+    group_dispatch_hours: str = "9,12,15,18,21"
 
 
 @router.post("/config")
@@ -130,6 +182,15 @@ async def save_affiliate_config(
     config.tagline = data.tagline
     config.require_approval = data.require_approval
     config.preferred_brands = data.preferred_brands
+    # ml fields
+    config.ml_profile_slug = data.ml_profile_slug.strip()
+    config.ml_enabled = data.ml_enabled
+    config.ml_categories = ",".join(data.ml_categories) if data.ml_categories else "notebook,celular"
+    # group fields
+    import json
+    config.group_enabled = data.group_enabled
+    config.group_jids = json.dumps(data.group_jids)
+    config.group_dispatch_hours = data.group_dispatch_hours
 
     db.commit()
     return JSONResponse({"success": True, "message": "Configurações salvas com sucesso!"})
@@ -550,47 +611,64 @@ async def approve_affiliate_offer(
     except Exception:
         pass
 
+    # Extract required values to avoid DetachedInstanceError in async task
+    log_id_val = log.id
+    log_title = log.product_title
+    log_price = log.price
+    log_old_price = log.old_price
+    log_discount = log.discount_percent
+    log_short_url = log.short_url
+    log_installment = log.installment_text or ""
+    log_pix_discount = log.pix_discount_text or ""
+    log_image_url = log.image_url
+
+    storefront_slug = config.storefront_slug if config else ""
+    store_type = config.store_type if config else "magalu"
+    theme_color = config.theme_color if config else "#0088ff"
+    tagline = config.tagline if config else "tem na minha loja"
+    owner_avatar_b64 = config.owner_avatar_b64 if config else ""
+
     async def _send_approved_offer():
         try:
             copy = None
             if ai_service:
                 try:
                     copy = await ai_service.generate_affiliate_copy(
-                        title=log.product_title,
-                        price=log.price,
-                        old_price=log.old_price,
-                        discount=log.discount_percent,
-                        link=log.short_url,
-                        installment_text=log.installment_text or "",
-                        pix_discount_text=log.pix_discount_text or "",
+                        title=log_title,
+                        price=log_price,
+                        old_price=log_old_price,
+                        discount=log_discount,
+                        link=log_short_url,
+                        installment_text=log_installment,
+                        pix_discount_text=log_pix_discount,
                     )
                 except Exception:
                     pass
 
             if not copy:
-                old_str = f"~~R$ {log.old_price:,.2f}~~ ".replace(",", "X").replace(".", ",").replace("X", ".") if log.old_price else ""
+                old_str = f"~~R$ {log_old_price:,.2f}~~ ".replace(",", "X").replace(".", ",").replace("X", ".") if log_old_price else ""
                 copy = (
-                    f"🔥 *{log.product_title}*\n\n"
+                    f"🔥 *{log_title}*\n\n"
                     f"{old_str}"
-                    f"💰 *R$ {log.price:,.2f}*\n".replace(",", "X").replace(".", ",").replace("X", ".")
-                    + (f"💳 {log.installment_text}\n" if log.installment_text else "")
-                    + (f"💸 {log.pix_discount_text}\n\n" if log.pix_discount_text else "\n")
-                    + f"👉 {log.short_url}"
+                    f"💰 *R$ {log_price:,.2f}*\n".replace(",", "X").replace(".", ",").replace("X", ".")
+                    + (f"💳 {log_installment}\n" if log_installment else "")
+                    + (f"💸 {log_pix_discount}\n\n" if log_pix_discount else "\n")
+                    + f"👉 {log_short_url}"
                 )
 
             card_bytes = await generate_promo_card(
-                title=log.product_title,
-                price=log.price,
-                old_price=log.old_price,
-                discount_percent=log.discount_percent,
-                image_url=log.image_url,
-                storefront_name=config.storefront_slug if config else "",
-                store_type=config.store_type if config else "magalu",
-                theme_color=config.theme_color if config else "#0088ff",
-                tagline=config.tagline if config else "tem na minha loja",
-                installment_text=log.installment_text or "",
-                pix_discount_text=log.pix_discount_text or "",
-                owner_avatar_b64=config.owner_avatar_b64 if config else "",
+                title=log_title,
+                price=log_price,
+                old_price=log_old_price,
+                discount_percent=log_discount,
+                image_url=log_image_url,
+                storefront_name=storefront_slug,
+                store_type=store_type,
+                theme_color=theme_color,
+                tagline=tagline,
+                installment_text=log_installment,
+                pix_discount_text=log_pix_discount,
+                owner_avatar_b64=owner_avatar_b64,
             )
             
             if card_bytes:
@@ -600,17 +678,19 @@ async def approve_affiliate_offer(
                 await whatsapp.send_status(content=copy)
                 
             with next(get_db()) as db_session:
-                db_log = db_session.query(AffiliateLogModel).get(log.id)
-                db_log.status = "sent"
-                db_session.commit()
+                db_log = db_session.query(AffiliateLogModel).get(log_id_val)
+                if db_log:
+                    db_log.status = "sent"
+                    db_session.commit()
                 
         except Exception as e:
             logger.error(f"[affiliate] Failed to send approved offer: {e}")
             with next(get_db()) as db_session:
-                db_log = db_session.query(AffiliateLogModel).get(log.id)
-                db_log.status = "failed"
-                db_log.error_message = str(e)
-                db_session.commit()
+                db_log = db_session.query(AffiliateLogModel).get(log_id_val)
+                if db_log:
+                    db_log.status = "failed"
+                    db_log.error_message = str(e)
+                    db_session.commit()
 
     asyncio.create_task(_send_approved_offer())
     
