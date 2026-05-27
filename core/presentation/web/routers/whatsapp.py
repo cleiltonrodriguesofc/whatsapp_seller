@@ -751,4 +751,70 @@ async def evolution_webhook(
             except Exception as exc:
                 logger.error("[webhook] auto-sync error: %s", exc)
 
+    # ── messages.upsert: capture contacts from incoming/outgoing messages ──
+    if event == "messages.upsert":
+        data = payload.get("data", {})
+        messages = data if isinstance(data, list) else data.get("messages", data.get("data", []))
+        if not isinstance(messages, list):
+            messages = []
+
+        target_repo = SQLTargetRepository(db)
+        captured = 0
+        for msg in messages:
+            if not isinstance(msg, dict):
+                continue
+            key = msg.get("key", {})
+            remote_jid = key.get("remoteJid", "")
+            if not remote_jid:
+                continue
+            # skip broadcast, status, and newsletter jids
+            if any(skip in remote_jid for skip in ["broadcast", "status", "newsletter"]):
+                continue
+            # accept @s.whatsapp.net, @lid, @g.us
+            if not any(remote_jid.endswith(sfx) for sfx in ["@s.whatsapp.net", "@lid", "@g.us"]):
+                continue
+
+            push_name = msg.get("pushName", "")
+            name = push_name or remote_jid.split("@")[0]
+            target_type = "group" if "@g.us" in remote_jid else "chat"
+
+            target_repo.upsert_sync(
+                [{"remoteJid": remote_jid, "pushName": name}],
+                user_id=instance_model.user_id,
+                instance_id=instance_model.id,
+            )
+            captured += 1
+
+        if captured:
+            logger.info(
+                "[webhook] captured %d contacts from messages for instance '%s'",
+                captured, instance_name
+            )
+
+    # ── contacts.upsert: baileys sometimes emits bulk contact data ──
+    if event == "contacts.upsert":
+        data = payload.get("data", [])
+        contacts_list = data if isinstance(data, list) else []
+        if contacts_list:
+            target_repo = SQLTargetRepository(db)
+            valid_contacts = []
+            for c in contacts_list:
+                if not isinstance(c, dict):
+                    continue
+                jid = c.get("remoteJid") or c.get("id") or ""
+                if not jid or any(skip in jid for skip in ["broadcast", "status", "newsletter"]):
+                    continue
+                valid_contacts.append(c)
+
+            if valid_contacts:
+                target_repo.upsert_sync(
+                    valid_contacts,
+                    user_id=instance_model.user_id,
+                    instance_id=instance_model.id,
+                )
+                logger.info(
+                    "[webhook] bulk-synced %d contacts from contacts.upsert for '%s'",
+                    len(valid_contacts), instance_name
+                )
+
     return {"ok": True, "event": event, "instance": instance_name}

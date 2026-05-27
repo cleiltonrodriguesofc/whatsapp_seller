@@ -267,7 +267,7 @@ class EvolutionWhatsAppService(NotificationService):
                     contacts_result = [
                         c for c in data
                         if isinstance(c, dict)
-                        and c.get("remoteJid", "").endswith("@s.whatsapp.net")
+                        and (c.get("remoteJid", "").endswith("@s.whatsapp.net") or c.get("remoteJid", "").endswith("@lid"))
                         and c.get("remoteJid") != "0@s.whatsapp.net"
                     ]
         except Exception as exc:
@@ -289,7 +289,7 @@ class EvolutionWhatsAppService(NotificationService):
                         contacts_result = [
                             c for c in data
                             if isinstance(c, dict)
-                            and c.get("remoteJid", "").endswith("@s.whatsapp.net")
+                            and (c.get("remoteJid", "").endswith("@s.whatsapp.net") or c.get("remoteJid", "").endswith("@lid"))
                             and c.get("remoteJid") != "0@s.whatsapp.net"
                         ]
             except Exception as exc:
