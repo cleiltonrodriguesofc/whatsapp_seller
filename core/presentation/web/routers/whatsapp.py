@@ -414,6 +414,21 @@ async def sync_whatsapp_targets(
     )
     target_repo = SQLTargetRepository(db)
 
+    # refresh instance status from evolution api before syncing
+    try:
+        svc_check = EvolutionWhatsAppService(
+            instance=instance_model.name, apikey=instance_model.apikey
+        )
+        status_data = await svc_check.get_status()
+        if status_data and isinstance(status_data, dict):
+            live_state = status_data.get("instance", {}).get("state", "")
+            if live_state and instance_model.status != live_state:
+                instance_model.status = live_state
+                db.commit()
+                logger.info("[sync] updated instance status to '%s'", live_state)
+    except Exception as exc:
+        logger.warning("[sync] could not refresh instance status: %s", exc)
+
     groups = await whatsapp_service.get_groups()
     chats = await whatsapp_service.get_contacts()
 
@@ -654,3 +669,86 @@ async def get_chat_messages_api(
     normalized.sort(key=lambda x: x.get("timestamp", 0))
 
     return {"messages": normalized}
+
+
+@router.post("/webhook/evolution")
+async def evolution_webhook(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    receives webhook events from the evolution api.
+    handles CONNECTION_UPDATE to keep instance status in sync and auto-trigger
+    contact sync when the instance connects.
+    the evolution api must be configured to POST events to:
+      https://<your-domain>/webhook/evolution
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        return {"ok": False, "error": "invalid json"}
+
+    event = payload.get("event", "")
+    instance_name = payload.get("instance", "")
+
+    if not instance_name:
+        return {"ok": True, "skipped": "no instance name"}
+
+    # find the instance in db
+    instance_model = db.query(InstanceModel).filter(
+        InstanceModel.name == instance_name
+    ).first()
+
+    if not instance_model:
+        logger.warning("[webhook] unknown instance: %s", instance_name)
+        return {"ok": True, "skipped": "instance not found"}
+
+    if event == "connection.update":
+        data = payload.get("data", {})
+        new_state = data.get("state", "")  # e.g. "open", "close", "connecting"
+
+        if new_state and instance_model.status != new_state:
+            instance_model.status = new_state
+            db.commit()
+            logger.info(
+                "[webhook] instance '%s' status updated to '%s'",
+                instance_name, new_state
+            )
+
+        # auto-sync contacts when instance comes online
+        if new_state == "open":
+            logger.info(
+                "[webhook] instance '%s' connected — triggering contact sync",
+                instance_name
+            )
+            try:
+                svc = EvolutionWhatsAppService(
+                    instance=instance_model.name,
+                    apikey=instance_model.apikey,
+                )
+                target_repo = SQLTargetRepository(db)
+
+                groups = await svc.get_groups()
+                contacts = await svc.get_contacts()
+
+                g_list = groups.get("data", groups) if isinstance(groups, dict) else groups
+                c_list = contacts if isinstance(contacts, list) else []
+
+                if not isinstance(g_list, list):
+                    g_list = []
+
+                all_targets = g_list + c_list
+                if all_targets:
+                    target_repo.upsert_sync(
+                        all_targets,
+                        user_id=instance_model.user_id,
+                        instance_id=instance_model.id,
+                    )
+                    logger.info(
+                        "[webhook] auto-synced %d targets for instance '%s'",
+                        len(all_targets), instance_name
+                    )
+            except Exception as exc:
+                logger.error("[webhook] auto-sync error: %s", exc)
+
+    return {"ok": True, "event": event, "instance": instance_name}
