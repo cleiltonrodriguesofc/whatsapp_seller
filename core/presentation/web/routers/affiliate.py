@@ -262,232 +262,172 @@ async def get_affiliate_logs(
     } for l in logs]
 
 
-# ── manual dispatch ──────────────────────────────────────────────
+# ── fetch offers (no send) ─────────────────────────────────────────
 
-@router.post("/dispatch")
-async def dispatch_affiliate_offers(
+@router.get("/fetch-offers")
+async def fetch_affiliate_offers(
     db: Session = Depends(get_db),
     user=Depends(login_required),
 ):
-    """manually triggers affiliate status dispatch."""
-    from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+    """
+    fetches offers from magalu and/or mercado livre WITHOUT sending anything.
+    returns the list so the ui can display a picker for the user to choose.
+    """
+    from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
 
     config = db.query(AffiliateConfigModel).filter(
         AffiliateConfigModel.user_id == user.id
     ).first()
 
-    if not config or not config.storefront_slug:
-        return JSONResponse(
-            {"success": False, "error": "Configure seu slug da loja Magalu primeiro"},
-            status_code=400,
-        )
+    if not config:
+        return JSONResponse({"success": False, "error": "Configure o afiliado primeiro."}, status_code=400)
 
-    instance = (
-        db.query(InstanceModel)
-        .filter(InstanceModel.user_id == user.id)
-        .first()
-    )
-    if not instance:
+    has_magalu = bool(config.storefront_slug)
+    has_ml = bool(config.ml_enabled and config.ml_profile_slug)
+
+    if not has_magalu and not has_ml:
         return JSONResponse(
-            {"success": False, "error": "Nenhuma instância WhatsApp conectada"},
+            {"success": False, "error": "Configure ao menos a loja Magalu ou o perfil Mercado Livre."},
             status_code=400,
         )
 
     categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
+    ml_categories = [c.strip() for c in (config.ml_categories or "notebook,celular").split(",") if c.strip()]
+    min_discount = config.min_discount_percent or 5.0
+    max_offers = config.max_offers_per_run or 5
 
-    
-    gateway = MagaluGateway(storefront_slug=config.storefront_slug)
-    whatsapp = EvolutionWhatsAppService(
-        instance=instance.name,
-        apikey=instance.apikey,
-    )
+    all_offers: list[dict] = []
 
-    # try to load ai service for copy generation
-    ai_service = None
-    try:
-        from core.infrastructure.ai.openai_service import OpenAIService
-        ai_service = OpenAIService()
-    except Exception:
-        logger.info("[affiliate] ai service not available, using fallback copy")
-
-    async def run():
+    # ── magalu ───────────────────────────────────────────────────────
+    if has_magalu:
         try:
-            offers = await gateway.get_offers(
+            gw = MagaluGateway(storefront_slug=config.storefront_slug)
+            raw = await gw.get_offers(
                 categories=categories,
-                min_discount_percent=config.min_discount_percent,
-                max_offers=config.max_offers_per_run,
+                min_discount_percent=min_discount,
+                max_offers=max_offers,
                 preferred_brands=config.preferred_brands or "",
             )
-
-            if not offers:
-                logger.info("[affiliate] no qualifying offers found")
-                # Log that no offers were found
-                with next(get_db()) as db_session:
-                    db_session.add(AffiliateLogModel(
-                        user_id=user.id,
-                        product_title="Nenhuma oferta encontrada no momento",
-                        original_url="",
-                        status="info"
-                    ))
-                    db_session.commit()
-                return
-
-            # Log start of search
-            with next(get_db()) as db_session:
-                db_session.add(AffiliateLogModel(
-                    user_id=user.id,
-                    product_title=f"Buscando ofertas em: {', '.join(categories)}",
-                    original_url="",
-                    status="info"
-                ))
-                db_session.commit()
-
-            with next(get_db()) as db_session:
-                from datetime import timedelta
-                
-                recent_logs = db_session.query(AffiliateLogModel.product_title).filter(
-                    AffiliateLogModel.user_id == user.id,
-                    AffiliateLogModel.created_at >= datetime.utcnow() - timedelta(days=7)
-                ).all()
-                recent_titles = {log[0] for log in recent_logs}
-
-                new_offers = []
-                for offer in offers:
-                    if offer.title not in recent_titles:
-                        new_offers.append(offer)
-                        recent_titles.add(offer.title)
-
-            if not new_offers:
-                logger.info("[affiliate] all fetched offers are duplicates")
-                with next(get_db()) as db_session:
-                    db_session.add(AffiliateLogModel(
-                        user_id=user.id,
-                        product_title="Nenhuma oferta nova encontrada no momento",
-                        original_url="",
-                        status="info"
-                    ))
-                    db_session.commit()
-                return
-
-            for offer in new_offers:
-                from core.infrastructure.utils.shortener import get_or_create_shortlink
-                
-                with next(get_db()) as db_session:
-                    short_link_url = get_or_create_shortlink(db_session, offer.affiliate_link, config.storefront_slug)
-
-                    # If manual approval is required, just log it as pending and skip sending
-                    if config.require_approval:
-                        db_session.add(AffiliateLogModel(
-                            user_id=user.id,
-                            product_title=offer.title,
-                            image_url=offer.image_url,
-                            original_url=offer.affiliate_link,
-                            short_url=short_link_url,
-                            price=offer.price,
-                            old_price=offer.old_price,
-                            discount_percent=offer.discount_percent,
-                            installment_text=offer.installment_text,
-                            pix_discount_text=offer.pix_discount_text,
-                            status="pending"
-                        ))
-                        db_session.commit()
-                        logger.info("[affiliate] pending offer saved: %s", offer.title[:40])
-                
-                if config.require_approval:
-                    continue
-
-                # Auto dispatch flow
-                if ai_service:
-                    try:
-                        copy = await ai_service.generate_affiliate_copy(
-                            title=offer.title,
-                            price=offer.price,
-                            old_price=offer.old_price,
-                            discount=offer.discount_percent,
-                            link=short_link_url,
-                            installment_text=offer.installment_text,
-                            pix_discount_text=offer.pix_discount_text,
-                        )
-                    except Exception:
-                        copy = None
-                else:
-                    copy = None
-
-                if not copy:
-                    copy = (
-                        f"🔥 *{offer.title}*\n\n"
-                        f"{'~~R$ ' + f'{offer.old_price:,.2f}'.replace(',','X').replace('.',',').replace('X','.') + '~~  ' if offer.old_price else ''}"
-                        f"💰 *R$ {offer.price:,.2f}*\n".replace(",", "X").replace(".", ",").replace("X", ".")
-                        + (f"💳 {offer.installment_text}\n" if offer.installment_text else "")
-                        + (f"💸 {offer.pix_discount_text}\n\n" if offer.pix_discount_text else "\n")
-                        + f"👉 {short_link_url}"
-                    )
-
-                # post to whatsapp status
-                try:
-                    card_bytes = await generate_promo_card(
-                        title=offer.title,
-                        price=offer.price,
-                        old_price=offer.old_price,
-                        discount_percent=offer.discount_percent,
-                        image_url=offer.image_url,
-                        storefront_name=config.storefront_slug,
-                        store_type=config.store_type or "magalu",
-                        theme_color=config.theme_color or "#0088ff",
-                        tagline=config.tagline or "tem na minha loja",
-                        installment_text=offer.installment_text,
-                        pix_discount_text=offer.pix_discount_text,
-                        owner_avatar_b64=config.owner_avatar_b64 or "",
-                    )
-                    
-                    if card_bytes:
-                        b64_img = base64.b64encode(card_bytes).decode("utf-8")  # noqa: F841
-                        await whatsapp.send_status(
-                            content=b64_img,
-                            type="image",
-                            caption=copy
-                        )
-                    else:
-                        raise Exception("failed to generate card bytes")
-                except Exception as e:
-                    logger.error("[affiliate] error generating card: %s", e)
-                    # fallback to text only
-                    await whatsapp.send_status(content=copy)
-
-                logger.info("[affiliate] posted offer: %s (%.0f%% off)", offer.title[:40], offer.discount_percent)
-                
-                # Save log to DB
-                with next(get_db()) as db_session:
-                    db_session.add(AffiliateLogModel(
-                        user_id=user.id,
-                        product_title=offer.title,
-                        image_url=offer.image_url,
-                        original_url=offer.affiliate_link,
-                        short_url=short_link_url,
-                        price=offer.price,
-                        discount_percent=offer.discount_percent,
-                        status="sent"
-                    ))
-                    db_session.commit()
-                
-                await asyncio.sleep(5)  # delay between posts
-
-            logger.info("[affiliate] dispatch complete: %d offers processed", len(offers))
-
+            for o in raw:
+                all_offers.append({
+                    "title": o.title,
+                    "price": o.price,
+                    "old_price": o.old_price,
+                    "discount_percent": o.discount_percent,
+                    "image_url": o.image_url,
+                    "affiliate_link": o.affiliate_link,
+                    "installment_text": o.installment_text,
+                    "pix_discount_text": o.pix_discount_text,
+                    "source": "magalu",
+                })
         except Exception as e:
-            logger.error("[affiliate] dispatch error: %s", e)
-            with next(get_db()) as db_session:
-                db_session.add(AffiliateLogModel(
-                    user_id=user.id,
-                    product_title="Erro no processo de busca/postagem",
-                    original_url="",
-                    status="failed",
-                    error_message=str(e)
-                ))
-                db_session.commit()
+            logger.error("[fetch-offers] magalu error: %s", e)
 
-    asyncio.create_task(run())
-    return JSONResponse({"success": True, "message": "Disparo de ofertas iniciado em segundo plano"})
+    # ── mercado livre ─────────────────────────────────────────────────
+    if has_ml:
+        try:
+            ml_gw = MercadoLivreGateway(profile_slug=config.ml_profile_slug)
+            raw_ml = await ml_gw.get_offers(
+                categories=ml_categories,
+                min_discount_percent=min_discount,
+                max_offers=max_offers,
+            )
+            for o in raw_ml:
+                all_offers.append({
+                    "title": o.title,
+                    "price": o.price,
+                    "old_price": o.old_price,
+                    "discount_percent": o.discount_percent,
+                    "image_url": o.image_url,
+                    "affiliate_link": o.affiliate_link,
+                    "installment_text": o.installment_text,
+                    "pix_discount_text": "",
+                    "source": "mercadolivre",
+                })
+        except Exception as e:
+            logger.error("[fetch-offers] ml error: %s", e)
+
+    return JSONResponse({"success": True, "offers": all_offers})
+
+
+# ── manual dispatch (send selected offers to chosen targets) ─────────
+
+class ManualDispatchSchema(BaseModel):
+    offers: list[dict]        # list of offer dicts from /fetch-offers
+    targets: list[str]        # e.g. ["status"], ["groups"] or ["status","groups"]
+
+
+@router.post("/dispatch")
+async def dispatch_affiliate_offers(
+    data: ManualDispatchSchema,
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    """manually triggers dispatch for the user-selected offers and targets."""
+    from core.presentation.web.scheduler import execute_manual_selected_dispatch
+
+    if not data.offers:
+        return JSONResponse({"success": False, "error": "Selecione pelo menos uma oferta."}, status_code=400)
+    if not data.targets:
+        return JSONResponse({"success": False, "error": "Selecione pelo menos um destino (Status ou Grupos)."}, status_code=400)
+
+    config = db.query(AffiliateConfigModel).filter(
+        AffiliateConfigModel.user_id == user.id
+    ).first()
+
+    instance = db.query(InstanceModel).filter(
+        InstanceModel.user_id == user.id,
+        InstanceModel.status == "connected",
+    ).first()
+
+    if not instance:
+        return JSONResponse({"success": False, "error": "Nenhuma instância WhatsApp conectada."}, status_code=400)
+
+    if "groups" in data.targets:
+        import json as _json
+        try:
+            group_jids = _json.loads(config.group_jids or "[]") if config and config.group_jids else []
+        except Exception:
+            group_jids = []
+        if not group_jids:
+            return JSONResponse(
+                {"success": False, "error": "Nenhum grupo configurado. Adicione grupos nas configurações."},
+                status_code=400,
+            )
+    else:
+        group_jids = []
+
+    config_snapshot = {
+        "store_type": config.store_type if config else "magalu",
+        "theme_color": config.theme_color if config else "#0088ff",
+        "tagline": config.tagline if config else "tem na minha loja",
+        "owner_avatar_b64": config.owner_avatar_b64 if config else "",
+        "storefront_slug": config.storefront_slug if config else "",
+        "group_jids": group_jids,
+    }
+
+    import asyncio as _asyncio
+    _asyncio.create_task(execute_manual_selected_dispatch(
+        user_id=user.id,
+        instance_name=instance.name,
+        instance_apikey=instance.apikey,
+        offers_data=data.offers,
+        targets=data.targets,
+        config_snapshot=config_snapshot,
+    ))
+
+    dest_labels = []
+    if "status" in data.targets:
+        dest_labels.append("Status")
+    if "groups" in data.targets:
+        dest_labels.append("Grupos")
+
+    return JSONResponse({
+        "success": True,
+        "message": f"Disparando {len(data.offers)} oferta(s) para: {' e '.join(dest_labels)}. Aguarde..."
+    })
+
+
 
 
 @router.get("/offers/{log_id}/preview")

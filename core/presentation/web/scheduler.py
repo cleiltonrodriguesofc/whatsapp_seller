@@ -703,6 +703,183 @@ async def execute_affiliate_group_task(
     logger.info("[group-scheduler] group dispatch complete for user %s", user_id)
 
 
+async def execute_manual_selected_dispatch(
+    user_id: int,
+    instance_name: str,
+    instance_apikey: str,
+    offers_data: list[dict],
+    targets: list[str],
+    config_snapshot: dict,
+) -> None:
+    """
+    dispatches a manually-selected list of offers to the chosen targets.
+
+    offers_data: list of offer dicts (title, price, old_price, discount_percent,
+                 image_url, affiliate_link, installment_text, pix_discount_text, source).
+    targets: list of destination strings — 'status' and/or 'groups'.
+    config_snapshot: dict with store config fields needed for card generation:
+                     store_type, theme_color, tagline, owner_avatar_b64,
+                     storefront_slug, group_jids (list[str]).
+    """
+    if not offers_data:
+        logger.info("[manual-dispatch] no offers provided for user %s", user_id)
+        return
+    if not targets:
+        logger.info("[manual-dispatch] no targets provided for user %s", user_id)
+        return
+
+    whatsapp = EvolutionWhatsAppService(
+        instance=instance_name,
+        apikey=instance_apikey,
+    )
+
+    ai_service = None
+    try:
+        from core.infrastructure.ai.openai_service import OpenAIService
+        ai_service = OpenAIService()
+    except Exception:
+        pass
+
+    from core.infrastructure.utils.shortener import get_or_create_shortlink
+    from core.infrastructure.database.session import SessionLocal as _SessionLocal
+    from core.infrastructure.database.models import AffiliateLogModel as _Log
+    import base64
+    from core.infrastructure.image.promo_card_generator import generate_promo_card
+
+    send_to_status = "status" in targets
+    send_to_groups = "groups" in targets
+    group_jids: list[str] = config_snapshot.get("group_jids") or []
+
+    store_type = config_snapshot.get("store_type", "magalu")
+    theme_color = config_snapshot.get("theme_color", "#0088ff")
+    tagline = config_snapshot.get("tagline", "tem na minha loja")
+    owner_avatar_b64 = config_snapshot.get("owner_avatar_b64", "")
+    storefront_slug = config_snapshot.get("storefront_slug", "")
+
+    for offer in offers_data:
+        # ── build short link ──────────────────────────────────────────
+        db = _SessionLocal()
+        try:
+            short_link_url = get_or_create_shortlink(
+                db,
+                offer["affiliate_link"],
+                offer.get("source", storefront_slug or "affiliate"),
+            )
+        finally:
+            db.close()
+
+        # ── build copy text ───────────────────────────────────────────
+        copy = None
+        if ai_service:
+            try:
+                copy = await ai_service.generate_affiliate_copy(
+                    title=offer["title"],
+                    price=offer["price"],
+                    old_price=offer.get("old_price"),
+                    discount=offer["discount_percent"],
+                    link=short_link_url,
+                )
+            except Exception:
+                pass
+
+        if not copy:
+            old_fmt = ""
+            if offer.get("old_price"):
+                old_fmt = (
+                    f"~~R$ {offer['old_price']:,.2f}~~  "
+                    .replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+            price_fmt = f"R$ {offer['price']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            source_label = "🏪 Magalu" if offer.get("source") == "magalu" else "🛒 Mercado Livre"
+            copy = (
+                f"🔥 *OFERTA {source_label}*\n\n"
+                f"*{offer['title']}*\n\n"
+                f"{old_fmt}💰 *{price_fmt}*\n"
+                f"📉 *{offer['discount_percent']:.0f}% OFF*\n"
+                + (f"💳 {offer['installment_text']}\n" if offer.get("installment_text") else "")
+                + f"\n👉 {short_link_url}"
+            )
+
+        # ── generate promo card ───────────────────────────────────────
+        card_bytes = None
+        try:
+            card_bytes = await generate_promo_card(
+                title=offer["title"],
+                price=offer["price"],
+                old_price=offer.get("old_price"),
+                discount_percent=offer["discount_percent"],
+                image_url=offer.get("image_url", ""),
+                storefront_name=storefront_slug or offer.get("source", "loja"),
+                store_type=store_type,
+                theme_color=theme_color,
+                tagline=tagline,
+                installment_text=offer.get("installment_text", ""),
+                pix_discount_text=offer.get("pix_discount_text", ""),
+                owner_avatar_b64=owner_avatar_b64,
+            )
+        except Exception as e:
+            logger.warning("[manual-dispatch] card generation failed: %s", e)
+
+        b64_img = base64.b64encode(card_bytes).decode("utf-8") if card_bytes else None
+
+        # ── send to status ────────────────────────────────────────────
+        if send_to_status:
+            try:
+                if b64_img:
+                    await whatsapp.send_status(
+                        content=b64_img,
+                        type="image",
+                        caption=copy,
+                    )
+                else:
+                    await whatsapp.send_status(content=copy)
+                logger.info("[manual-dispatch] sent to status: %s", offer["title"][:40])
+            except Exception as e:
+                logger.error("[manual-dispatch] error sending to status: %s", e)
+
+        # ── send to groups ────────────────────────────────────────────
+        if send_to_groups and group_jids:
+            for jid in group_jids:
+                try:
+                    if b64_img:
+                        await whatsapp.send_image(jid, f"data:image/jpeg;base64,{b64_img}", caption=copy)
+                    elif offer.get("image_url"):
+                        await whatsapp.send_image(jid, offer["image_url"], caption=copy)
+                    else:
+                        await whatsapp.send_text(jid, copy)
+                    logger.info("[manual-dispatch] sent to group %s: %s", jid[:20], offer["title"][:40])
+                except Exception as e:
+                    logger.error("[manual-dispatch] error sending to group %s: %s", jid[:20], e)
+                await asyncio.sleep(2)
+
+        # ── log to db ─────────────────────────────────────────────────
+        db = _SessionLocal()
+        try:
+            db.add(_Log(
+                user_id=user_id,
+                product_title=offer["title"],
+                image_url=offer.get("image_url", ""),
+                original_url=offer["affiliate_link"],
+                short_url=short_link_url,
+                price=offer["price"],
+                old_price=offer.get("old_price"),
+                discount_percent=offer["discount_percent"],
+                installment_text=offer.get("installment_text", ""),
+                source=offer.get("source", "magalu"),
+                status="sent",
+            ))
+            db.commit()
+        finally:
+            db.close()
+
+        await asyncio.sleep(5)  # delay between offers
+
+    logger.info(
+        "[manual-dispatch] complete for user %s: %d offers → targets: %s",
+        user_id, len(offers_data), targets,
+    )
+
+
 async def campaign_scheduler_loop() -> None:
     """
     Background task that checks and dispatches scheduled/recurring campaigns every minute.
