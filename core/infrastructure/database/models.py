@@ -362,7 +362,8 @@ class AffiliateConfigModel(Base):
     preferred_brands = Column(String, nullable=True)
 
     # ── mercado livre affiliate config ────────────────────────────────
-    ml_profile_slug = Column(String, nullable=True)   # e.g. "cleiltonrodriguesdossantos"
+    ml_profile_slug = Column(String, nullable=True)   # e.g. "cleiltonrodriguesdossantos" (kept for compat)
+    ml_client_id = Column(String, nullable=True)       # affiliate partner client id (e.g. "5705368541234")
     ml_enabled = Column(Boolean, default=False)        # enable/disable ml gateway
     ml_categories = Column(String, default="notebook,celular")  # ml category keys
 

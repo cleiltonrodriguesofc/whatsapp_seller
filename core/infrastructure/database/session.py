@@ -26,9 +26,9 @@ else:
     # stay conservative to be safe across multiple render workers/restarts.
     kwargs["pool_pre_ping"] = True
     kwargs["pool_recycle"] = 300
-    kwargs["pool_size"] = 2       # base pool — 2 persistent connections
-    kwargs["max_overflow"] = 3    # burst up to 5 total connections max
-    kwargs["pool_timeout"] = 10   # fail fast if no connection available (seconds)
+    kwargs["pool_size"] = 15      # base pool increased for higher concurrency
+    kwargs["max_overflow"] = 25   # burst up to 40 total connections max
+    kwargs["pool_timeout"] = 20   # allow more wait time before failing
 
 engine = create_engine(DATABASE_URL, **kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

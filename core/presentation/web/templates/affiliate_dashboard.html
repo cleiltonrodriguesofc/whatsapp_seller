@@ -330,9 +330,25 @@
                 <span class="toggle-slider"></span>
             </label>
         </div>
-        <div id="mlSection" style="{{ '' if config.ml_enabled else 'opacity:0.4; pointer-events:none;' }}">
+        <div id="mlSection" style="transition: opacity 0.2s; {{ '' if config.ml_enabled else 'opacity:0.45;' }}">
+
+            <!-- ml client id (affiliate tracking) -->
+            <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(255,210,0,0.06); border-radius: 12px; border: 1px solid rgba(255,210,0,0.2);">
+                <label class="form-label" style="color: #fbbf24;">🔑 Seu ID de Afiliado (Client ID)</label>
+                <input type="text" id="ml_client_id" class="form-input"
+                       placeholder="Ex: 38524122"
+                       value="{{ config.ml_client_id }}"
+                       style="font-family: monospace; letter-spacing: 0.05em;">
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem; line-height: 1.5;">
+                    Encontre seu ID em qualquer link de produto que você compartilhou no ML →
+                    procure por <code style="background:rgba(255,255,255,0.1); padding:0.1rem 0.3rem; border-radius:4px;">matt_tool=<strong>NÚMERO</strong></code> na URL.
+                    <br>Ex: <code style="background:rgba(255,255,255,0.1); padding:0.1rem 0.3rem; border-radius:4px; color:#fbbf24;">matt_tool=38524122</code>
+                </div>
+            </div>
+
+            <!-- profile slug (optional) -->
             <div style="margin-bottom: 1rem;">
-                <label class="form-label">URL do seu Perfil ML Social</label>
+                <label class="form-label">Usuário do Perfil Social ML <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:400;">(opcional)</span></label>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <span style="color: var(--text-secondary); font-size: 0.9rem; white-space: nowrap;">mercadolivre.com.br/social/</span>
                     <input type="text" id="ml_profile_slug" class="form-input"
@@ -348,6 +364,7 @@
                 </div>
                 {% endif %}
             </div>
+
             <div style="margin-bottom: 0.5rem;">
                 <label class="form-label">Categorias ML para buscar</label>
                 <div class="category-grid" id="mlCategoryGrid">
@@ -373,7 +390,7 @@
                 <span class="toggle-slider"></span>
             </label>
         </div>
-        <div id="groupSection" style="{{ '' if config.group_enabled else 'opacity:0.4; pointer-events:none;' }}">
+        <div id="groupSection" style="transition: opacity 0.2s; {{ '' if config.group_enabled else 'opacity:0.45;' }}">
             {% if available_groups %}
             <div style="margin-bottom: 1rem;">
                 <label class="form-label">Grupos para receber as ofertas</label>
@@ -571,13 +588,11 @@
     // sync toggle visibility
     document.getElementById('ml_enabled').addEventListener('change', (e) => {
         const section = document.getElementById('mlSection');
-        section.style.opacity = e.target.checked ? '1' : '0.4';
-        section.style.pointerEvents = e.target.checked ? '' : 'none';
+        section.style.opacity = e.target.checked ? '1' : '0.45';
     });
     document.getElementById('group_enabled').addEventListener('change', (e) => {
         const section = document.getElementById('groupSection');
-        section.style.opacity = e.target.checked ? '1' : '0.4';
-        section.style.pointerEvents = e.target.checked ? '' : 'none';
+        section.style.opacity = e.target.checked ? '1' : '0.45';
     });
 
     async function saveConfig(e) {
@@ -605,6 +620,7 @@
             require_approval: document.getElementById('require_approval').checked,
             // ml fields
             ml_profile_slug: mlSlug,
+            ml_client_id: document.getElementById('ml_client_id')?.value?.trim() || '',
             ml_enabled: mlEnabled,
             ml_categories: getSelectedMlCategories(),
             // group fields

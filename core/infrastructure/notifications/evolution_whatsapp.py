@@ -247,28 +247,55 @@ class EvolutionWhatsAppService(NotificationService):
     async def get_contacts(self) -> list:
         """
         Fetches all contacts from Evolution API v2.
-        Uses POST /chat/findContacts which returns remoteJid for each contact.
+        Tries POST /chat/findContacts first (phonebook). 
+        If it fails or returns empty (Baileys MD sync bug), falls back to /chat/findChats.
         Filters to only @s.whatsapp.net JIDs (real phone contacts).
         """
-        url = f"{self.base_url}/chat/findContacts/{self.instance}"
+        contacts_result = []
+        
+        # 1. Try to fetch from phonebook (findContacts)
+        url_contacts = f"{self.base_url}/chat/findContacts/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(url, json={}, headers=self._headers())
-                response.raise_for_status()
-                data = response.json()
-                if not isinstance(data, list):
-                    return []
-                # only return real phone contacts (not groups, not LID, not status)
-                return [
-                    c
-                    for c in data
-                    if isinstance(c, dict)
-                    and c.get("remoteJid", "").endswith("@s.whatsapp.net")
-                    and c.get("remoteJid") != "0@s.whatsapp.net"
-                ]
+                res = await client.post(url_contacts, json={}, headers=self._headers())
+                res.raise_for_status()
+                data = res.json()
+                if isinstance(data, dict):
+                    data = data.get("data", data.get("contacts", data.get("users", [])))
+                
+                if isinstance(data, list):
+                    contacts_result = [
+                        c for c in data
+                        if isinstance(c, dict)
+                        and c.get("remoteJid", "").endswith("@s.whatsapp.net")
+                        and c.get("remoteJid") != "0@s.whatsapp.net"
+                    ]
         except Exception as exc:
-            logger.error("Failed to fetch active chats: %s", exc)
-            return []
+            logger.warning("Failed to fetch from findContacts: %s", exc)
+
+        # 2. Fallback to active chats (findChats) if phonebook is empty
+        if not contacts_result:
+            logger.info("findContacts returned empty. Falling back to findChats for instance %s", self.instance)
+            url_chats = f"{self.base_url}/chat/findChats/{self.instance}"
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    res = await client.post(url_chats, json={}, headers=self._headers())
+                    res.raise_for_status()
+                    data = res.json()
+                    if isinstance(data, dict):
+                        data = data.get("data", data.get("chats", data.get("users", [])))
+                    
+                    if isinstance(data, list):
+                        contacts_result = [
+                            c for c in data
+                            if isinstance(c, dict)
+                            and c.get("remoteJid", "").endswith("@s.whatsapp.net")
+                            and c.get("remoteJid") != "0@s.whatsapp.net"
+                        ]
+            except Exception as exc:
+                logger.warning("Failed to fetch from findChats fallback: %s", exc)
+
+        return contacts_result
 
     async def get_active_chats(self) -> list:
         """
@@ -281,6 +308,8 @@ class EvolutionWhatsAppService(NotificationService):
                 response = await client.post(url, json={}, headers=self._headers())
                 response.raise_for_status()
                 data = response.json()
+                if isinstance(data, dict):
+                    data = data.get("data", data.get("chats", []))
                 if not isinstance(data, list):
                     return []
                 return data
@@ -295,7 +324,10 @@ class EvolutionWhatsAppService(NotificationService):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, json={}, headers=self._headers())
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                if isinstance(data, dict):
+                    return data.get("data", data.get("contacts", []))
+                return data
         except Exception as exc:
             logger.error("Failed to fetch WhatsApp phonebook contacts: %s", exc)
             return []
@@ -444,7 +476,7 @@ class EvolutionWhatsAppService(NotificationService):
             "always_online": True,
             "read_messages": False,
             "read_status": False,
-            "sync_full_history": False,
+            "sync_full_history": True,  # Enables full contact list synchronization
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name
@@ -481,7 +513,7 @@ class EvolutionWhatsAppService(NotificationService):
             "always_online": True,
             "read_messages": False,
             "read_status": False,
-            "sync_full_history": False,
+            "sync_full_history": True,  # Enables full contact list synchronization
         }
         if display_name:
             # Evolution v2 / Baileys expects an array [Browser, Device, Version] to show a custom name

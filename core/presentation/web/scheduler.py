@@ -989,15 +989,15 @@ async def campaign_scheduler_loop() -> None:
                         _affiliate_runs_by_user[group_run_key] = group_run_signature
                         logger.info("scheduler: running affiliate group dispatch for user %s at %s", config.user_id, current_time_str)
 
-                        instance = instance or db.query(InstanceModel).filter(
+                        # fetch instance fresh (may not have been fetched above if status dispatch didn't run)
+                        grp_instance = db.query(InstanceModel).filter(
                             InstanceModel.user_id == config.user_id,
-                            InstanceModel.status == "connected",
                         ).first()
-                        if instance:
+                        if grp_instance:
                             asyncio.create_task(execute_affiliate_group_task(
                                 user_id=config.user_id,
-                                instance_name=instance.name,
-                                instance_apikey=instance.apikey,
+                                instance_name=grp_instance.name,
+                                instance_apikey=grp_instance.apikey,
                                 storefront_slug=config.storefront_slug or "",
                                 categories=categories,
                                 min_discount=config.min_discount_percent,

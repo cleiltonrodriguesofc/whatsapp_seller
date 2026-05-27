@@ -64,6 +64,7 @@ async def affiliate_dashboard(
             "preferred_brands": config_model.preferred_brands or "",
             # ml fields
             "ml_profile_slug": config_model.ml_profile_slug or "",
+            "ml_client_id": getattr(config_model, 'ml_client_id', '') or "",
             "ml_enabled": config_model.ml_enabled or False,
             "ml_categories": ml_cats,
             # group fields
@@ -86,6 +87,7 @@ async def affiliate_dashboard(
             "preferred_brands": "",
             # ml fields
             "ml_profile_slug": "",
+            "ml_client_id": "",
             "ml_enabled": False,
             "ml_categories": ["notebook", "celular"],
             # group fields
@@ -150,6 +152,7 @@ class AffiliateConfigSchema(BaseModel):
     preferred_brands: str = ""
     # ml affiliate
     ml_profile_slug: str = ""
+    ml_client_id: str = ""          # affiliate partner client id from parceiros.mercadolivre.com.br
     ml_enabled: bool = False
     ml_categories: list[str] = []
     # group broadcast
@@ -184,6 +187,7 @@ async def save_affiliate_config(
     config.preferred_brands = data.preferred_brands
     # ml fields
     config.ml_profile_slug = data.ml_profile_slug.strip()
+    config.ml_client_id = data.ml_client_id.strip()
     config.ml_enabled = data.ml_enabled
     config.ml_categories = ",".join(data.ml_categories) if data.ml_categories else "notebook,celular"
     # group fields
@@ -283,11 +287,12 @@ async def fetch_affiliate_offers(
         return JSONResponse({"success": False, "error": "Configure o afiliado primeiro."}, status_code=400)
 
     has_magalu = bool(config.storefront_slug)
-    has_ml = bool(config.ml_enabled and config.ml_profile_slug)
+    ml_client_id = getattr(config, 'ml_client_id', '') or ''
+    has_ml = bool(config.ml_enabled)  # ml_enabled is enough, client_id optional
 
     if not has_magalu and not has_ml:
         return JSONResponse(
-            {"success": False, "error": "Configure ao menos a loja Magalu ou o perfil Mercado Livre."},
+            {"success": False, "error": "Configure ao menos a loja Magalu ou ative o Mercado Livre."},
             status_code=400,
         )
 
@@ -326,7 +331,10 @@ async def fetch_affiliate_offers(
     # ── mercado livre ─────────────────────────────────────────────────
     if has_ml:
         try:
-            ml_gw = MercadoLivreGateway(profile_slug=config.ml_profile_slug)
+            ml_gw = MercadoLivreGateway(
+                profile_slug=config.ml_profile_slug or "",
+                client_id=ml_client_id,
+            )
             raw_ml = await ml_gw.get_offers(
                 categories=ml_categories,
                 min_discount_percent=min_discount,
@@ -377,7 +385,6 @@ async def dispatch_affiliate_offers(
 
     instance = db.query(InstanceModel).filter(
         InstanceModel.user_id == user.id,
-        InstanceModel.status == "connected",
     ).first()
 
     if not instance:
