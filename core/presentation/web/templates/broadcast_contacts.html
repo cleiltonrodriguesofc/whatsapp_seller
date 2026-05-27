@@ -27,6 +27,7 @@
             <form action="/broadcast/sync" method="post" style="margin: 0;">
                 <button type="submit" class="btn btn-ghost" style="border-radius: 10px; padding: 0.65rem 1rem;">🔄 Sincronizar Agora</button>
             </form>
+            <button onclick="openImportModal()" class="btn btn-ghost" style="border-radius: 10px; padding: 0.65rem 1rem; border-color: #10b981; color: #10b981;">📥 Importar CSV</button>
             <a href="/broadcast/campaigns/new" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 700; border-radius: 10px;">Nova Campanha</a>
         </div>
     </div>
@@ -176,5 +177,94 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-{% endblock %}
+<!-- IMPORT MODAL -->
+<div id="import-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:18px; padding:2rem; width:min(560px,95vw); max-height:90vh; overflow-y:auto; position:relative;">
+    <button onclick="closeImportModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
+    <h2 style="margin:0 0 0.25rem; font-size:1.25rem;">📥 Importar Contatos em Massa</h2>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 1.5rem;">Cole o texto ou envie um arquivo CSV. Formato: <code>Nome,Telefone</code> por linha.</p>
 
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+      <button id="tab-text" onclick="switchImportTab('text')" class="btn btn-primary" style="flex:1;padding:0.5rem;border-radius:8px;">📋 Colar Texto</button>
+      <button id="tab-file" onclick="switchImportTab('file')" class="btn btn-ghost" style="flex:1;padding:0.5rem;border-radius:8px;">📁 Arquivo CSV</button>
+    </div>
+
+    <div id="panel-text">
+      <textarea id="import-textarea" placeholder="João Silva,11999998888&#10;Maria,21988887777&#10;5511977776666" style="width:100%;height:220px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:10px;padding:0.75rem;color:white;font-size:0.85rem;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <div id="panel-file" style="display:none;">
+      <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:12px;padding:2.5rem;cursor:pointer;gap:0.5rem;color:var(--text-muted);">
+        <span style="font-size:2.5rem;">📄</span>
+        <span style="font-weight:600;">Clique para selecionar ou arraste aqui</span>
+        <span style="font-size:0.8rem;">.csv ou .txt (UTF-8)</span>
+        <input type="file" id="import-file" accept=".csv,.txt" style="display:none;" onchange="handleFileSelect(this)">
+      </label>
+      <p id="file-name" style="margin:0.5rem 0 0;font-size:0.85rem;color:#10b981;"></p>
+    </div>
+
+    <div id="import-result" style="display:none;margin:1rem 0;padding:0.75rem 1rem;border-radius:10px;font-size:0.9rem;"></div>
+
+    <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+      <button onclick="closeImportModal()" class="btn btn-ghost" style="flex:1;">Cancelar</button>
+      <button onclick="doImport()" id="btn-import-submit" class="btn btn-primary" style="flex:2;font-weight:700;">📥 Importar Agora</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _importTab = 'text', _importFile = null;
+function openImportModal() {
+  document.getElementById('import-modal').style.display = 'flex';
+  document.getElementById('import-result').style.display = 'none';
+  document.getElementById('import-textarea').value = '';
+  document.getElementById('file-name').textContent = '';
+  _importFile = null;
+}
+function closeImportModal() { document.getElementById('import-modal').style.display = 'none'; }
+function switchImportTab(tab) {
+  _importTab = tab;
+  document.getElementById('panel-text').style.display = tab === 'text' ? 'block' : 'none';
+  document.getElementById('panel-file').style.display = tab === 'file' ? 'block' : 'none';
+  document.getElementById('tab-text').className = 'btn ' + (tab === 'text' ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('tab-file').className = 'btn ' + (tab === 'file' ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('tab-text').style.borderRadius = '8px';
+  document.getElementById('tab-file').style.borderRadius = '8px';
+}
+function handleFileSelect(input) {
+  _importFile = input.files[0] || null;
+  document.getElementById('file-name').textContent = _importFile ? '✅ ' + _importFile.name : '';
+}
+async function doImport() {
+  const btn = document.getElementById('btn-import-submit');
+  const resultEl = document.getElementById('import-result');
+  btn.disabled = true; btn.textContent = '⏳ Importando...';
+  resultEl.style.display = 'none';
+  const fd = new FormData();
+  if (_importTab === 'file' && _importFile) {
+    fd.append('file', _importFile);
+  } else {
+    const txt = document.getElementById('import-textarea').value.trim();
+    if (!txt) { showImportResult('error', 'Cole algum texto antes de importar.'); btn.disabled=false; btn.textContent='📥 Importar Agora'; return; }
+    fd.append('raw_text', txt);
+  }
+  try {
+    const res = await fetch('/broadcast/contacts/import', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) {
+      showImportResult('success', '✅ ' + data.imported + ' contatos importados! Recarregando...');
+      setTimeout(() => window.location.reload(), 1800);
+    } else { showImportResult('error', '❌ ' + data.error); }
+  } catch(e) { showImportResult('error', '❌ Erro de conexão. Tente novamente.'); }
+  finally { btn.disabled=false; btn.textContent='📥 Importar Agora'; }
+}
+function showImportResult(type, msg) {
+  const el = document.getElementById('import-result');
+  el.style.display = 'block';
+  el.style.background = type==='success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+  el.style.border = type==='success' ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(239,68,68,0.4)';
+  el.style.color = type==='success' ? '#10b981' : '#ef4444';
+  el.textContent = msg;
+}
+</script>
+
+{% endblock %}

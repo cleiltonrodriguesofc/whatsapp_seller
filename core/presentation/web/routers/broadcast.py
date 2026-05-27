@@ -122,6 +122,66 @@ async def broadcast_groups(
     )
 
 
+@router.post("/contacts/import")
+async def import_contacts_bulk(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(login_required),
+    file: Optional[UploadFile] = File(None),
+    raw_text: Optional[str] = Form(None),
+    instance_id: Optional[str] = Form(None),
+):
+    """
+    bulk-imports contacts from a csv file or pasted text into the whatsapp targets table.
+    format: one contact per line — 'Nome,Telefone' or just 'Telefone'.
+    phone numbers are normalized (adds country code 55 if needed).
+    """
+    content = ""
+    if file and file.filename:
+        content_bytes = await file.read()
+        content = content_bytes.decode("utf-8", errors="ignore")
+    elif raw_text:
+        content = raw_text
+
+    if not content.strip():
+        return JSONResponse({"success": False, "error": "Nenhum conteúdo enviado."})
+
+    parsed = parse_contacts_text(content)
+    if not parsed:
+        return JSONResponse({"success": False, "error": "Nenhum contato válido encontrado. Use o formato: Nome,Telefone"})
+
+    # resolve instance id — use provided or fallback to first instance
+    target_inst_id = None
+    if instance_id and str(instance_id).isdigit():
+        target_inst_id = int(instance_id)
+    else:
+        from core.infrastructure.database.repositories import SQLInstanceRepository
+        inst_repo = SQLInstanceRepository(db)
+        instances = inst_repo.list_by_user(current_user.id)
+        if instances:
+            target_inst_id = instances[0].id
+
+    # normalize to upsert_sync format
+    targets_payload = [
+        {"remoteJid": f"{c['phone']}@s.whatsapp.net", "pushName": c["name"]}
+        for c in parsed
+    ]
+
+    target_repo = SQLTargetRepository(db)
+    target_repo.upsert_sync(targets_payload, current_user.id, instance_id=target_inst_id)
+
+    activity_repo = SQLActivityRepository(db)
+    activity_repo.save(
+        ActivityLog(
+            user_id=current_user.id,
+            event_type="contacts_bulk_import",
+            description=f"Imported {len(parsed)} contacts via CSV/text",
+        )
+    )
+
+    return JSONResponse({"success": True, "imported": len(parsed)})
+
+
 @router.post("/sync")
 async def sync_broadcast_targets(
     request: Request,
