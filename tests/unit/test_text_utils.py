@@ -36,14 +36,14 @@ def test_parse_contacts_text():
     # Test typical CSV text
     raw_csv = """
 nome,telefone
-João, 11988887777
+Joao, 11988887777
 Maria, (21) 9 7777-6666
 +5531999995555, Pedro
     """
     contacts = parse_contacts_text(raw_csv)
 
     assert len(contacts) == 3
-    assert contacts[0]["name"] == "João"
+    assert contacts[0]["name"] == "Joao"
     assert contacts[0]["phone"] == "5511988887777"
     assert contacts[1]["name"] == "Maria"
     assert contacts[1]["phone"] == "5521977776666"
@@ -61,3 +61,56 @@ def test_parse_contacts_weird_spacing():
     assert contacts[0]["phone"] == "5511988889999"
     assert contacts[1]["name"] == "5521999990000"  # since no name, sets phone as name
     assert contacts[1]["phone"] == "5521999990000"
+
+
+def test_parse_vcard_iphone_format():
+    """Tests parsing a vCard in iPhone export format (FN field present)."""
+    vcf = (
+        "BEGIN:VCARD\n"
+        "VERSION:3.0\n"
+        "FN:Joao Silva\n"
+        "TEL;TYPE=CELL:+5511988887777\n"
+        "END:VCARD\n"
+        "BEGIN:VCARD\n"
+        "VERSION:3.0\n"
+        "FN:Maria Souza\n"
+        "TEL;TYPE=CELL:(21)977776666\n"
+        "END:VCARD"
+    )
+    contacts = parse_contacts_text(vcf)
+    assert len(contacts) == 2
+    assert contacts[0]["name"] == "Joao Silva"
+    assert contacts[0]["phone"] == "5511988887777"
+    assert contacts[1]["name"] == "Maria Souza"
+    assert contacts[1]["phone"] == "5521977776666"
+
+
+def test_parse_vcard_android_format():
+    """Tests parsing a vCard in Android export format (N field fallback)."""
+    vcf = (
+        "BEGIN:VCARD\n"
+        "VERSION:2.1\n"
+        "N:Santos;Carlos;;;\n"
+        "TEL;CELL:11999994444\n"
+        "END:VCARD"
+    )
+    contacts = parse_contacts_text(vcf)
+    assert len(contacts) == 1
+    assert contacts[0]["name"] == "Santos Carlos"
+    assert contacts[0]["phone"] == "5511999994444"
+
+
+def test_parse_vcard_deduplicates():
+    """Tests that duplicate phone numbers are removed in vCard input."""
+    vcf = (
+        "BEGIN:VCARD\n"
+        "FN:Fulano\n"
+        "TEL:11977770000\n"
+        "END:VCARD\n"
+        "BEGIN:VCARD\n"
+        "FN:Fulano Duplicado\n"
+        "TEL:11977770000\n"
+        "END:VCARD"
+    )
+    contacts = parse_contacts_text(vcf)
+    assert len(contacts) == 1

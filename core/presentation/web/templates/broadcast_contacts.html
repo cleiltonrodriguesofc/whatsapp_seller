@@ -44,22 +44,34 @@
 
     <div style="display: flex; flex-direction: column; gap: 0.75rem;" id="contacts-grid">
         {% for contact in contacts %}
-        <div class="contact-card compact-card animate-fade-in" data-jid="{{ contact.jid }}" data-name="{{ contact.name or 'Sem Nome' }}" data-instance-id="{{ contact.instance_id or '' }}" 
+        {% set is_lid = '@lid' in contact.jid %}
+        {% set has_real_name = contact.name and not contact.name.isdigit() %}
+        {% set display_name = contact.name if has_real_name else 'Contato WhatsApp' %}
+        {% set display_phone = contact.phone if contact.phone else ('' if is_lid else contact.jid.split('@')[0]) %}
+        <div class="contact-card compact-card animate-fade-in"
+             data-jid="{{ contact.jid }}"
+             data-name="{{ display_name }}"
+             data-instance-id="{{ contact.instance_id or '' }}"
              style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; transition: var(--transition); position: relative; cursor: pointer; display: flex; align-items: center; gap: 0.85rem;"
              onclick="const cb = this.querySelector('.contact-checkbox'); cb.checked = !cb.checked; updateSelection();">
-            
-            <input type="checkbox" class="contact-checkbox" data-jid="{{ contact.jid }}" data-name="{{ contact.name or 'Sem Nome' }}" 
-                   style="position: absolute; top: 50%; right: 0.75rem; transform: translateY(-50%); width: 24px; height: 24px; cursor: pointer; z-index: 10; accent-color: var(--primary);" 
+
+            <input type="checkbox" class="contact-checkbox"
+                   data-jid="{{ contact.jid }}"
+                   data-name="{{ display_name }}"
+                   style="position: absolute; top: 50%; right: 0.75rem; transform: translateY(-50%); width: 24px; height: 24px; cursor: pointer; z-index: 10; accent-color: var(--primary);"
                    onclick="event.stopPropagation(); updateSelection()">
-            
-            <div class="avatar-circle" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 700; color: white; flex-shrink: 0;">
-                {{ contact.name[0].upper() if contact.name else '?' }}
+
+            <div class="avatar-circle" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; color: white; flex-shrink: 0;">
+                {{ display_name[0].upper() if display_name else '?' }}
             </div>
-            
-            <div style="overflow: hidden; flex-grow: 1; padding-right: 2rem;">
-                <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">{{ contact.name or "Sem Nome" }}</h3>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0; font-family: monospace;">{{ contact.phone or contact.jid.split('@')[0] }}</p>
-                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase;">Sinc: {{ contact.last_synced_at.strftime('%d/%m/%Y') }}</p>
+
+            <div style="overflow: hidden; flex-grow: 1; padding-right: 2.5rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; margin: 0 0 2px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ display_name }}</h3>
+                {% if display_phone %}
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0; font-family: monospace;">+{{ display_phone }}</p>
+                {% else %}
+                <p style="font-size: 0.78rem; color: rgba(255,255,255,0.2); margin: 0; font-style: italic;">número oculto</p>
+                {% endif %}
             </div>
         </div>
         {% else %}
@@ -196,8 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:12px;padding:2.5rem;cursor:pointer;gap:0.5rem;color:var(--text-muted);">
         <span style="font-size:2.5rem;">📄</span>
         <span style="font-weight:600;">Clique para selecionar ou arraste aqui</span>
-        <span style="font-size:0.8rem;">.csv ou .txt (UTF-8)</span>
-        <input type="file" id="import-file" accept=".csv,.txt" style="display:none;" onchange="handleFileSelect(this)">
+        <span style="font-size:0.8rem;">.csv, .txt ou .vcf (vCard/iPhone/Android)</span>
+        <input type="file" id="import-file" accept=".csv,.txt,.vcf" style="display:none;" onchange="handleFileSelect(this)">
       </label>
       <p id="file-name" style="margin:0.5rem 0 0;font-size:0.85rem;color:#10b981;"></p>
     </div>

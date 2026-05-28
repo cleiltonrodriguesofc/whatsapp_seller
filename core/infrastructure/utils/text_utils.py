@@ -41,12 +41,65 @@ def clean_whatsapp_number(raw_phone: str) -> str:
     return clean
 
 
-def parse_contacts_text(raw_text: str) -> list:
+def parse_vcard(raw_text: str) -> list:
     """
-    Given an arbitrary text (e.g. pasted from Excel or CSV),
-    attempts to find names and phones by lines.
+    Parses vCard (.vcf) format and extracts name + phone for each contact.
+    Handles multiple vCards in a single file (exported from iPhone/Android/Google).
     Returns: [{"name": Name, "phone": Phone}]
     """
+    contacts = []
+    # split by vcard blocks
+    blocks = re.split(r"BEGIN:VCARD", raw_text, flags=re.IGNORECASE)
+    for block in blocks:
+        if not block.strip():
+            continue
+
+        # extract full name (FN field)
+        name = ""
+        fn_match = re.search(r"^FN[;:][^\r\n]*[:\t](.+)$", block, re.MULTILINE | re.IGNORECASE)
+        if not fn_match:
+            fn_match = re.search(r"^FN:(.+)$", block, re.MULTILINE | re.IGNORECASE)
+        if fn_match:
+            name = fn_match.group(1).strip()
+
+        # fallback to N field (structured name)
+        if not name:
+            n_match = re.search(r"^N[;:][^\r\n]*?:(.+)$", block, re.MULTILINE | re.IGNORECASE)
+            if n_match:
+                parts = n_match.group(1).strip().split(";")
+                name = " ".join(p.strip() for p in parts if p.strip())
+
+        # extract phone numbers (TEL field)
+        tel_matches = re.findall(
+            r"^TEL[^:]*:(.+)$", block, re.MULTILINE | re.IGNORECASE
+        )
+        for tel in tel_matches:
+            phone = clean_whatsapp_number(tel.strip())
+            if len(phone) >= 10:
+                contacts.append({"name": name or phone, "phone": phone})
+                break  # use first valid phone per contact
+
+    # deduplicate
+    seen = set()
+    unique = []
+    for c in contacts:
+        if c["phone"] not in seen:
+            seen.add(c["phone"])
+            unique.append(c)
+    return unique
+
+
+def parse_contacts_text(raw_text: str) -> list:
+    """
+    Given an arbitrary text (csv, pasted from excel, or vCard .vcf),
+    attempts to find names and phones.
+    Auto-detects vCard format.
+    Returns: [{"name": Name, "phone": Phone}]
+    """
+    # auto-detect vCard format
+    if "BEGIN:VCARD" in raw_text.upper():
+        return parse_vcard(raw_text)
+
     contacts = []
     lines = raw_text.strip().split("\n")
     for line in lines:

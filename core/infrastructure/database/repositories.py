@@ -361,7 +361,7 @@ class SQLTargetRepository:
         Syncs a list of targets from the API, preventing duplicates for a specific user and instance.
         Evolution API returns different formats:
           - groups: { "id": "...", "subject": "Group Name" }
-          - contacts (fetchAllChats): { "id": "...", "name": "Contact Name", "remoteJid": "..." }
+          - contacts (fetchAllChats/contacts.upsert): { "id": "...", "name": "...", "pushName": "...", "notify": "..." }
         """
         now = now_sp()
         for t in targets:
@@ -374,19 +374,28 @@ class SQLTargetRepository:
             if not jid:
                 continue
 
-            # groups use 'subject', contacts use 'name' or 'pushName'
-            push_name = t.get("subject") or t.get("name") or t.get("pushName")
+            # groups use 'subject', contacts use 'name', 'pushName' or 'notify'
+            # 'notify' is the field Evolution API uses in contacts.upsert events
+            push_name = (
+                t.get("subject")
+                or t.get("pushName")
+                or t.get("notify")
+                or t.get("name")
+            )
             if not push_name and "chat" in t and isinstance(t["chat"], dict):
                 push_name = t["chat"].get("name") or t["chat"].get("contact", {}).get(
                     "pushName"
                 )
 
-            name = push_name or jid.split("@")[0]
-            phone = jid.split("@")[0] if "@s.whatsapp.net" in jid else None
+            jid_prefix = jid.split("@")[0]
+            # Only use the JID number as fallback — prefer any real name
+            has_real_name = bool(push_name and push_name != jid_prefix)
+            name = push_name if push_name else jid_prefix
+            phone = jid_prefix if "@s.whatsapp.net" in jid else None
             target_type = "group" if "@g.us" in jid else "chat"
 
-            # skip broadcast/status jids
-            if "broadcast" in jid or "status" in jid:
+            # skip broadcast/status/newsletter jids
+            if any(skip in jid for skip in ["broadcast", "status", "newsletter"]):
                 continue
 
             query = self.db.query(WhatsAppTargetModel).filter(
@@ -410,7 +419,14 @@ class SQLTargetRepository:
                 existing = query.first()
 
             if existing:
-                existing.name = name
+                # Only overwrite name with a real name — never degrade to just the JID number
+                existing_is_generic = (
+                    not existing.name
+                    or existing.name == jid_prefix
+                    or existing.name.isdigit()
+                )
+                if has_real_name or existing_is_generic:
+                    existing.name = name
                 existing.type = target_type
                 existing.phone = phone
                 existing.last_synced_at = now
