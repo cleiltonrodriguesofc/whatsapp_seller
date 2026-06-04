@@ -428,7 +428,7 @@ async def execute_affiliate_task(
             logger.error("[affiliate-scheduler] magalu fetch error: %s", e)
 
     # ── collect offers from mercado livre ─────────────────────────────
-    if ml_enabled and ml_profile_slug:
+    if ml_enabled:
         try:
             ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug)
             ml_offers = await ml_gw.get_offers(
@@ -593,7 +593,7 @@ async def execute_affiliate_group_task(
         except Exception as e:
             logger.error("[group-scheduler] magalu fetch error: %s", e)
 
-    if ml_enabled and ml_profile_slug:
+    if ml_enabled:
         try:
             ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug)
             ml_offers = await ml_gw.get_offers(
@@ -931,7 +931,7 @@ async def campaign_scheduler_loop() -> None:
             active_affiliate_configs = db.query(AffiliateConfigModel).all()
             for config in active_affiliate_configs:
                 has_magalu = bool(config.storefront_slug)
-                has_ml = bool(config.ml_enabled and config.ml_profile_slug)
+                has_ml = bool(config.ml_enabled)
 
                 if not has_magalu and not has_ml:
                     continue
