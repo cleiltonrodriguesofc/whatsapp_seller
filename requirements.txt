@@ -1,5 +1,6 @@
 requests>=2.32.4
 openai
+google-genai
 psycopg2-binary
 fastapi
 uvicorn

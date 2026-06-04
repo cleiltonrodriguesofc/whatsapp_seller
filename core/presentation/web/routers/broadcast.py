@@ -25,7 +25,7 @@ from core.presentation.web.dependencies import login_required, templates
 from core.infrastructure.notifications.evolution_whatsapp import (
     EvolutionWhatsAppService,
 )
-from core.infrastructure.ai.openai_service import OpenAIService
+from core.infrastructure.ai import get_ai_service
 from core.infrastructure.utils.timezone import now_sp, to_sp
 from core.infrastructure.utils.text_utils import parse_contacts_text
 
@@ -231,7 +231,7 @@ async def sync_broadcast_targets(
 
         # Sync contacts
         try:
-            contacts = await whatsapp_service.get_contacts()
+            contacts = await whatsapp_service.get_contacts()  # merges findContacts + findChats
             sync_logger.info(
                 "fetched %d contacts from instance %s", len(contacts or []), inst.name
             )
@@ -242,6 +242,24 @@ async def sync_broadcast_targets(
             msg = f"contacts sync error for {inst.name}: {e}"
             sync_logger.error(msg)
             errors.append(msg)
+
+        # Phonebook enrichment: overwrite generic names with saved agenda names
+        try:
+            phonebook = await whatsapp_service.get_phonebook_contacts()
+            if phonebook and isinstance(phonebook, list):
+                valid_pb = [
+                    p for p in phonebook
+                    if isinstance(p, dict)
+                    and (p.get("remoteJid") or p.get("id"))
+                ]
+                if valid_pb:
+                    target_repo.upsert_sync(valid_pb, current_user.id, instance_id=inst.id)
+                    sync_logger.info(
+                        "phonebook enrichment: %d contacts for instance %s",
+                        len(valid_pb), inst.name,
+                    )
+        except Exception as e:
+            sync_logger.warning("phonebook enrichment failed for %s: %s", inst.name, e)
 
     sync_logger.info(
         "sync complete: %d groups, %d contacts synced for user %s",
@@ -683,7 +701,7 @@ async def improve_broadcast_caption(
     """
     Leverages AI to improve a broadcast message based on user description and target type.
     """
-    ai_service = OpenAIService()
+    ai_service = get_ai_service()
 
     # Contextual prompt based on target type
     if target_type == "contacts":

@@ -393,12 +393,8 @@ async def execute_affiliate_task(
         apikey=instance_apikey,
     )
 
-    ai_service = None
-    try:
-        from core.infrastructure.ai.openai_service import OpenAIService
-        ai_service = OpenAIService()
-    except Exception:
-        pass
+    from core.infrastructure.ai import get_ai_service
+    ai_service = get_ai_service()
 
     # ── collect offers from magalu ────────────────────────────────────
     all_offers = []
@@ -565,12 +561,8 @@ async def execute_affiliate_group_task(
         apikey=instance_apikey,
     )
 
-    ai_service = None
-    try:
-        from core.infrastructure.ai.openai_service import OpenAIService
-        ai_service = OpenAIService()
-    except Exception:
-        pass
+    from core.infrastructure.ai import get_ai_service
+    ai_service = get_ai_service()
 
     # ── collect offers from magalu + ml ──────────────────────────────
     all_offers: list[dict] = []
@@ -733,12 +725,8 @@ async def execute_manual_selected_dispatch(
         apikey=instance_apikey,
     )
 
-    ai_service = None
-    try:
-        from core.infrastructure.ai.openai_service import OpenAIService
-        ai_service = OpenAIService()
-    except Exception:
-        pass
+    from core.infrastructure.ai import get_ai_service
+    ai_service = get_ai_service()
 
     from core.infrastructure.utils.shortener import get_or_create_shortlink
     from core.infrastructure.database.session import SessionLocal as _SessionLocal

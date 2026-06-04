@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from core.application.use_cases.schedule_campaign import ScheduleCampaign
-from core.infrastructure.ai.openai_service import OpenAIService
+from core.infrastructure.ai import get_ai_service
 from core.infrastructure.database.models import (
     InstanceModel,
     StatusCampaignModel,
@@ -413,7 +413,7 @@ async def create_campaign(
         instance=instance_model.name if instance_model else None,
         apikey=instance_model.apikey if instance_model else None,
     )
-    ai_service = OpenAIService()
+    ai_service = get_ai_service()
 
     scheduler = ScheduleCampaign(
         campaign_repo, product_repo, whatsapp_service, ai_service
@@ -569,7 +569,7 @@ async def rewrite_campaign_message(
     if product_id:
         product = product_repo.get_by_id(product_id, user_id=current_user.id)
 
-    ai_service = OpenAIService()
+    ai_service = get_ai_service()
 
     if text:
         prompt = "Melhore esta mensagem de venda para WhatsApp, tornando-a mais persuasiva e profissional. "

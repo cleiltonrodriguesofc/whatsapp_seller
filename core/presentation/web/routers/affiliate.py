@@ -459,12 +459,8 @@ async def preview_affiliate_offer(
         AffiliateConfigModel.user_id == user.id
     ).first()
 
-    ai_service = None
-    try:
-        from core.infrastructure.ai.openai_service import OpenAIService
-        ai_service = OpenAIService()
-    except Exception:
-        pass
+    from core.infrastructure.ai import get_ai_service
+    ai_service = get_ai_service()
 
     try:
         copy = None
@@ -551,12 +547,8 @@ async def approve_affiliate_offer(
          
     whatsapp = EvolutionWhatsAppService(instance=instance.name, apikey=instance.apikey)
     
-    ai_service = None
-    try:
-        from core.infrastructure.ai.openai_service import OpenAIService
-        ai_service = OpenAIService()
-    except Exception:
-        pass
+    from core.infrastructure.ai import get_ai_service
+    ai_service = get_ai_service()
 
     # Extract required values to avoid DetachedInstanceError in async task
     log_id_val = log.id

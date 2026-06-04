@@ -171,32 +171,35 @@ class EvolutionWhatsAppService(NotificationService):
         Sends a status update (text or image).
         """
         url = f"{self.base_url}/message/sendStatus/{self.instance}"
-        is_url = content.startswith("http")
+        is_url = isinstance(content, str) and content.startswith("http")
 
-        # Format content for status images if it's base64/local
+        # Evolution API v2 expects raw base64 for images (no data URI prefix)
         final_content = content
-        if type == "image" and not is_url and not content.startswith("data:"):
-            final_content = f"data:image/jpeg;base64,{content}"
+        if type == "image" and not is_url:
+            # Strip data URI prefix if present (data:image/jpeg;base64,XXX → XXX)
+            if isinstance(content, str) and content.startswith("data:"):
+                final_content = content.split(",", 1)[-1]
+            else:
+                final_content = content
 
         # when no specific targets are provided, use allContacts mode
         # (avoids sending thousands of jids which causes the api to time out)
         use_all_contacts = not jid_list or len(jid_list) == 0
 
-        payload = {
+        payload: dict = {
             "type": type,
             "content": final_content,
             "allContacts": use_all_contacts,
         }
 
         if type == "image":
-            payload["caption"] = caption
+            payload["caption"] = caption or ""
+            payload["mimetype"] = "image/jpeg"
+            payload["fileName"] = "status.jpg"
 
         if type == "text":
             payload["backgroundColor"] = backgroundColor
             payload["font"] = font
-        else:
-            payload["mimetype"] = "image/jpeg"
-            payload["fileName"] = "status.jpg"
 
         if not use_all_contacts:
             payload["statusJidList"] = jid_list
@@ -247,55 +250,91 @@ class EvolutionWhatsAppService(NotificationService):
     async def get_contacts(self) -> list:
         """
         Fetches all contacts from Evolution API v2.
-        Tries POST /chat/findContacts first (phonebook). 
-        If it fails or returns empty (Baileys MD sync bug), falls back to /chat/findChats.
-        Filters to only @s.whatsapp.net JIDs (real phone contacts).
+        Combines BOTH sources to maximise coverage:
+          1. POST /chat/findContacts — the phonebook (has saved/agenda names)
+          2. POST /chat/findChats   — active conversations (has contacts not in phonebook)
+        Merges by JID, prioritising the phonebook name so saved contact names
+        are preserved.  Filters to @s.whatsapp.net and @lid JIDs only.
         """
-        contacts_result = []
-        
-        # 1. Try to fetch from phonebook (findContacts)
+        phonebook: list[dict] = []
+        chats: list[dict] = []
+
+        # ── 1. Phonebook (findContacts) — saved contact names ──
         url_contacts = f"{self.base_url}/chat/findContacts/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url_contacts, json={}, headers=self._headers())
+                res = await client.post(url_contacts, json={"where": {}}, headers=self._headers())
                 res.raise_for_status()
                 data = res.json()
                 if isinstance(data, dict):
                     data = data.get("data", data.get("contacts", data.get("users", [])))
-                
                 if isinstance(data, list):
-                    contacts_result = [
+                    phonebook = [
                         c for c in data
                         if isinstance(c, dict)
                         and (c.get("remoteJid", "").endswith("@s.whatsapp.net") or c.get("remoteJid", "").endswith("@lid"))
                         and c.get("remoteJid") != "0@s.whatsapp.net"
                     ]
+            logger.info(
+                "[get_contacts] findContacts returned %d contacts for %s",
+                len(phonebook), self.instance,
+            )
         except Exception as exc:
             logger.warning("Failed to fetch from findContacts: %s", exc)
 
-        # 2. Fallback to active chats (findChats) if phonebook is empty
-        if not contacts_result:
-            logger.info("findContacts returned empty. Falling back to findChats for instance %s", self.instance)
-            url_chats = f"{self.base_url}/chat/findChats/{self.instance}"
-            try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    res = await client.post(url_chats, json={}, headers=self._headers())
-                    res.raise_for_status()
-                    data = res.json()
-                    if isinstance(data, dict):
-                        data = data.get("data", data.get("chats", data.get("users", [])))
-                    
-                    if isinstance(data, list):
-                        contacts_result = [
-                            c for c in data
-                            if isinstance(c, dict)
-                            and (c.get("remoteJid", "").endswith("@s.whatsapp.net") or c.get("remoteJid", "").endswith("@lid"))
-                            and c.get("remoteJid") != "0@s.whatsapp.net"
-                        ]
-            except Exception as exc:
-                logger.warning("Failed to fetch from findChats fallback: %s", exc)
+        # ── 2. Active chats (findChats) — broader coverage ──
+        url_chats = f"{self.base_url}/chat/findChats/{self.instance}"
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.post(url_chats, json={}, headers=self._headers())
+                res.raise_for_status()
+                data = res.json()
+                if isinstance(data, dict):
+                    data = data.get("data", data.get("chats", data.get("users", [])))
+                if isinstance(data, list):
+                    chats = [
+                        c for c in data
+                        if isinstance(c, dict)
+                        and (c.get("remoteJid", "").endswith("@s.whatsapp.net") or c.get("remoteJid", "").endswith("@lid"))
+                        and c.get("remoteJid") != "0@s.whatsapp.net"
+                    ]
+            logger.info(
+                "[get_contacts] findChats returned %d contacts for %s",
+                len(chats), self.instance,
+            )
+        except Exception as exc:
+            logger.warning("Failed to fetch from findChats: %s", exc)
 
-        return contacts_result
+        # ── 3. Merge: phonebook names take priority ──
+        merged: dict[str, dict] = {}
+
+        # Add chats first (lower priority)
+        for c in chats:
+            jid = c.get("remoteJid") or c.get("id") or ""
+            if jid:
+                merged[jid] = c
+
+        # Overlay phonebook on top (higher priority — saved names)
+        for c in phonebook:
+            jid = c.get("remoteJid") or c.get("id") or ""
+            if not jid:
+                continue
+            if jid in merged:
+                # Preserve the phonebook entry but carry over any extra fields
+                # from the chat that the phonebook might be missing
+                base = merged[jid].copy()
+                base.update({k: v for k, v in c.items() if v})
+                merged[jid] = base
+            else:
+                merged[jid] = c
+
+        result = list(merged.values())
+        logger.info(
+            "[get_contacts] merged total: %d unique contacts for %s "
+            "(phonebook=%d, chats=%d)",
+            len(result), self.instance, len(phonebook), len(chats),
+        )
+        return result
 
     async def get_active_chats(self) -> list:
         """

@@ -24,7 +24,7 @@ from core.infrastructure.database.session import get_db
 from core.presentation.web.dependencies import login_required, templates
 from core.presentation.web.routers.products import _save_uploaded_image
 from core.infrastructure.services.supabase_storage import SupabaseStorageService
-from core.infrastructure.ai.openai_service import OpenAIService
+from core.infrastructure.ai import get_ai_service
 
 logger = logging.getLogger(__name__)
 
@@ -327,7 +327,7 @@ async def improve_status_caption(
     """
     Leverages AI to improve a status caption based on user description and title.
     """
-    ai_service = OpenAIService()
+    ai_service = get_ai_service()
 
     prompt = (
         f"Melhore esta legenda para um Status de WhatsApp.\n\n"
