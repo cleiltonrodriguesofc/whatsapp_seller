@@ -14,6 +14,7 @@ import re
 import json
 import asyncio
 import httpx
+from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
@@ -218,20 +219,18 @@ class MercadoLivreGateway:
     # ── strategy 2: web scraping fallback ─────────────────────────────────
 
     async def _fetch_category_scrape(self, category_key: str, limit: int = 10) -> list[MLOffer]:
-        """scrapes ml search results page and parses __NEXT_DATA__ JSON."""
+        """scrapes ml search results page simulating Googlebot to bypass captchas/login walls."""
         cat_info = ML_CATEGORY_MAP.get(category_key, {})
         query = cat_info.get("query", category_key)
         search_slug = query.replace(" ", "-")
 
         url = f"https://lista.mercadolivre.com.br/{search_slug}_Condition_2230284_NoIndex_True"
 
+        # Pretend to be Googlebot to bypass login wall and get server-rendered HTML
         headers = {
-            **_BROWSER_HEADERS,
+            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Cache-Control": "no-cache",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
+            "Cache-Control": "no-cache"
         }
 
         try:
@@ -243,89 +242,79 @@ class MercadoLivreGateway:
             logger.error("[ml] scrape fetch error for '%s': %s", category_key, e)
             return []
 
-        # extract __NEXT_DATA__ JSON embedded in the page
-        match = re.search(
-            r'<script\s+id="__NEXT_DATA__"[^>]*>(.*?)</script>',
-            html, re.DOTALL,
-        )
-        if not match:
-            logger.warning("[ml] __NEXT_DATA__ not found for '%s' (page len=%d)", category_key, len(html))
-            return []
+        soup = BeautifulSoup(html, "html.parser")
+        items = soup.select(".ui-search-result__wrapper")
 
-        try:
-            next_data = json.loads(match.group(1))
-        except json.JSONDecodeError as e:
-            logger.error("[ml] __NEXT_DATA__ JSON parse error for '%s': %s", category_key, e)
-            return []
-
-        # navigate the next_data structure to find product results
-        results = self._extract_results_from_next_data(next_data)
-
-        if not results:
-            logger.warning("[ml] no results found in __NEXT_DATA__ for '%s'", category_key)
+        if not items:
+            logger.warning("[ml] no product wrappers found for '%s' (page len=%d)", category_key, len(html))
             return []
 
         offers = []
-        for item in results[:limit]:
+        for item in items[:limit]:
             try:
-                offer = self._parse_api_item(item, category_key)
-                if offer:
-                    offers.append(offer)
+                title_node = item.select_one("h3.poly-component__title-wrapper a, h2.ui-search-item__title, a.poly-component__title")
+                if not title_node:
+                    continue
+                
+                title = title_node.text.strip()
+                if not title or len(title) < 5:
+                    continue
+
+                link = title_node.get("href", "")
+                affiliate_link = self._build_affiliate_link(link)
+
+                price_node = item.select_one(".poly-price__current .andes-money-amount__fraction, .ui-search-price__second-line .andes-money-amount__fraction")
+                if not price_node:
+                    continue
+                price_str = price_node.text.replace(".", "").replace(",", ".")
+                price = float(price_str)
+
+                # discount
+                discount_node = item.select_one(".poly-price__disc_label, .ui-search-price__discount")
+                discount = 0.0
+                if discount_node:
+                    m = re.search(r'(\d+)%', discount_node.text)
+                    if m:
+                        discount = float(m.group(1))
+
+                old_price = None
+                if discount > 0:
+                    old_price_node = item.select_one("s.andes-money-amount--previous .andes-money-amount__fraction")
+                    if old_price_node:
+                        old_price_str = old_price_node.text.replace(".", "").replace(",", ".")
+                        old_price = float(old_price_str)
+                    else:
+                        old_price = round(price / (1 - (discount / 100.0)), 2)
+
+                img_node = item.select_one("img.poly-component__picture, img.ui-search-result-image__element")
+                if not img_node:
+                    continue
+                img_url = img_node.get("src") or img_node.get("data-src") or ""
+                
+                installment_text = ""
+                install_node = item.select_one(".poly-price__installments")
+                if install_node:
+                    installment_text = " ".join(install_node.stripped_strings)
+
+                if len(title) > 100:
+                    title = title[:97] + "..."
+
+                offers.append(MLOffer(
+                    title=title,
+                    price=price,
+                    old_price=old_price,
+                    discount_percent=discount,
+                    image_url=img_url,
+                    affiliate_link=affiliate_link,
+                    category=category_key,
+                    installment_text=installment_text,
+                    pix_discount_text=""
+                ))
             except Exception as e:
                 logger.debug("[ml] error parsing scraped item: %s", e)
 
         logger.info("[ml] scraped %d offers for '%s'", len(offers), category_key)
         return offers
-
-    @staticmethod
-    def _extract_results_from_next_data(next_data: dict) -> list[dict]:
-        """extracts product result list from ml's __NEXT_DATA__ JSON structure."""
-        # try known paths in priority order
-        try:
-            props = next_data.get("props", {})
-            page_props = props.get("pageProps", {})
-
-            # path 1: initialState.results (most common)
-            initial_state = page_props.get("initialState", {})
-            results = initial_state.get("results")
-            if results and isinstance(results, list):
-                return results
-
-            # path 2: initialProps.searchResults
-            initial_props = page_props.get("initialProps", {})
-            search_results = initial_props.get("searchResults", {})
-            results = search_results.get("results")
-            if results and isinstance(results, list):
-                return results
-
-            # path 3: direct pageProps.results
-            results = page_props.get("results")
-            if results and isinstance(results, list):
-                return results
-
-            # path 4: walk the tree looking for a 'results' key with items
-            return MercadoLivreGateway._deep_find_results(next_data)
-
-        except Exception as e:
-            logger.debug("[ml] error extracting results from __NEXT_DATA__: %s", e)
-            return []
-
-    @staticmethod
-    def _deep_find_results(obj: dict, depth: int = 0) -> list[dict]:
-        """recursively search for a 'results' key containing product-like items."""
-        if depth > 5 or not isinstance(obj, dict):
-            return []
-        for key, val in obj.items():
-            if key == "results" and isinstance(val, list) and len(val) > 0:
-                # check if items look like products (have title and price)
-                first = val[0] if isinstance(val[0], dict) else {}
-                if "title" in first or "id" in first:
-                    return val
-            if isinstance(val, dict):
-                found = MercadoLivreGateway._deep_find_results(val, depth + 1)
-                if found:
-                    return found
-        return []
 
     # ── shared item parser ────────────────────────────────────────────────
 
