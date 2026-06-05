@@ -83,7 +83,20 @@ async def generate_promo_card(
                 </div>
         """
     elif store_type == "mercadolivre":
-        logo_html = """
+        try:
+            import os
+            logo_path = os.path.join(os.path.dirname(__file__), "assets", "ml_logo.jpg")
+            with open(logo_path, "rb") as f:
+                ml_logo_b64 = base64.b64encode(f.read()).decode("utf-8")
+            logo_html = f"""
+                <div class="magalu-logo">
+                    <img src="data:image/jpeg;base64,{ml_logo_b64}" width="100" height="100" style="border-radius: 16px;">
+                    <div class="text" style="color: #2D3277;">mercado<br>livre</div>
+                </div>
+            """
+        except Exception as e:
+            logger.warning("Failed to load ml_logo.jpg: %s", e)
+            logo_html = """
                 <div class="magalu-logo">
                     <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="50" cy="50" r="50" fill="#2D3277"/>
