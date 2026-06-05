@@ -391,26 +391,21 @@
             </label>
         </div>
         <div id="groupSection" style="transition: opacity 0.2s; {{ '' if config.group_enabled else 'opacity:0.45;' }}">
-            {% if available_groups %}
             <div style="margin-bottom: 1rem;">
-                <label class="form-label">Grupos para receber as ofertas</label>
-                <div class="category-grid" id="groupGrid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-                    {% for group in available_groups %}
-                    <label class="group-chip {{ 'active' if group.id in config.group_jids else '' }}"
-                           data-jid="{{ group.id }}" onclick="toggleGroup(this)">
-                        <input type="checkbox" value="{{ group.id }}"
-                               {{ 'checked' if group.id in config.group_jids else '' }}
-                               style="pointer-events: none;">
-                        👥 {{ group.name }}
-                    </label>
-                    {% endfor %}
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <label class="form-label" style="margin: 0;">Grupos para receber as ofertas</label>
+                    <button type="button" id="btnLoadGroups" onclick="loadGroups()"
+                            style="font-size: 0.78rem; padding: 0.3rem 0.85rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <span id="loadGroupsIcon">🔄</span> Carregar grupos
+                    </button>
+                </div>
+                <div id="groupGrid" class="category-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                    <!-- groups loaded dynamically via JS -->
+                    <div id="groupGridPlaceholder" style="color: var(--text-secondary); font-size: 0.85rem; padding: 0.6rem; grid-column: 1/-1;">
+                        Clique em "Carregar grupos" para listar os grupos do WhatsApp.
+                    </div>
                 </div>
             </div>
-            {% else %}
-            <div style="color: #f59e0b; font-size: 0.85rem; padding: 0.75rem; background: rgba(245,158,11,0.1); border-radius: 8px; border: 1px solid rgba(245,158,11,0.2); margin-bottom: 1rem;">
-                ⚠️ Nenhum grupo encontrado. Certifique-se de estar conectado ao WhatsApp e ter grupos no seu celular.
-            </div>
-            {% endif %}
             <div style="margin-bottom: 0.5rem;">
                 <label class="form-label">Horários de Disparo nos Grupos</label>
                 <input type="text" id="group_dispatch_hours" class="form-input"
@@ -420,6 +415,10 @@
                 </div>
             </div>
         </div>
+        <!-- hidden: persisted group jids for JS init -->
+        <script>
+            const _savedGroupJids = {{ config.group_jids | tojson }};
+        </script>
 
         <div style="text-align: right; margin-top: 1.5rem;">
             <button type="submit" class="btn btn-primary" style="font-weight: 600; padding: 0.65rem 1.5rem;">
@@ -460,9 +459,10 @@
                     <input type="checkbox" value="status" checked style="pointer-events:none; accent-color:#6366f1;">
                     📱 Meu Status
                 </label>
-                <label class="target-chip" id="chipGroups" onclick="toggleTarget(this,'groups')">
+                <label class="target-chip" id="chipGroups" onclick="toggleTarget(this,'groups')" title="Grupos configurados na seção acima">
                     <input type="checkbox" value="groups" style="pointer-events:none; accent-color:#10b981;">
                     👥 Meus Grupos
+                    <span id="groupCountBadge" style="display:none; font-size:0.7rem; background:rgba(16,185,129,0.3); border-radius:10px; padding:0.1rem 0.45rem; margin-left:0.2rem;"></span>
                 </label>
             </div>
         </div>
@@ -568,6 +568,65 @@
         const cb = chip.querySelector('input[type="checkbox"]');
         cb.checked = !cb.checked;
         chip.classList.toggle('active', cb.checked);
+        updateGroupCountBadge();
+    }
+
+    function updateGroupCountBadge() {
+        const count = document.querySelectorAll('#groupGrid input[type="checkbox"]:checked').length;
+        const badge = document.getElementById('groupCountBadge');
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count + ' grupo' + (count !== 1 ? 's' : '');
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    }
+
+    async function loadGroups() {
+        const btn = document.getElementById('btnLoadGroups');
+        const icon = document.getElementById('loadGroupsIcon');
+        const grid = document.getElementById('groupGrid');
+        const placeholder = document.getElementById('groupGridPlaceholder');
+
+        if (btn) btn.disabled = true;
+        if (icon) icon.textContent = '⏳';
+
+        try {
+            const res = await fetch('/affiliate/groups');
+            const data = await res.json();
+
+            if (!data.success || !data.groups || data.groups.length === 0) {
+                if (placeholder) {
+                    placeholder.style.color = '#f59e0b';
+                    placeholder.textContent = '⚠️ Nenhum grupo encontrado. Certifique-se de estar conectado ao WhatsApp.';
+                }
+                return;
+            }
+
+            // render group chips, marking saved jids as checked
+            const chips = data.groups.map(g => {
+                const isSaved = _savedGroupJids.includes(g.id);
+                return `<label class="group-chip ${isSaved ? 'active' : ''}" data-jid="${g.id}" onclick="toggleGroup(this)">
+                    <input type="checkbox" value="${g.id}" ${isSaved ? 'checked' : ''} style="pointer-events:none;">
+                    👥 ${g.name}
+                </label>`;
+            }).join('');
+
+            grid.innerHTML = chips;
+            updateGroupCountBadge();
+
+            if (icon) icon.textContent = '✅';
+            setTimeout(() => { if (icon) icon.textContent = '🔄'; }, 2000);
+        } catch (e) {
+            if (placeholder) {
+                placeholder.style.color = '#f87171';
+                placeholder.textContent = '❌ Erro ao carregar grupos. Verifique a conexão.';
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
     }
 
     function getSelectedCategories() {
@@ -921,10 +980,20 @@
         });
     }
 
-    // init: activate default target chip on load
+    // init: activate default target chip on load + show saved group count badge
     window.addEventListener('DOMContentLoaded', () => {
         const chipStatus = document.getElementById('chipStatus');
         if (chipStatus) chipStatus.classList.add('active-status');
+
+        // show saved group count badge in dispatch section (without needing to load groups)
+        if (typeof _savedGroupJids !== 'undefined' && _savedGroupJids.length > 0) {
+            const badge = document.getElementById('groupCountBadge');
+            if (badge) {
+                const n = _savedGroupJids.length;
+                badge.textContent = n + ' grupo' + (n !== 1 ? 's' : '');
+                badge.style.display = 'inline';
+            }
+        }
     });
 </script>
 {% endblock %}

@@ -241,6 +241,40 @@ async def delete_avatar(
     return JSONResponse({"success": True, "message": "Avatar removido."})
 
 
+@router.get("/groups")
+async def get_affiliate_groups(
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    """Fetches available WhatsApp groups for the connected instance (AJAX endpoint)."""
+    instance = (
+        db.query(InstanceModel)
+        .filter(InstanceModel.user_id == user.id)
+        .first()
+    )
+    if not instance:
+        return JSONResponse({"success": False, "error": "Nenhuma instância conectada.", "groups": []})
+
+    try:
+        from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+        ws = EvolutionWhatsAppService(instance=instance.name, apikey=instance.apikey)
+        raw_groups = await ws.get_groups()
+        groups = []
+        if isinstance(raw_groups, list):
+            for g in raw_groups:
+                gid = g.get("id") or g.get("remoteJid") or ""
+                if gid:
+                    groups.append({
+                        "id": gid,
+                        "name": g.get("subject") or g.get("name") or gid.split("@")[0],
+                    })
+        logger.info("[affiliate/groups] fetched %d groups for user %s", len(groups), user.id)
+        return JSONResponse({"success": True, "groups": groups})
+    except Exception as e:
+        logger.warning("[affiliate/groups] failed to fetch groups: %s", e)
+        return JSONResponse({"success": False, "error": str(e), "groups": []})
+
+
 @router.get("/logs")
 async def get_affiliate_logs(
     db: Session = Depends(get_db),
