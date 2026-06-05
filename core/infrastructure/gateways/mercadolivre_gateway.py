@@ -114,12 +114,13 @@ class MercadoLivreGateway:
         min_discount_percent: float = 5.0,
         max_offers: int = 5,
         custom_search_terms: str = "",
+        preferred_brands: str = "",
     ) -> list[MLOffer]:
         """returns affiliate offers from ml."""
         if not categories:
             categories = []
 
-        cache_key = f"{','.join(sorted(categories))}:{custom_search_terms}:{self.client_id}"
+        cache_key = f"{','.join(sorted(categories))}:{custom_search_terms}:{preferred_brands}:{self.client_id}"
         now = datetime.utcnow()
 
         if cache_key in _ml_cache:
@@ -130,12 +131,19 @@ class MercadoLivreGateway:
                 return filtered[:max_offers]
 
         all_offers: list[MLOffer] = []
+        brands = [b.strip() for b in preferred_brands.split(",") if b.strip()] if preferred_brands else []
         
         search_terms = []
         if custom_search_terms:
             search_terms.extend([t.strip() for t in custom_search_terms.split(",") if t.strip()])
         else:
-            search_terms.extend([cat for cat in categories if cat in ML_CATEGORY_MAP])
+            for cat in categories:
+                if cat in ML_CATEGORY_MAP:
+                    if brands:
+                        for brand in brands:
+                            search_terms.append(f"{cat} {brand}")
+                    else:
+                        search_terms.append(cat)
             
         if not search_terms:
             return []
@@ -158,6 +166,9 @@ class MercadoLivreGateway:
         seen_titles: set[str] = set()
         unique_offers: list[MLOffer] = []
         for o in all_offers:
+            if brands and not any(b.lower() in o.title.lower() for b in brands):
+                continue
+            
             key = o.title[:50].lower()
             if key not in seen_titles:
                 seen_titles.add(key)

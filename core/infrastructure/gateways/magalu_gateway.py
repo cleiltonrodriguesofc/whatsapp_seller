@@ -128,6 +128,8 @@ class MagaluGateway:
 
         filtered = []
         for o in all_offers:
+            if brands and not any(b.lower() in o.title.lower() for b in brands):
+                continue
             if o.discount_percent >= min_discount_percent:
                 filtered.append(o)
             elif not o.old_price or o.old_price <= o.price:
@@ -247,7 +249,7 @@ class MagaluGateway:
                         for (const link of links) {
                             try {
                                 const href = link.href || '';
-                                const pidMatch = href.match(/\\/p\\/([^/?]+)/);
+                                const pidMatch = href.match(/\/p\/([^/?]+)/);
                                 const pid = pidMatch ? pidMatch[1] : href;
                                 if (seen.has(pid)) continue;
                                 seen.add(pid);
@@ -256,8 +258,8 @@ class MagaluGateway:
 
                                 // extract title: everything before the first rating pattern or R$
                                 let title = allText
-                                    .replace(/\\d+[.,]\\d+\\s*\\(\\d+\\)/g, '')  // remove "4.8 (379)"
-                                    .split(/R\\$/)[0]                          // cut before first R$
+                                    .replace(/\d+[.,]\d+\s*\(\d+\)/g, '')  // remove "4.8 (379)"
+                                    .split(/R\$/)[0]                          // cut before first R$
                                     .replace(/^Full/, '')                     // remove leading "Full"
                                     .trim();
                                 // cap at 100 chars
@@ -278,7 +280,7 @@ class MagaluGateway:
                                 // if data-testids fail, fallback to text parsing
                                 if (!priceText || !oldPriceText) {
                                     // extract ALL R$ values from text
-                                    const priceRegex = /R\\\$\\s*([\\d.,]+)/g;
+                                    const priceRegex = /R\$\s*([\d.,]+)/g;
                                     const priceValues = [];
                                     let m;
                                     while ((m = priceRegex.exec(allText)) !== null) {
@@ -310,7 +312,7 @@ class MagaluGateway:
                                     if (instMatch) installmentText = instMatch[1];
                                 }
 
-                                const pixDiscMatch = allText.match(/\\((\\d+% de desconto no pix)\\)/i) || allText.match(/\\((.*desconto.*)\\)/i);
+                                const pixDiscMatch = allText.match(/\((\d+% de desconto no pix)\)/i) || allText.match(/\((.*desconto.*)\)/i);
                                 let pixDiscountText = pixDiscMatch ? pixDiscMatch[1] : '';
 
                                 // image
@@ -333,7 +335,7 @@ class MagaluGateway:
                         return items.slice(0, 20);
 
                         function card_text(el) {
-                            return (el.textContent || '').replace(/\\s+/g, ' ').trim();
+                            return (el.textContent || '').replace(/\s+/g, ' ').trim();
                         }
                     }
                 """)
