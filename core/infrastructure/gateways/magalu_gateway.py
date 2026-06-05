@@ -93,16 +93,18 @@ class MagaluGateway:
             if not cat:
                 logger.warning("[magalu] unknown category key: %s", cat_key)
                 continue
-            
+
             if brands:
                 for brand in brands:
-                    base_path = cat['path'].rstrip('/')
-                    search_path = f"{base_path}%20{brand.replace(' ', '%20')}/"
+                    # use query string: magazinevoce.com.br/magazine{slug}/busca/{brand}+{category}/
+                    search_term = f"{brand.replace(' ', '+')}+{cat_key}"
+                    search_path = f"busca/{search_term}/"
+                    label = f"{cat['label']} {brand}"
                     try:
-                        offers = await self._fetch_category(search_path, f"{cat['label']} {brand}")
+                        offers = await self._fetch_category(search_path, label)
                         all_offers.extend(offers)
                     except Exception as e:
-                        logger.error("[magalu] error fetching category %s with brand %s: %s", cat_key, brand, e)
+                        logger.error("[magalu] error fetching %s: %s", label, e)
             else:
                 try:
                     offers = await self._fetch_category(cat["path"], cat["label"])
@@ -209,9 +211,18 @@ class MagaluGateway:
 
                 # check if we hit a captcha page
                 page_title = page.title() or ""
-                if "captcha" in page_title.lower():
+                page_content = page.content() or ""
+                captcha_hit = (
+                    "captcha" in page_title.lower()
+                    or "captcha" in page_content.lower()
+                    or "robot" in page_content.lower()
+                    or "challenge" in page_content.lower()
+                )
+                if captcha_hit:
                     logger.warning("[magalu] captcha detected on %s, trying to wait longer...", url)
-                    page.wait_for_timeout(5000)
+                    page.wait_for_timeout(6000)
+                    page.evaluate("window.scrollBy(0, 300)")
+                    page.wait_for_timeout(2000)
 
                 # extract product data from the rendered page
                 products = page.evaluate("""

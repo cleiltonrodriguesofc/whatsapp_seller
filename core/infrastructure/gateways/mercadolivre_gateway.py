@@ -160,27 +160,52 @@ class MercadoLivreGateway:
             "sort": "relevance",
             "limit": min(limit, 50),
             "condition": "new",
-            "shipping_cost": "free",  # prefer free shipping items
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-                resp = await client.get(
-                    ML_SEARCH_API,
-                    params=params,
-                    headers={
-                        "Accept": "application/json",
-                        "Accept-Language": "pt-BR",
-                        "User-Agent": "Mozilla/5.0 (compatible; WhatSellerPro/1.0)",
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except httpx.HTTPError as e:
-            logger.error("[ml] http error for category %s: %s", category_key, e)
-            return []
-        except Exception as e:
-            logger.error("[ml] unexpected error for category %s: %s", category_key, e)
+        # realistic browser headers to avoid 403
+        headers = {
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": "https://www.mercadolivre.com.br/",
+            "Origin": "https://www.mercadolivre.com.br",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-site",
+        }
+
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+                    resp = await client.get(ML_SEARCH_API, params=params, headers=headers)
+
+                    if resp.status_code in (403, 429) and attempt == 0:
+                        logger.warning(
+                            "[ml] %s for category %s on attempt 1, retrying after delay...",
+                            resp.status_code, category_key,
+                        )
+                        await asyncio.sleep(3)
+                        continue
+
+                    resp.raise_for_status()
+                    data = resp.json()
+                    break
+            except httpx.HTTPError as e:
+                logger.error("[ml] http error for category %s: %s", category_key, e)
+                return []
+            except Exception as e:
+                logger.error("[ml] unexpected error for category %s: %s", category_key, e)
+                return []
+        else:
+            logger.error("[ml] all attempts failed for category %s", category_key)
             return []
 
         results = data.get("results", [])
