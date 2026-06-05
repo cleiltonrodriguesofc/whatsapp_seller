@@ -228,14 +228,14 @@
             <label class="form-label">Categorias para buscar ofertas</label>
             <div class="category-grid" id="categoryGrid">
                 {% for key, label in available_categories.items() %}
-                <label class="category-chip {{ 'active' if key in config.categories else '' }}"
+                <div class="category-chip {{ 'active' if key in config.categories else '' }}"
                        data-key="{{ key }}"
                        onclick="toggleCategory(this)">
                     <input type="checkbox" value="{{ key }}"
                            {{ 'checked' if key in config.categories else '' }}
                            style="pointer-events: none;">
                     {{ label }}
-                </label>
+                </div>
                 {% endfor %}
             </div>
         </div>
@@ -369,13 +369,13 @@
                 <label class="form-label">Categorias ML para buscar</label>
                 <div class="category-grid" id="mlCategoryGrid">
                     {% for key, label in available_ml_categories.items() %}
-                    <label class="category-chip {{ 'active' if key in config.ml_categories else '' }}"
+                    <div class="category-chip {{ 'active' if key in config.ml_categories else '' }}"
                            data-key="{{ key }}" onclick="toggleMlCategory(this)">
                         <input type="checkbox" value="{{ key }}"
                                {{ 'checked' if key in config.ml_categories else '' }}
                                style="pointer-events: none;">
                         {{ label }}
-                    </label>
+                    </div>
                     {% endfor %}
                 </div>
             </div>
@@ -442,15 +442,15 @@
     <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; text-align: left;">
         <p style="margin: 0 0 0.75rem 0; font-weight: 600; font-size: 0.9rem; color: white;">📤 Enviar para:</p>
         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <label class="target-chip active-status" id="chipStatus" onclick="toggleTarget(this,'status')">
+            <div class="target-chip active-status" id="chipStatus" onclick="toggleTarget(this,'status')">
                 <input type="checkbox" value="status" checked style="pointer-events:none; accent-color:#6366f1;">
                 📱 Meu Status
-            </label>
-            <label class="target-chip" id="chipGroups" onclick="toggleTarget(this,'groups')" title="Grupos configurados na seção acima">
+            </div>
+            <div class="target-chip" id="chipGroups" onclick="toggleTarget(this,'groups')" title="Grupos configurados na seção acima">
                 <input type="checkbox" value="groups" style="pointer-events:none; accent-color:#10b981;">
                 👥 Meus Grupos
                 <span id="groupCountBadge" style="display:none; font-size:0.7rem; background:rgba(16,185,129,0.3); border-radius:10px; padding:0.1rem 0.45rem; margin-left:0.2rem;"></span>
-            </label>
+            </div>
         </div>
     </div>
 
@@ -608,10 +608,10 @@
             // render group chips, marking saved jids as checked
             const chips = data.groups.map(g => {
                 const isSaved = _savedGroupJids.includes(g.id);
-                return `<label class="group-chip ${isSaved ? 'active' : ''}" data-jid="${g.id}" onclick="toggleGroup(this)">
+                return `<div class="group-chip ${isSaved ? 'active' : ''}" data-jid="${g.id}" onclick="toggleGroup(this)">
                     <input type="checkbox" value="${g.id}" ${isSaved ? 'checked' : ''} style="pointer-events:none;">
                     👥 ${g.name}
-                </label>`;
+                </div>`;
             }).join('');
 
             grid.innerHTML = chips;

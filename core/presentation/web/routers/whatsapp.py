@@ -430,7 +430,7 @@ async def sync_whatsapp_targets(
         logger.warning("[sync] could not refresh instance status: %s", exc)
 
     groups = await whatsapp_service.get_groups()
-    chats = await whatsapp_service.get_contacts()
+    chats = await whatsapp_service.get_contacts()  # already merges findContacts + findChats
 
     # normalize lists (api may return {"data": [...]})
     g_list = groups.get("data", groups) if isinstance(groups, dict) else groups
@@ -447,6 +447,26 @@ async def sync_whatsapp_targets(
         target_repo.upsert_sync(
             targets, user_id=current_user.id, instance_id=instance_model.id
         )
+
+    # ── Phonebook enrichment: overwrite generic names with saved agenda names ──
+    try:
+        phonebook = await whatsapp_service.get_phonebook_contacts()
+        if phonebook and isinstance(phonebook, list):
+            valid_pb = [
+                p for p in phonebook
+                if isinstance(p, dict)
+                and (p.get("remoteJid") or p.get("id"))
+            ]
+            if valid_pb:
+                target_repo.upsert_sync(
+                    valid_pb, user_id=current_user.id, instance_id=instance_model.id
+                )
+                logger.info(
+                    "[sync] phonebook enrichment: %d contacts for instance %s",
+                    len(valid_pb), instance_model.name,
+                )
+    except Exception as exc:
+        logger.warning("[sync] phonebook enrichment failed: %s", exc)
 
     return {"success": True, "count": len(targets)}
 
@@ -729,7 +749,7 @@ async def evolution_webhook(
                 target_repo = SQLTargetRepository(db)
 
                 groups = await svc.get_groups()
-                contacts = await svc.get_contacts()
+                contacts = await svc.get_contacts()  # already merges findContacts + findChats
 
                 g_list = groups.get("data", groups) if isinstance(groups, dict) else groups
                 c_list = contacts if isinstance(contacts, list) else []
@@ -748,6 +768,28 @@ async def evolution_webhook(
                         "[webhook] auto-synced %d targets for instance '%s'",
                         len(all_targets), instance_name
                     )
+
+                # ── Phonebook enrichment: overwrite generic names ──
+                try:
+                    phonebook = await svc.get_phonebook_contacts()
+                    if phonebook and isinstance(phonebook, list):
+                        valid_pb = [
+                            p for p in phonebook
+                            if isinstance(p, dict)
+                            and (p.get("remoteJid") or p.get("id"))
+                        ]
+                        if valid_pb:
+                            target_repo.upsert_sync(
+                                valid_pb,
+                                user_id=instance_model.user_id,
+                                instance_id=instance_model.id,
+                            )
+                            logger.info(
+                                "[webhook] phonebook enrichment: %d contacts for '%s'",
+                                len(valid_pb), instance_name,
+                            )
+                except Exception as pb_exc:
+                    logger.warning("[webhook] phonebook enrichment failed: %s", pb_exc)
             except Exception as exc:
                 logger.error("[webhook] auto-sync error: %s", exc)
 

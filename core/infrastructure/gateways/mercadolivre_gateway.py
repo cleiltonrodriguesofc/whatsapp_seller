@@ -223,7 +223,7 @@ class MercadoLivreGateway:
         query = cat_info.get("query", category_key)
         search_slug = query.replace(" ", "-")
 
-        url = f"https://listado.mercadolivre.com.br/{search_slug}_Condition_2230284_NoIndex_True"
+        url = f"https://lista.mercadolivre.com.br/{search_slug}_Condition_2230284_NoIndex_True"
 
         headers = {
             **_BROWSER_HEADERS,
