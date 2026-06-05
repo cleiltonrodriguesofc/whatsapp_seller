@@ -269,3 +269,23 @@ class AffiliateOffer:
     image_url: Optional[str] = None
     coupon_code: Optional[str] = None
     source: str = "mercadolivre"
+
+
+@dataclass
+class AffiliateCampaign:
+    """an affiliate marketing campaign configuration."""
+    name: str
+    categories: str
+    user_id: int
+    preferred_brands: Optional[str] = None
+    min_discount_percent: float = 10.0
+    use_magalu: bool = True
+    use_ml: bool = True
+    send_to_status: bool = True
+    send_to_groups: bool = False
+    group_jids: Optional[str] = None
+    dispatch_hours: str = "9,12,18"
+    is_active: bool = True
+    id: Optional[int] = None
+    last_run_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=now_sp)

@@ -233,6 +233,31 @@ try:
                 "preferred_brands",
                 "ALTER TABLE affiliate_configs ADD COLUMN preferred_brands VARCHAR;",
             ),
+            (
+                "affiliate_configs",
+                "ml_profile_slug",
+                "ALTER TABLE affiliate_configs ADD COLUMN ml_profile_slug VARCHAR;",
+            ),
+            (
+                "affiliate_configs",
+                "ml_client_id",
+                "ALTER TABLE affiliate_configs ADD COLUMN ml_client_id VARCHAR;",
+            ),
+            (
+                "affiliate_configs",
+                "ml_enabled",
+                "ALTER TABLE affiliate_configs ADD COLUMN ml_enabled BOOLEAN DEFAULT FALSE;",
+            ),
+            (
+                "affiliate_configs",
+                "ml_categories",
+                "ALTER TABLE affiliate_configs ADD COLUMN ml_categories VARCHAR DEFAULT 'notebook,celular';",
+            ),
+            (
+                "affiliate_campaigns",
+                "custom_search_terms",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN custom_search_terms VARCHAR;",
+            ),
         ])
 
 

@@ -64,6 +64,11 @@ async def generate_promo_card(
     if owner_avatar_b64:
         avatar_html = f'<img src="data:image/jpeg;base64,{owner_avatar_b64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;">'
 
+    text_color = "white"
+    if store_type == "mercadolivre":
+        theme_color = "#FFE600"
+        text_color = "#2D3277"
+
     logo_html = ""
     if store_type == "magalu":
         logo_html = """
@@ -77,10 +82,20 @@ async def generate_promo_card(
                     <div class="text">influenciador<br>magalu</div>
                 </div>
         """
+    elif store_type == "mercadolivre":
+        logo_html = """
+                <div class="magalu-logo">
+                    <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="50" fill="#2D3277"/>
+                        <path d="M25 50 L45 50 L65 30 M45 50 L60 65 L80 45" stroke="#FFE600" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
+                    <div class="text" style="color: #2D3277;">mercado<br>livre</div>
+                </div>
+        """
     else:
         logo_html = f"""
                 <div class="magalu-logo">
-                    <div class="text" style="font-size: 50px;">{store_type}</div>
+                    <div class="text" style="font-size: 50px; color: {text_color};">{store_type}</div>
                 </div>
         """
 
@@ -130,7 +145,7 @@ async def generate_promo_card(
             /* Rainbow Side Bar */
             .side-bar {{
                 position: absolute; left: 0; top: 0; bottom: 0; width: 30px;
-                background: { "linear-gradient(to bottom, #ffea00 0%, #ff0055 33%, #0066ff 66%, #00cc00 100%)" if store_type == "magalu" else "rgba(255,255,255,0.3)" };
+                background: { "linear-gradient(to bottom, #ffea00 0%, #ff0055 33%, #0066ff 66%, #00cc00 100%)" if store_type == "magalu" else ("rgba(45, 50, 119, 1)" if store_type == "mercadolivre" else "rgba(255,255,255,0.3)") };
                 z-index: 2;
             }}
 
@@ -150,7 +165,7 @@ async def generate_promo_card(
                 display: flex; align-items: center; gap: 20px; margin-bottom: 25px;
             }}
             .magalu-logo .text {{
-                color: white; font-size: 38px; font-weight: 800; line-height: 1.1;
+                color: {text_color}; font-size: 38px; font-weight: 800; line-height: 1.1;
                 text-transform: lowercase;
             }}
 
@@ -159,19 +174,19 @@ async def generate_promo_card(
             }}
             .user-avatar {{
                 width: 120px; height: 120px; border-radius: 35px;
-                background: #f0c080; border: 4px solid white;
+                background: #f0c080; border: 4px solid {text_color};
                 display: flex; align-items: center; justify-content: center;
                 font-size: 70px; overflow: hidden;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             }}
             .user-name {{
-                color: white; font-size: 65px; font-weight: 800;
-                text-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                color: {text_color}; font-size: 65px; font-weight: 800;
+                text-shadow: {"none" if store_type == "mercadolivre" else "0 4px 10px rgba(0,0,0,0.1)"};
             }}
 
             .tagline {{
-                color: white; font-size: 100px; font-weight: 900;
-                letter-spacing: -3px; text-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                color: {text_color}; font-size: 100px; font-weight: 900;
+                letter-spacing: -3px; text-shadow: {"none" if store_type == "mercadolivre" else "0 8px 20px rgba(0,0,0,0.15)"};
                 margin-top: -5px;
             }}
             .tagline span {{ font-weight: 700; }}
@@ -220,7 +235,7 @@ async def generate_promo_card(
             }}
             .ou-text {{ color: #555; font-size: 32px; font-weight: 700; }}
             .price-box {{
-                background: {theme_color}; color: white;
+                background: {"#2D3277" if store_type == "mercadolivre" else theme_color}; color: {"#FFE600" if store_type == "mercadolivre" else "white"};
                 padding: 15px 30px; border-radius: 16px;
                 font-size: 65px; font-weight: 900;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.3);
@@ -239,14 +254,14 @@ async def generate_promo_card(
                 padding: 0 10px;
             }}
             .cta-text {{
-                color: white; font-size: 65px; font-weight: 800; line-height: 1.1;
-                text-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                color: {text_color}; font-size: 65px; font-weight: 800; line-height: 1.1;
+                text-shadow: {"none" if store_type == "mercadolivre" else "0 4px 10px rgba(0,0,0,0.1)"};
             }}
             .cta-text span {{
                 text-decoration: underline; text-decoration-thickness: 6px; text-underline-offset: 8px;
             }}
             .cta-arrows {{
-                color: rgba(255,255,255,0.7); font-size: 80px; font-weight: 900; letter-spacing: -6px;
+                color: {"rgba(45, 50, 119, 0.7)" if store_type == "mercadolivre" else "rgba(255,255,255,0.7)"}; font-size: 80px; font-weight: 900; letter-spacing: -6px;
                 margin-top: 10px;
             }}
             .cta-button {{

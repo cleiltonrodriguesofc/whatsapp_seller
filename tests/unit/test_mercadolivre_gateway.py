@@ -62,7 +62,7 @@ async def test_get_offers_success(gateway, mock_client):
     assert len(offers) == 1
     assert offers[0].title == "Test Product"
     assert offers[0].discount_percent == 30.0
-    assert offers[0].affiliate_link == "http://affiliate.ml.com/item1"
+    assert "matt_tool=test_token" in offers[0].affiliate_link
     assert offers[0].source == "mercadolivre"
 
 

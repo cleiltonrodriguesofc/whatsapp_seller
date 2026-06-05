@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.orm import Session
 
-from core.infrastructure.database.models import InstanceModel, AffiliateConfigModel, AffiliateLogModel
+from core.infrastructure.database.models import InstanceModel, AffiliateConfigModel, AffiliateLogModel, AffiliateCampaignModel
 from core.infrastructure.database.session import get_db
 from core.infrastructure.gateways.magalu_gateway import MagaluGateway, CATEGORY_MAP
 from core.infrastructure.image.promo_card_generator import generate_promo_card
@@ -43,58 +43,57 @@ async def affiliate_dashboard(
     ).first()
 
     if config_model:
-        active_cats = [c.strip() for c in (config_model.categories or "").split(",") if c.strip()]
-        ml_cats = [c.strip() for c in (config_model.ml_categories or "").split(",") if c.strip()]
         import json
-        try:
-            group_jids = json.loads(config_model.group_jids or "[]") if config_model.group_jids else []
-        except Exception:
-            group_jids = []
+        
+        # Load campaigns
+        db_campaigns = db.query(AffiliateCampaignModel).filter(AffiliateCampaignModel.user_id == user.id).all()
+        campaigns = []
+        for c in db_campaigns:
+            try:
+                g_jids = json.loads(c.group_jids or "[]") if c.group_jids else []
+            except Exception:
+                g_jids = []
+            campaigns.append({
+                "id": c.id,
+                "name": c.name,
+                "categories": [cat.strip() for cat in c.categories.split(",") if cat.strip()],
+                "preferred_brands": c.preferred_brands or "",
+                "min_discount": c.min_discount_percent,
+                "use_magalu": c.use_magalu,
+                "use_ml": c.use_ml,
+                "send_to_status": c.send_to_status,
+                "send_to_groups": c.send_to_groups,
+                "group_jids": g_jids,
+                "dispatch_hours": c.dispatch_hours,
+                "is_active": c.is_active,
+            })
+        
+        # Keep global ml fields, avatar, colors, store config
         config = {
             "configured": bool(config_model.storefront_slug) or bool(config_model.ml_profile_slug),
             "storefront_slug": config_model.storefront_slug or "",
-            "categories": active_cats,
-            "min_discount": config_model.min_discount_percent,
-            "max_offers": config_model.max_offers_per_run,
-            "dispatch_hours": config_model.dispatch_hours,
             "store_type": config_model.store_type or "magalu",
             "theme_color": config_model.theme_color or "#0088ff",
             "tagline": config_model.tagline or "tem na minha loja",
             "require_approval": config_model.require_approval or False,
-            "preferred_brands": config_model.preferred_brands or "",
-            # ml fields
             "ml_profile_slug": config_model.ml_profile_slug or "",
             "ml_client_id": getattr(config_model, 'ml_client_id', '') or "",
             "ml_enabled": config_model.ml_enabled or False,
-            "ml_categories": ml_cats,
-            # group fields
-            "group_enabled": config_model.group_enabled or False,
-            "group_jids": group_jids,
-            "group_dispatch_hours": config_model.group_dispatch_hours or "9,12,15,18,21",
         }
     else:
+        campaigns = []
         config = {
             "configured": False,
             "storefront_slug": "",
-            "categories": ["notebook", "celular"],
-            "min_discount": 10.0,
-            "max_offers": 5,
-            "dispatch_hours": "9,12,18",
             "store_type": "magalu",
             "theme_color": "#0088ff",
             "tagline": "tem na minha loja",
             "require_approval": False,
-            "preferred_brands": "",
-            # ml fields
             "ml_profile_slug": "",
             "ml_client_id": "",
             "ml_enabled": False,
-            "ml_categories": ["notebook", "celular"],
-            # group fields
-            "group_enabled": False,
-            "group_jids": [],
-            "group_dispatch_hours": "9,12,15,18,21",
         }
+
 
     # build category options for the template
     available_categories = MagaluGateway.get_available_categories()
@@ -129,6 +128,7 @@ async def affiliate_dashboard(
             "user": user,
             "has_instance": instance is not None,
             "config": config,
+            "campaigns": campaigns,
             "available_categories": available_categories,
             "available_ml_categories": available_ml_categories,
             "has_avatar": has_avatar,
@@ -141,24 +141,13 @@ async def affiliate_dashboard(
 
 class AffiliateConfigSchema(BaseModel):
     storefront_slug: str = ""
-    categories: list[str] = []
-    min_discount: float = 10.0
-    max_offers: int = 5
-    dispatch_hours: str = "9,12,18"
     store_type: str = "magalu"
     theme_color: str = "#0088ff"
     tagline: str = "tem na minha loja"
     require_approval: bool = False
-    preferred_brands: str = ""
-    # ml affiliate
     ml_profile_slug: str = ""
-    ml_client_id: str = ""          # affiliate partner client id from parceiros.mercadolivre.com.br
+    ml_client_id: str = ""
     ml_enabled: bool = False
-    ml_categories: list[str] = []
-    # group broadcast
-    group_enabled: bool = False
-    group_jids: list[str] = []
-    group_dispatch_hours: str = "9,12,15,18,21"
 
 
 @router.post("/config")
@@ -176,28 +165,118 @@ async def save_affiliate_config(
         db.add(config)
 
     config.storefront_slug = data.storefront_slug.strip().lower()
-    config.categories = ",".join(data.categories)
-    config.min_discount_percent = data.min_discount
-    config.max_offers_per_run = data.max_offers
-    config.dispatch_hours = data.dispatch_hours
     config.store_type = data.store_type
     config.theme_color = data.theme_color
     config.tagline = data.tagline
     config.require_approval = data.require_approval
-    config.preferred_brands = data.preferred_brands
-    # ml fields
     config.ml_profile_slug = data.ml_profile_slug.strip()
     config.ml_client_id = data.ml_client_id.strip()
     config.ml_enabled = data.ml_enabled
-    config.ml_categories = ",".join(data.ml_categories) if data.ml_categories else "notebook,celular"
-    # group fields
-    import json
-    config.group_enabled = data.group_enabled
-    config.group_jids = json.dumps(data.group_jids)
-    config.group_dispatch_hours = data.group_dispatch_hours
 
     db.commit()
-    return JSONResponse({"success": True, "message": "Configurações salvas com sucesso!"})
+    return JSONResponse({"success": True, "message": "Configurações globais salvas com sucesso!"})
+
+# ── manage campaigns ──────────────────────────────────────────────────
+
+class AffiliateCampaignSchema(BaseModel):
+    name: str
+    categories: list[str] = []
+    preferred_brands: str = ""
+    custom_search_terms: str = ""
+    min_discount: float = 10.0
+    use_magalu: bool = True
+    use_ml: bool = True
+    send_to_status: bool = True
+    send_to_groups: bool = False
+    group_jids: list[str] = []
+    dispatch_hours: str = "9,12,18"
+    is_active: bool = True
+
+
+@router.post("/campaigns")
+async def create_affiliate_campaign(
+    data: AffiliateCampaignSchema,
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    import json
+    
+    if not data.name.strip():
+        return JSONResponse({"success": False, "error": "Nome da campanha é obrigatório."}, status_code=400)
+    if not data.categories and not data.custom_search_terms.strip():
+        return JSONResponse({"success": False, "error": "Selecione ao menos uma categoria ou preencha os Termos Específicos."}, status_code=400)
+
+    campaign = AffiliateCampaignModel(
+        user_id=user.id,
+        name=data.name.strip(),
+        categories=",".join(data.categories),
+        preferred_brands=data.preferred_brands.strip(),
+        custom_search_terms=data.custom_search_terms.strip(),
+        min_discount_percent=data.min_discount,
+        use_magalu=data.use_magalu,
+        use_ml=data.use_ml,
+        send_to_status=data.send_to_status,
+        send_to_groups=data.send_to_groups,
+        group_jids=json.dumps(data.group_jids),
+        dispatch_hours=data.dispatch_hours,
+        is_active=data.is_active
+    )
+    
+    db.add(campaign)
+    db.commit()
+    return JSONResponse({"success": True, "message": "Campanha criada com sucesso!"})
+
+
+@router.put("/campaigns/{campaign_id}")
+async def update_affiliate_campaign(
+    campaign_id: int,
+    data: AffiliateCampaignSchema,
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    import json
+    campaign = db.query(AffiliateCampaignModel).filter(
+        AffiliateCampaignModel.id == campaign_id,
+        AffiliateCampaignModel.user_id == user.id
+    ).first()
+    
+    if not campaign:
+        return JSONResponse({"success": False, "error": "Campanha não encontrada."}, status_code=404)
+        
+    campaign.name = data.name.strip()
+    campaign.categories = ",".join(data.categories)
+    campaign.preferred_brands = data.preferred_brands.strip()
+    campaign.custom_search_terms = data.custom_search_terms.strip()
+    campaign.min_discount_percent = data.min_discount
+    campaign.use_magalu = data.use_magalu
+    campaign.use_ml = data.use_ml
+    campaign.send_to_status = data.send_to_status
+    campaign.send_to_groups = data.send_to_groups
+    campaign.group_jids = json.dumps(data.group_jids)
+    campaign.dispatch_hours = data.dispatch_hours
+    campaign.is_active = data.is_active
+    
+    db.commit()
+    return JSONResponse({"success": True, "message": "Campanha atualizada com sucesso!"})
+
+
+@router.delete("/campaigns/{campaign_id}")
+async def delete_affiliate_campaign(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(login_required),
+):
+    campaign = db.query(AffiliateCampaignModel).filter(
+        AffiliateCampaignModel.id == campaign_id,
+        AffiliateCampaignModel.user_id == user.id
+    ).first()
+    
+    if not campaign:
+        return JSONResponse({"success": False, "error": "Campanha não encontrada."}, status_code=404)
+        
+    db.delete(campaign)
+    db.commit()
+    return JSONResponse({"success": True, "message": "Campanha excluída com sucesso!"})
 
 
 # ── avatar upload ────────────────────────────────────────────────
@@ -304,11 +383,12 @@ async def get_affiliate_logs(
 
 @router.get("/fetch-offers")
 async def fetch_affiliate_offers(
+    campaign_id: int,
     db: Session = Depends(get_db),
     user=Depends(login_required),
 ):
     """
-    fetches offers from magalu and/or mercado livre WITHOUT sending anything.
+    fetches offers from magalu and/or mercado livre for a specific campaign WITHOUT sending anything.
     returns the list so the ui can display a picker for the user to choose.
     """
     from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
@@ -316,13 +396,18 @@ async def fetch_affiliate_offers(
     config = db.query(AffiliateConfigModel).filter(
         AffiliateConfigModel.user_id == user.id
     ).first()
+    
+    campaign = db.query(AffiliateCampaignModel).filter(
+        AffiliateCampaignModel.id == campaign_id,
+        AffiliateCampaignModel.user_id == user.id
+    ).first()
 
-    if not config:
-        return JSONResponse({"success": False, "error": "Configure o afiliado primeiro."}, status_code=400)
+    if not config or not campaign:
+        return JSONResponse({"success": False, "error": "Configure o afiliado e crie uma campanha primeiro."}, status_code=400)
 
-    has_magalu = bool(config.storefront_slug)
+    has_magalu = bool(config.storefront_slug) and campaign.use_magalu
     ml_client_id = getattr(config, 'ml_client_id', '') or ''
-    has_ml = bool(config.ml_enabled)  # ml_enabled is enough, client_id optional
+    has_ml = bool(config.ml_enabled) and campaign.use_ml
 
     if not has_magalu and not has_ml:
         return JSONResponse(
@@ -330,10 +415,9 @@ async def fetch_affiliate_offers(
             status_code=400,
         )
 
-    categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
-    ml_categories = [c.strip() for c in (config.ml_categories or "notebook,celular").split(",") if c.strip()]
-    min_discount = config.min_discount_percent or 5.0
-    max_offers = config.max_offers_per_run or 5
+    categories = [c.strip() for c in (campaign.categories or "").split(",") if c.strip()]
+    min_discount = campaign.min_discount_percent or 5.0
+    max_offers = 10 # manual fetch can pull more offers for selection
 
     all_offers: list[dict] = []
 
@@ -345,7 +429,8 @@ async def fetch_affiliate_offers(
                 categories=categories,
                 min_discount_percent=min_discount,
                 max_offers=max_offers,
-                preferred_brands=config.preferred_brands or "",
+                preferred_brands=campaign.preferred_brands or "",
+                custom_search_terms=campaign.custom_search_terms or "",
             )
             for o in raw:
                 all_offers.append({
@@ -370,9 +455,10 @@ async def fetch_affiliate_offers(
                 client_id=ml_client_id,
             )
             raw_ml = await ml_gw.get_offers(
-                categories=ml_categories,
+                categories=categories,
                 min_discount_percent=min_discount,
                 max_offers=max_offers,
+                custom_search_terms=campaign.custom_search_terms or "",
             )
             for o in raw_ml:
                 all_offers.append({
@@ -395,6 +481,7 @@ async def fetch_affiliate_offers(
 # ── manual dispatch (send selected offers to chosen targets) ─────────
 
 class ManualDispatchSchema(BaseModel):
+    campaign_id: int
     offers: list[dict]        # list of offer dicts from /fetch-offers
     targets: list[str]        # e.g. ["status"], ["groups"] or ["status","groups"]
 
@@ -416,6 +503,11 @@ async def dispatch_affiliate_offers(
     config = db.query(AffiliateConfigModel).filter(
         AffiliateConfigModel.user_id == user.id
     ).first()
+    
+    campaign = db.query(AffiliateCampaignModel).filter(
+        AffiliateCampaignModel.id == data.campaign_id,
+        AffiliateCampaignModel.user_id == user.id
+    ).first()
 
     instance = db.query(InstanceModel).filter(
         InstanceModel.user_id == user.id,
@@ -427,12 +519,12 @@ async def dispatch_affiliate_offers(
     if "groups" in data.targets:
         import json as _json
         try:
-            group_jids = _json.loads(config.group_jids or "[]") if config and config.group_jids else []
+            group_jids = _json.loads(campaign.group_jids or "[]") if campaign and campaign.group_jids else []
         except Exception:
             group_jids = []
         if not group_jids:
             return JSONResponse(
-                {"success": False, "error": "Nenhum grupo configurado. Adicione grupos nas configurações."},
+                {"success": False, "error": "Nenhum grupo configurado nesta campanha."},
                 status_code=400,
             )
     else:

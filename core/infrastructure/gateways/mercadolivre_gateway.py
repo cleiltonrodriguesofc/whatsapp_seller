@@ -86,23 +86,40 @@ class MercadoLivreGateway:
         """appends affiliate tracking params to a ml product url."""
         if not product_url:
             return product_url
-        separator = "&" if "?" in product_url else "?"
+        
+        import urllib.parse
+        parsed = urllib.parse.urlparse(product_url)
+        query = dict(urllib.parse.parse_qsl(parsed.query))
+        
+        # remove old matt_ parameters to avoid conflicts
+        keys_to_remove = [k for k in query.keys() if k.startswith("matt_")]
+        for k in keys_to_remove:
+            del query[k]
+        
         if self.client_id:
-            params = ML_AFFILIATE_PARAMS.format(client_id=self.client_id)
-            return f"{product_url}{separator}{params}"
-        return product_url
+            query["matt_tool"] = self.client_id
+            if self.profile_slug:
+                query["matt_word"] = self.profile_slug
+            query["matt_source"] = "social"
+            query["matt_campaign"] = ""
+            query["forceInApp"] = "true"
+        
+        new_query = urllib.parse.urlencode(query)
+        parsed = parsed._replace(query=new_query)
+        return urllib.parse.urlunparse(parsed)
 
     async def get_offers(
         self,
         categories: list[str] | None = None,
         min_discount_percent: float = 5.0,
         max_offers: int = 5,
+        custom_search_terms: str = "",
     ) -> list[MLOffer]:
         """returns affiliate offers from ml."""
         if not categories:
-            categories = ["notebook", "celular"]
+            categories = []
 
-        cache_key = f"{','.join(sorted(categories))}:{self.client_id}"
+        cache_key = f"{','.join(sorted(categories))}:{custom_search_terms}:{self.client_id}"
         now = datetime.utcnow()
 
         if cache_key in _ml_cache:
@@ -113,12 +130,21 @@ class MercadoLivreGateway:
                 return filtered[:max_offers]
 
         all_offers: list[MLOffer] = []
-        per_category = max(2, max_offers // max(len(categories), 1))
+        
+        search_terms = []
+        if custom_search_terms:
+            search_terms.extend([t.strip() for t in custom_search_terms.split(",") if t.strip()])
+        else:
+            search_terms.extend([cat for cat in categories if cat in ML_CATEGORY_MAP])
+            
+        if not search_terms:
+            return []
+
+        per_category = max(2, max_offers // max(len(search_terms), 1))
 
         tasks = [
-            self._fetch_category(cat, per_category * 3)
-            for cat in categories
-            if cat in ML_CATEGORY_MAP
+            self._fetch_category(term, per_category * 3)
+            for term in search_terms
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for result in results:

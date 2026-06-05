@@ -21,6 +21,7 @@ from core.infrastructure.database.models import (
     BroadcastCampaignModel,
     BirthdayTemplateModel,
     AffiliateConfigModel,
+    AffiliateCampaignModel,
 )
 from core.infrastructure.database.repositories import (
     SQLCampaignRepository,
@@ -382,8 +383,10 @@ async def execute_affiliate_task(
     theme_color: str = "#0088ff",
     tagline: str = "tem na minha loja",
     owner_avatar_b64: str = "",
+    custom_search_terms: str = "",
     # ml affiliate params
     ml_profile_slug: str = "",
+    ml_client_id: str = "",
     ml_enabled: bool = False,
     ml_categories: list[str] | None = None,
 ) -> None:
@@ -406,6 +409,7 @@ async def execute_affiliate_task(
                 categories=categories,
                 min_discount_percent=min_discount,
                 max_offers=max_offers,
+                custom_search_terms=custom_search_terms,
             )
             # wrap MagaluOffer as a generic dict for unified processing
             for o in magalu_offers:
@@ -426,11 +430,12 @@ async def execute_affiliate_task(
     # ── collect offers from mercado livre ─────────────────────────────
     if ml_enabled:
         try:
-            ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug)
+            ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug, client_id=ml_client_id)
             ml_offers = await ml_gw.get_offers(
                 categories=ml_categories or categories,
                 min_discount_percent=min_discount,
                 max_offers=max_offers,
+                custom_search_terms=custom_search_terms,
             )
             for o in ml_offers:
                 all_offers.append({
@@ -504,7 +509,7 @@ async def execute_affiliate_task(
                     discount_percent=offer["discount_percent"],
                     image_url=offer["image_url"],
                     storefront_name=storefront_slug or offer.get("source", "loja"),
-                    store_type=store_type,
+                    store_type="mercadolivre" if offer.get("source") == "mercadolivre" else store_type,
                     theme_color=theme_color,
                     tagline=tagline,
                     installment_text=offer.get("installment_text", ""),
@@ -548,7 +553,9 @@ async def execute_affiliate_group_task(
     tagline: str = "tem na minha loja",
     store_type: str = "magalu",
     owner_avatar_b64: str = "",
+    custom_search_terms: str = "",
     ml_profile_slug: str = "",
+    ml_client_id: str = "",
     ml_enabled: bool = False,
 ) -> None:
     """Sends affiliate electronics offers directly to WhatsApp groups."""
@@ -574,6 +581,7 @@ async def execute_affiliate_group_task(
                 categories=categories,
                 min_discount_percent=min_discount,
                 max_offers=max_offers,
+                custom_search_terms=custom_search_terms,
             )
             for o in magalu_offers:
                 all_offers.append({
@@ -587,10 +595,12 @@ async def execute_affiliate_group_task(
 
     if ml_enabled:
         try:
-            ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug)
+            ml_gw = MercadoLivreGateway(profile_slug=ml_profile_slug, client_id=ml_client_id)
             ml_offers = await ml_gw.get_offers(
+                categories=categories,
                 min_discount_percent=min_discount,
                 max_offers=max_offers,
+                custom_search_terms=custom_search_terms,
             )
             for o in ml_offers:
                 all_offers.append({
@@ -662,7 +672,7 @@ async def execute_affiliate_group_task(
                 discount_percent=offer["discount_percent"],
                 image_url=offer["image_url"],
                 storefront_name=storefront_slug or offer.get("source", "loja"),
-                store_type=store_type,
+                store_type="mercadolivre" if offer.get("source") == "mercadolivre" else store_type,
                 theme_color=theme_color,
                 tagline=tagline,
                 installment_text=offer.get("installment_text", ""),
@@ -798,7 +808,7 @@ async def execute_manual_selected_dispatch(
                 discount_percent=offer["discount_percent"],
                 image_url=offer.get("image_url", ""),
                 storefront_name=storefront_slug or offer.get("source", "loja"),
-                store_type=store_type,
+                store_type="mercadolivre" if offer.get("source") == "mercadolivre" else store_type,
                 theme_color=theme_color,
                 tagline=tagline,
                 installment_text=offer.get("installment_text", ""),
@@ -916,86 +926,93 @@ async def campaign_scheduler_loop() -> None:
 
             # affiliate check (runs at configured hours)
             global _affiliate_runs_by_user
-            active_affiliate_configs = db.query(AffiliateConfigModel).all()
-            for config in active_affiliate_configs:
-                has_magalu = bool(config.storefront_slug)
-                has_ml = bool(config.ml_enabled)
+            active_campaigns = db.query(AffiliateCampaignModel).filter(AffiliateCampaignModel.is_active == True).all()
+            for campaign in active_campaigns:
+                config = db.query(AffiliateConfigModel).filter(AffiliateConfigModel.user_id == campaign.user_id).first()
+                if not config:
+                    continue
+
+                has_magalu = bool(config.storefront_slug) and campaign.use_magalu
+                ml_client_id = getattr(config, 'ml_client_id', '') or ''
+                has_ml = bool(config.ml_enabled) and campaign.use_ml
 
                 if not has_magalu and not has_ml:
                     continue
 
-                categories = [c.strip() for c in (config.categories or "notebook,celular").split(",") if c.strip()]
-                ml_categories = [c.strip() for c in (config.ml_categories or "notebook,celular").split(",") if c.strip()]
+                categories = [c.strip() for c in (campaign.categories or "notebook,celular").split(",") if c.strip()]
                 current_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
 
                 # ── status dispatch (magalu + ml → whatsapp status) ─────
-                dispatch_hours_str = config.dispatch_hours or "9,12,18"
+                dispatch_hours_str = campaign.dispatch_hours or "9,12,18"
                 dispatch_hours = [f"{h.strip().zfill(2)}:00" for h in dispatch_hours_str.split(",")]
-                user_last_run = _affiliate_runs_by_user.get(config.user_id)
+                status_run_key = f"status_{campaign.id}"
+                status_last_run = _affiliate_runs_by_user.get(status_run_key)
 
-                if current_time_str in dispatch_hours and user_last_run != current_run_signature:
-                    _affiliate_runs_by_user[config.user_id] = current_run_signature
-                    logger.info("scheduler: running affiliate status dispatch for user %s at %s", config.user_id, current_time_str)
+                if current_time_str in dispatch_hours and status_last_run != current_run_signature and campaign.send_to_status:
+                    _affiliate_runs_by_user[status_run_key] = current_run_signature
+                    logger.info("scheduler: running affiliate status dispatch for campaign %s at %s", campaign.id, current_time_str)
 
                     instance = db.query(InstanceModel).filter(
-                        InstanceModel.user_id == config.user_id,
+                        InstanceModel.user_id == campaign.user_id,
                         InstanceModel.status == "connected",
                     ).first()
                     if instance:
                         asyncio.create_task(execute_affiliate_task(
-                            user_id=config.user_id,
+                            user_id=campaign.user_id,
                             instance_name=instance.name,
                             instance_apikey=instance.apikey,
                             storefront_slug=config.storefront_slug or "",
                             categories=categories,
-                            min_discount=config.min_discount_percent,
-                            max_offers=config.max_offers_per_run,
+                            min_discount=campaign.min_discount_percent,
+                            max_offers=5, # You can add max_offers_per_run to campaign later if needed
                             store_type=config.store_type or "magalu",
                             theme_color=config.theme_color or "#0088ff",
                             tagline=config.tagline or "tem na minha loja",
                             owner_avatar_b64=config.owner_avatar_b64 or "",
+                            custom_search_terms=campaign.custom_search_terms or "",
                             ml_profile_slug=config.ml_profile_slug or "",
+                            ml_client_id=getattr(config, 'ml_client_id', '') or "",
                             ml_enabled=config.ml_enabled or False,
-                            ml_categories=ml_categories,
+                            ml_categories=categories, # Pass same categories to ML
                         ))
 
                 # ── group dispatch (magalu + ml → grupos) ───────────────
-                if config.group_enabled and config.group_jids:
+                if campaign.send_to_groups and campaign.group_jids:
                     import json as _json
                     try:
-                        group_jids = _json.loads(config.group_jids)
+                        group_jids = _json.loads(campaign.group_jids)
                     except Exception:
                         group_jids = []
 
-                    group_hours_str = config.group_dispatch_hours or "9,12,15,18,21"
-                    group_hours = [f"{h.strip().zfill(2)}:00" for h in group_hours_str.split(",")]
-                    group_run_key = f"group_{config.user_id}"
+                    # We'll use the same dispatch_hours for groups in the campaign
+                    group_hours = dispatch_hours
+                    group_run_key = f"group_{campaign.id}"
                     group_last_run = _affiliate_runs_by_user.get(group_run_key)
-                    group_run_signature = f"{now.strftime('%Y-%m-%d')} {current_time_str}"
 
-                    if current_time_str in group_hours and group_last_run != group_run_signature and group_jids:
-                        _affiliate_runs_by_user[group_run_key] = group_run_signature
-                        logger.info("scheduler: running affiliate group dispatch for user %s at %s", config.user_id, current_time_str)
+                    if current_time_str in group_hours and group_last_run != current_run_signature and group_jids:
+                        _affiliate_runs_by_user[group_run_key] = current_run_signature
+                        logger.info("scheduler: running affiliate group dispatch for campaign %s at %s", campaign.id, current_time_str)
 
-                        # fetch instance fresh (may not have been fetched above if status dispatch didn't run)
                         grp_instance = db.query(InstanceModel).filter(
-                            InstanceModel.user_id == config.user_id,
+                            InstanceModel.user_id == campaign.user_id,
                         ).first()
                         if grp_instance:
                             asyncio.create_task(execute_affiliate_group_task(
-                                user_id=config.user_id,
+                                user_id=campaign.user_id,
                                 instance_name=grp_instance.name,
                                 instance_apikey=grp_instance.apikey,
                                 storefront_slug=config.storefront_slug or "",
                                 categories=categories,
-                                min_discount=config.min_discount_percent,
-                                max_offers=config.max_offers_per_run,
+                                min_discount=campaign.min_discount_percent,
+                                max_offers=5,
                                 group_jids=group_jids,
                                 theme_color=config.theme_color or "#0088ff",
                                 tagline=config.tagline or "tem na minha loja",
                                 store_type=config.store_type or "magalu",
                                 owner_avatar_b64=config.owner_avatar_b64 or "",
+                                custom_search_terms=campaign.custom_search_terms or "",
                                 ml_profile_slug=config.ml_profile_slug or "",
+                                ml_client_id=getattr(config, 'ml_client_id', '') or "",
                                 ml_enabled=config.ml_enabled or False,
                             ))
 

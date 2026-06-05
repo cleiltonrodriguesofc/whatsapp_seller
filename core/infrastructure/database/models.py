@@ -387,6 +387,37 @@ class AffiliateConfigModel(Base):
     user = relationship("UserModel")
 
 
+class AffiliateCampaignModel(Base):
+    __tablename__ = "affiliate_campaigns"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    name = Column(String, nullable=False)  # e.g. "Campanha de Celulares"
+    
+    # Gateways
+    use_magalu = Column(Boolean, default=True)
+    use_ml = Column(Boolean, default=True)
+    
+    # Query params
+    categories = Column(String, nullable=False) # comma separated
+    preferred_brands = Column(String, nullable=True) # "Apple, Samsung"
+    min_discount_percent = Column(Float, default=10.0)
+    
+    # Targets
+    send_to_status = Column(Boolean, default=True)
+    send_to_groups = Column(Boolean, default=False)
+    group_jids = Column(Text, nullable=True) # json array of groups
+    custom_search_terms = Column(String, nullable=True) # specific terms
+    
+    # Automation
+    is_active = Column(Boolean, default=True)
+    dispatch_hours = Column(String, default="9,12,18")
+    last_run_at = Column(DateTime, nullable=True)
+    
+    created_at = Column(DateTime, default=now_sp)
+    
+    user = relationship("UserModel")
+
+
 class AffiliateLogModel(Base):
     __tablename__ = "affiliate_logs"
 

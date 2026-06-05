@@ -223,22 +223,7 @@
             {% endif %}
         </div>
 
-        <!-- categories -->
-        <div style="margin-bottom: 1.25rem;">
-            <label class="form-label">Categorias para buscar ofertas</label>
-            <div class="category-grid" id="categoryGrid">
-                {% for key, label in available_categories.items() %}
-                <div class="category-chip {{ 'active' if key in config.categories else '' }}"
-                       data-key="{{ key }}"
-                       onclick="toggleCategory(this)">
-                    <input type="checkbox" value="{{ key }}"
-                           {{ 'checked' if key in config.categories else '' }}
-                           style="pointer-events: none;">
-                    {{ label }}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+        
 
         <!-- visual customization -->
         <h4 style="margin-bottom: 1rem; margin-top: 1.5rem; color: #a855f7;">🎨 Personalização da Arte</h4>
@@ -294,32 +279,7 @@
             </div>
         </div>
 
-        <!-- numeric settings -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-            <div>
-                <label class="form-label">Desconto Mínimo (%)</label>
-                <input type="number" id="min_discount" class="form-input"
-                       placeholder="10" value="{{ config.min_discount }}" min="1" max="90">
-            </div>
-            <div>
-                <label class="form-label">Ofertas por Rodada</label>
-                <input type="number" id="max_offers" class="form-input"
-                       placeholder="5" value="{{ config.max_offers }}" min="1" max="20">
-            </div>
-            <div>
-                <label class="form-label">Horários do Cron</label>
-                <input type="text" id="dispatch_hours" class="form-input"
-                       placeholder="9,12,18" value="{{ config.dispatch_hours }}">
-            </div>
-            
-            <div style="grid-column: span 3; display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                <input type="checkbox" id="require_approval" style="width: 1.2rem; height: 1.2rem; accent-color: #10b981;"
-                       {{ 'checked' if config.require_approval else '' }}>
-                <label for="require_approval" style="color: white; font-weight: 500; cursor: pointer;">
-                    Modo Manual: Trazer para cá e eu autorizar o envio (Recomendado)
-                </label>
-            </div>
-        </div>
+        
 
         <!-- ── mercado livre affiliate section ──────────────────────────── -->
         <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
@@ -365,60 +325,10 @@
                 {% endif %}
             </div>
 
-            <div style="margin-bottom: 0.5rem;">
-                <label class="form-label">Categorias ML para buscar</label>
-                <div class="category-grid" id="mlCategoryGrid">
-                    {% for key, label in available_ml_categories.items() %}
-                    <div class="category-chip {{ 'active' if key in config.ml_categories else '' }}"
-                           data-key="{{ key }}" onclick="toggleMlCategory(this)">
-                        <input type="checkbox" value="{{ key }}"
-                               {{ 'checked' if key in config.ml_categories else '' }}
-                               style="pointer-events: none;">
-                        {{ label }}
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            
         </div>
 
-        <!-- ── group broadcast section ───────────────────────────────────── -->
-        <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-            <h4 style="margin: 0; color: #10b981;">📢 Divulgação em Grupos</h4>
-            <label class="toggle-switch" title="Ativar disparo em grupos">
-                <input type="checkbox" id="group_enabled" {{ 'checked' if config.group_enabled else '' }}>
-                <span class="toggle-slider"></span>
-            </label>
-        </div>
-        <div id="groupSection" style="transition: opacity 0.2s; {{ '' if config.group_enabled else 'opacity:0.45;' }}">
-            <div style="margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <label class="form-label" style="margin: 0;">Grupos para receber as ofertas</label>
-                    <button type="button" id="btnLoadGroups" onclick="loadGroups()"
-                            style="font-size: 0.78rem; padding: 0.3rem 0.85rem; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
-                        <span id="loadGroupsIcon">🔄</span> Carregar grupos
-                    </button>
-                </div>
-                <div id="groupGrid" class="category-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
-                    <!-- groups loaded dynamically via JS -->
-                    <div id="groupGridPlaceholder" style="color: var(--text-secondary); font-size: 0.85rem; padding: 0.6rem; grid-column: 1/-1;">
-                        Clique em "Carregar grupos" para listar os grupos do WhatsApp.
-                    </div>
-                </div>
-            </div>
-            <div style="margin-bottom: 0.5rem;">
-                <label class="form-label">Horários de Disparo nos Grupos</label>
-                <input type="text" id="group_dispatch_hours" class="form-input"
-                       placeholder="9,12,15,18,21" value="{{ config.group_dispatch_hours }}">
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.35rem;">
-                    Separe os horários por vírgula. Os grupos receberão as ofertas automaticamente.
-                </div>
-            </div>
-        </div>
-        <!-- hidden: persisted group jids for JS init -->
-        <script>
-            const _savedGroupJids = {{ config.group_jids | tojson }};
-        </script>
+
 
         <div style="text-align: right; margin-top: 1.5rem;">
             <button type="submit" class="btn btn-primary" style="font-weight: 600; padding: 0.65rem 1.5rem;">
@@ -426,6 +336,154 @@
             </button>
         </div>
     </form>
+</div>
+
+
+<!-- ── campaigns section ────────────────────────────────────────── -->
+<div class="config-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h3 style="margin: 0;">🎯 Suas Campanhas de Afiliados</h3>
+        <button class="btn btn-primary" onclick="openCampaignModal()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+            ➕ Nova Campanha
+        </button>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+        {% for camp in campaigns %}
+        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <h4 style="margin: 0; color: white;">{{ camp.name }}</h4>
+                <div style="display: flex; gap: 0.4rem;">
+                    <button class="btn" onclick="openCampaignModal({{ camp | tojson | forceescape }})" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background: rgba(255,255,255,0.1);">✏️</button>
+                    <button class="btn" onclick="deleteCampaign({{ camp.id }})" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.3);">🗑️</button>
+                </div>
+            </div>
+            
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
+                <strong>Categorias:</strong> {{ camp.categories | join(', ') }}<br>
+                {% if camp.preferred_brands %}<strong>Marcas:</strong> {{ camp.preferred_brands }}<br>{% endif %}
+                <strong>Plataformas:</strong> {% if camp.use_magalu %}<span style="color:#60a5fa">Magalu</span>{% endif %} {% if camp.use_ml %}<span style="color:#fbbf24">ML</span>{% endif %}<br>
+                <strong>Destinos:</strong> {% if camp.send_to_status %}📱 Status{% endif %} {% if camp.send_to_groups %}👥 Grupos{% endif %}<br>
+                <strong>Horários:</strong> {{ camp.dispatch_hours }}<br>
+                <strong>Status:</strong> {% if camp.is_active %}<span style="color:#10b981">Ativa</span>{% else %}<span style="color:#f87171">Pausada</span>{% endif %}
+            </div>
+            
+            <button class="btn btn-secondary" onclick="startManualDispatch({{ camp.id }}, '{{ camp.name }}')" style="width: 100%; font-weight: 600; padding: 0.5rem; background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); color: #818cf8;">
+                🚀 Disparar Manualmente
+            </button>
+        </div>
+        {% else %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary); background: rgba(255,255,255,0.02); border-radius: 12px;">
+            Você ainda não possui campanhas criadas.<br>Crie uma campanha para começar a divulgar!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Campaign Modal -->
+<div id="campaignModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 1.5rem;">
+        <h3 id="modalTitle" style="margin: 0 0 1.5rem 0;">Nova Campanha</h3>
+        <form id="campaignForm" onsubmit="saveCampaign(event)">
+            <input type="hidden" id="camp_id" value="">
+            
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Nome da Campanha</label>
+                <input type="text" id="camp_name" class="form-input" placeholder="Ex: Celulares Apple" required>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label class="form-label">Plataformas</label>
+                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                        <label style="display:flex; align-items:center; gap:0.4rem; color:white; font-size:0.9rem;">
+                            <input type="checkbox" id="camp_use_magalu" checked style="accent-color:#60a5fa; width:1.1rem; height:1.1rem;"> Magalu
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; color:white; font-size:0.9rem;">
+                            <input type="checkbox" id="camp_use_ml" checked style="accent-color:#fbbf24; width:1.1rem; height:1.1rem;"> Mercado Livre
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Desconto Mínimo (%)</label>
+                    <input type="number" id="camp_min_discount" class="form-input" value="10" min="1" max="90">
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Categorias</label>
+                <div class="category-grid" id="modalCategoryGrid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));">
+                    {% for key, label in available_categories.items() %}
+                    <div class="category-chip" data-key="{{ key }}" onclick="toggleCategory(this)">
+                        <input type="checkbox" value="{{ key }}" style="pointer-events: none;">
+                        {{ label }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Marcas Preferidas <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:400;">(opcional)</span></label>
+                <input type="text" id="camp_brands" class="form-input" placeholder="Ex: apple, samsung">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Termos Específicos de Busca <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:400;">(opcional)</span></label>
+                <input type="text" id="camp_custom_search" class="form-input" placeholder="Ex: Notebook i7 16GB, Celular Snapdragon 256GB">
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.35rem;">
+                    Separe por vírgula. Se preenchido, o robô vai buscar exatamente por estes termos (ideal para focar em processadores, memória ou modelos específicos).
+                </div>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label class="form-label">Horários de Disparo</label>
+                    <input type="text" id="camp_hours" class="form-input" placeholder="9,12,18" value="9,12,18">
+                </div>
+                <div>
+                    <label class="form-label">Status da Campanha</label>
+                    <div style="margin-top: 0.5rem;">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="camp_active" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span style="color:white; font-size:0.9rem; margin-left:0.5rem; vertical-align:super;">Ativa</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label class="form-label">Destinos de Envio</label>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem; margin-bottom: 0.8rem;">
+                    <label style="display:flex; align-items:center; gap:0.4rem; color:white; font-size:0.9rem;">
+                        <input type="checkbox" id="camp_status" checked style="accent-color:#6366f1; width:1.1rem; height:1.1rem;"> 📱 Meu Status
+                    </label>
+                    <label style="display:flex; align-items:center; gap:0.4rem; color:white; font-size:0.9rem;">
+                        <input type="checkbox" id="camp_groups" onchange="document.getElementById('campGroupSelect').style.display = this.checked ? 'block' : 'none'" style="accent-color:#10b981; width:1.1rem; height:1.1rem;"> 👥 Meus Grupos
+                    </label>
+                </div>
+                
+                <div id="campGroupSelect" style="display: none; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">Selecione os grupos:</span>
+                        <button type="button" class="btn" onclick="loadGroups()" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(255,255,255,0.1);">Carregar Grupos</button>
+                    </div>
+                    <div id="groupGrid" class="category-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); max-height: 200px; overflow-y: auto;">
+                        <div id="groupGridPlaceholder" style="color: var(--text-secondary); font-size: 0.85rem; padding: 0.6rem; grid-column: 1/-1;">
+                            Clique em "Carregar Grupos" para listar.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeCampaignModal()" style="padding: 0.6rem 1.5rem;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.5rem;">💾 Salvar Campanha</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- ── manual dispatch ──────────────────────────────────────────── -->
@@ -649,10 +707,7 @@
         const section = document.getElementById('mlSection');
         section.style.opacity = e.target.checked ? '1' : '0.45';
     });
-    document.getElementById('group_enabled').addEventListener('change', (e) => {
-        const section = document.getElementById('groupSection');
-        section.style.opacity = e.target.checked ? '1' : '0.45';
-    });
+
 
     async function saveConfig(e) {
         e.preventDefault();
@@ -668,24 +723,14 @@
 
         const payload = {
             storefront_slug: document.getElementById('storefront_slug').value.trim(),
-            categories: cats,
-            min_discount: parseFloat(document.getElementById('min_discount').value) || 10.0,
-            max_offers: parseInt(document.getElementById('max_offers').value) || 5,
-            dispatch_hours: document.getElementById('dispatch_hours').value || '9,12,18',
             store_type: document.getElementById('store_type').value,
             theme_color: document.getElementById('theme_color').value || '#0088ff',
             tagline: document.getElementById('tagline').value || 'tem na minha loja',
-            preferred_brands: document.getElementById('preferred_brands').value || '',
-            require_approval: document.getElementById('require_approval').checked,
+            require_approval: false, // removed from global
             // ml fields
             ml_profile_slug: mlSlug,
             ml_client_id: document.getElementById('ml_client_id')?.value?.trim() || '',
             ml_enabled: mlEnabled,
-            ml_categories: getSelectedMlCategories(),
-            // group fields
-            group_enabled: document.getElementById('group_enabled').checked,
-            group_jids: getSelectedGroupJids(),
-            group_dispatch_hours: document.getElementById('group_dispatch_hours')?.value || '9,12,15,18,21',
         };
 
         try {
@@ -704,6 +749,152 @@
         } catch (error) {
             showToast('Erro de conexão', 'error');
         }
+    }
+
+    
+    // ── Campaign Management ────────────────────────────────────────────────
+    
+    let currentManualCampaignId = null;
+    let _savedGroupJids = []; // For the modal
+
+    function openCampaignModal(camp = null) {
+        const modal = document.getElementById('campaignModal');
+        const form = document.getElementById('campaignForm');
+        form.reset();
+        
+        // Reset chips
+        document.querySelectorAll('#modalCategoryGrid .category-chip').forEach(chip => {
+            chip.classList.remove('active');
+            chip.querySelector('input').checked = false;
+        });
+        
+        if (camp) {
+            document.getElementById('modalTitle').textContent = 'Editar Campanha';
+            document.getElementById('camp_id').value = camp.id;
+            document.getElementById('camp_name').value = camp.name;
+            document.getElementById('camp_use_magalu').checked = camp.use_magalu;
+            document.getElementById('camp_use_ml').checked = camp.use_ml;
+            document.getElementById('camp_min_discount').value = camp.min_discount;
+            document.getElementById('camp_brands').value = camp.preferred_brands || '';
+            document.getElementById('camp_custom_search').value = camp.custom_search_terms || '';
+            document.getElementById('camp_hours').value = camp.dispatch_hours;
+            document.getElementById('camp_active').checked = camp.is_active;
+            document.getElementById('camp_status').checked = camp.send_to_status;
+            
+            const groupCb = document.getElementById('camp_groups');
+            groupCb.checked = camp.send_to_groups;
+            document.getElementById('campGroupSelect').style.display = camp.send_to_groups ? 'block' : 'none';
+            
+            _savedGroupJids = camp.group_jids || [];
+            if (_savedGroupJids.length > 0) loadGroups();
+            
+            camp.categories.forEach(cat => {
+                const chip = document.querySelector(`#modalCategoryGrid .category-chip[data-key="${cat}"]`);
+                if (chip) {
+                    chip.classList.add('active');
+                    chip.querySelector('input').checked = true;
+                }
+            });
+            
+        } else {
+            document.getElementById('modalTitle').textContent = 'Nova Campanha';
+            document.getElementById('camp_id').value = '';
+            document.getElementById('camp_name').value = '';
+            document.getElementById('camp_brands').value = '';
+            document.getElementById('camp_custom_search').value = '';
+            document.getElementById('camp_min_discount').value = '10';
+            document.getElementById('camp_use_magalu').checked = true;
+            document.getElementById('camp_use_ml').checked = true;
+            document.getElementById('campGroupSelect').style.display = 'none';
+            _savedGroupJids = [];
+        }
+        
+        modal.style.display = 'flex';
+    }
+    
+    function closeCampaignModal() {
+        document.getElementById('campaignModal').style.display = 'none';
+    }
+    
+    async function saveCampaign(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('camp_id').value;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/affiliate/campaigns/${id}` : '/affiliate/campaigns';
+        
+        const categories = Array.from(document.querySelectorAll('#modalCategoryGrid input[type="checkbox"]:checked')).map(cb => cb.value);
+        const group_jids = Array.from(document.querySelectorAll('#groupGrid input[type="checkbox"]:checked')).map(cb => cb.value);
+        
+        const customSearch = document.getElementById('camp_custom_search').value.trim();
+        
+        if (categories.length === 0 && !customSearch) {
+            showToast('Selecione ao menos uma categoria ou preencha os Termos Específicos', 'error');
+            return;
+        }
+        
+        const payload = {
+            name: document.getElementById('camp_name').value,
+            categories: categories,
+            preferred_brands: document.getElementById('camp_brands').value,
+            custom_search_terms: customSearch,
+            min_discount: parseFloat(document.getElementById('camp_min_discount').value) || 10.0,
+            use_magalu: document.getElementById('camp_use_magalu').checked,
+            use_ml: document.getElementById('camp_use_ml').checked,
+            send_to_status: document.getElementById('camp_status').checked,
+            send_to_groups: document.getElementById('camp_groups').checked,
+            group_jids: group_jids,
+            dispatch_hours: document.getElementById('camp_hours').value,
+            is_active: document.getElementById('camp_active').checked
+        };
+        
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error || 'Erro ao salvar', 'error');
+            }
+        } catch (error) {
+            showToast('Erro de conexão', 'error');
+        }
+    }
+    
+    function deleteCampaign(id) {
+        showConfirm('Tem certeza que deseja excluir esta campanha?', async () => {
+            try {
+                const res = await fetch(`/affiliate/campaigns/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showToast(data.error || 'Erro ao excluir', 'error');
+                }
+            } catch (e) {
+                showToast('Erro de conexão', 'error');
+            }
+        });
+    }
+    
+    function startManualDispatch(id, name) {
+        currentManualCampaignId = id;
+        document.getElementById('dispatchSection').scrollIntoView({ behavior: 'smooth' });
+        
+        // Show selection area immediately and click fetch
+        document.getElementById('stepPicker').style.display = 'none';
+        
+        const label = document.getElementById('fetchLabel');
+        label.textContent = `Buscar Ofertas: ${name}`;
+        
+        // Trigger fetch immediately
+        fetchOffers();
     }
 
     // ── offer picker state ────────────────────────────────────────────────
@@ -785,7 +976,13 @@
         statusEl.textContent = 'Conectando aos gateways Magalu e Mercado Livre...';
 
         try {
-            const res = await fetch('/affiliate/fetch-offers');
+            
+        if (!currentManualCampaignId) {
+            showToast('Selecione uma campanha na seção acima e clique em "Disparar Manualmente".', 'error');
+            return;
+        }
+        const res = await fetch(`/affiliate/fetch-offers?campaign_id=${currentManualCampaignId}`);
+
             const data = await res.json();
 
             if (!data.success) {
@@ -845,7 +1042,7 @@
                 const res = await fetch('/affiliate/dispatch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ offers: selected, targets })
+                    body: JSON.stringify({ campaign_id: currentManualCampaignId, offers: selected, targets })
                 });
                 const data = await res.json();
                 if (data.success) {

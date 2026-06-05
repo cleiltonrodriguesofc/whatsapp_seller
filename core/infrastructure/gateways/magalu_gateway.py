@@ -65,6 +65,7 @@ class MagaluGateway:
         min_discount_percent: float = 10.0,
         max_offers: int = 5,
         preferred_brands: str = "",
+        custom_search_terms: str = "",
     ) -> list[MagaluOffer]:
         """
         returns a list of product offers from the configured storefront.
@@ -87,30 +88,31 @@ class MagaluGateway:
         # fetch fresh data
         all_offers = []
         brands = [b.strip() for b in preferred_brands.split(",") if b.strip()] if preferred_brands else []
+        
+        search_paths = []
+        if custom_search_terms:
+            terms = [t.strip() for t in custom_search_terms.split(",") if t.strip()]
+            for term in terms:
+                # E.g. "notebook i7" -> "busca/notebook+i7/"
+                search_paths.append((f"busca/{term.replace(' ', '+')}/", term))
+        else:
+            for cat_key in categories:
+                cat = CATEGORY_MAP.get(cat_key)
+                if not cat:
+                    continue
+                if brands:
+                    for brand in brands:
+                        search_term = f"{brand.replace(' ', '+')}+{cat_key}"
+                        search_paths.append((f"busca/{search_term}/", f"{cat['label']} {brand}"))
+                else:
+                    search_paths.append((cat["path"], cat["label"]))
 
-        for cat_key in categories:
-            cat = CATEGORY_MAP.get(cat_key)
-            if not cat:
-                logger.warning("[magalu] unknown category key: %s", cat_key)
-                continue
-
-            if brands:
-                for brand in brands:
-                    # use query string: magazinevoce.com.br/magazine{slug}/busca/{brand}+{category}/
-                    search_term = f"{brand.replace(' ', '+')}+{cat_key}"
-                    search_path = f"busca/{search_term}/"
-                    label = f"{cat['label']} {brand}"
-                    try:
-                        offers = await self._fetch_category(search_path, label)
-                        all_offers.extend(offers)
-                    except Exception as e:
-                        logger.error("[magalu] error fetching %s: %s", label, e)
-            else:
-                try:
-                    offers = await self._fetch_category(cat["path"], cat["label"])
-                    all_offers.extend(offers)
-                except Exception as e:
-                    logger.error("[magalu] error fetching category %s: %s", cat_key, e)
+        for path, label in search_paths:
+            try:
+                offers = await self._fetch_category(path, label)
+                all_offers.extend(offers)
+            except Exception as e:
+                logger.error("[magalu] error fetching %s: %s", label, e)
 
         # sort by discount descending
         all_offers.sort(key=lambda o: o.discount_percent, reverse=True)
@@ -124,7 +126,16 @@ class MagaluGateway:
 
         logger.info("[magalu] fetched %d total offers, caching for %dh", len(all_offers), CACHE_TTL_HOURS if all_offers else 0)
 
-        filtered = [o for o in all_offers if o.discount_percent >= min_discount_percent]
+        filtered = []
+        for o in all_offers:
+            if o.discount_percent >= min_discount_percent:
+                filtered.append(o)
+            elif not o.old_price or o.old_price <= o.price:
+                # if we couldn't parse old_price (or it equals price), we keep it but don't fake the discount.
+                # wait, if we don't fake it, it will be 0 and the UI might discard it if it expects > 0.
+                # but since we are keeping it, it will be returned.
+                filtered.append(o)
+                
         return filtered[:max_offers]
 
     def _fetch_category_sync(self, search_path: str, category_label: str) -> list[dict]:
@@ -164,7 +175,7 @@ class MagaluGateway:
                 )
                 
                 # inject stealth scripts to remove automation fingerprints
-                context.add_init_script("""
+                context.add_init_script(r"""
                     // remove webdriver property
                     Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
                     
@@ -226,7 +237,7 @@ class MagaluGateway:
                     page.wait_for_timeout(2000)
 
                 # extract product data from the rendered page
-                products = page.evaluate("""
+                products = page.evaluate(r"""
                     () => {
                         const items = [];
                         const seen = new Set();
