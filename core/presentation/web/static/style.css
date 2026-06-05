@@ -4,7 +4,8 @@
     /* Color Palette - Premium Neon & Glass */
     --bg-main: #06070a;
     --bg-glass: rgba(16, 20, 30, 0.6);
-    --bg-card: rgba(26, 32, 50, 0.4);
+    --bg-card: rgba(15, 23, 42, 0.95);
+    --card-bg: #0f172a;
     --bg-sidebar: rgba(10, 12, 20, 0.85);
     
     --primary: #6366f1;
