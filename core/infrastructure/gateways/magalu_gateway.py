@@ -115,13 +115,14 @@ class MagaluGateway:
         # sort by discount descending
         all_offers.sort(key=lambda o: o.discount_percent, reverse=True)
 
-        # update cache
-        _offer_cache[cache_key] = {
-            "expires": now + timedelta(hours=CACHE_TTL_HOURS),
-            "offers": all_offers,
-        }
+        # ONLY cache if we got results — never cache empty results
+        if all_offers:
+            _offer_cache[cache_key] = {
+                "expires": now + timedelta(hours=CACHE_TTL_HOURS),
+                "offers": all_offers,
+            }
 
-        logger.info("[magalu] fetched %d total offers, caching for %dh", len(all_offers), CACHE_TTL_HOURS)
+        logger.info("[magalu] fetched %d total offers, caching for %dh", len(all_offers), CACHE_TTL_HOURS if all_offers else 0)
 
         filtered = [o for o in all_offers if o.discount_percent >= min_discount_percent]
         return filtered[:max_offers]

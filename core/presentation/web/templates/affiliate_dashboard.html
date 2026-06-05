@@ -438,6 +438,22 @@
 
     {% if has_instance and config.configured %}
 
+    <!-- destination selector (always visible) -->
+    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; text-align: left;">
+        <p style="margin: 0 0 0.75rem 0; font-weight: 600; font-size: 0.9rem; color: white;">📤 Enviar para:</p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <label class="target-chip active-status" id="chipStatus" onclick="toggleTarget(this,'status')">
+                <input type="checkbox" value="status" checked style="pointer-events:none; accent-color:#6366f1;">
+                📱 Meu Status
+            </label>
+            <label class="target-chip" id="chipGroups" onclick="toggleTarget(this,'groups')" title="Grupos configurados na seção acima">
+                <input type="checkbox" value="groups" style="pointer-events:none; accent-color:#10b981;">
+                👥 Meus Grupos
+                <span id="groupCountBadge" style="display:none; font-size:0.7rem; background:rgba(16,185,129,0.3); border-radius:10px; padding:0.1rem 0.45rem; margin-left:0.2rem;"></span>
+            </label>
+        </div>
+    </div>
+
     <!-- step 1: fetch button -->
     <div id="stepFetch" style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
         <button class="btn btn-primary" id="btnFetch" onclick="fetchOffers()"
@@ -450,22 +466,6 @@
 
     <!-- step 2: picker (hidden until offers are loaded) -->
     <div id="stepPicker" style="display: none; margin-top: 1.5rem; text-align: left; width: 100%;">
-
-        <!-- destination selector -->
-        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-            <p style="margin: 0 0 0.75rem 0; font-weight: 600; font-size: 0.9rem; color: white;">📤 Enviar para:</p>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <label class="target-chip" id="chipStatus" onclick="toggleTarget(this,'status')">
-                    <input type="checkbox" value="status" checked style="pointer-events:none; accent-color:#6366f1;">
-                    📱 Meu Status
-                </label>
-                <label class="target-chip" id="chipGroups" onclick="toggleTarget(this,'groups')" title="Grupos configurados na seção acima">
-                    <input type="checkbox" value="groups" style="pointer-events:none; accent-color:#10b981;">
-                    👥 Meus Grupos
-                    <span id="groupCountBadge" style="display:none; font-size:0.7rem; background:rgba(16,185,129,0.3); border-radius:10px; padding:0.1rem 0.45rem; margin-left:0.2rem;"></span>
-                </label>
-            </div>
-        </div>
 
         <!-- select all / deselect all controls -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -980,12 +980,9 @@
         });
     }
 
-    // init: activate default target chip on load + show saved group count badge
+    // init: auto-load groups + show saved group count badge
     window.addEventListener('DOMContentLoaded', () => {
-        const chipStatus = document.getElementById('chipStatus');
-        if (chipStatus) chipStatus.classList.add('active-status');
-
-        // show saved group count badge in dispatch section (without needing to load groups)
+        // show saved group count badge immediately
         if (typeof _savedGroupJids !== 'undefined' && _savedGroupJids.length > 0) {
             const badge = document.getElementById('groupCountBadge');
             if (badge) {
@@ -994,6 +991,9 @@
                 badge.style.display = 'inline';
             }
         }
+
+        // auto-load groups from WhatsApp so they show up in the config
+        loadGroups();
     });
 </script>
 {% endblock %}
