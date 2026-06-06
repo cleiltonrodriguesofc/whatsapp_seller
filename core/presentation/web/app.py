@@ -229,6 +229,41 @@ try:
                 "ALTER TABLE affiliate_logs ADD COLUMN image_url VARCHAR;",
             ),
             (
+                "affiliate_logs",
+                "short_url",
+                "ALTER TABLE affiliate_logs ADD COLUMN short_url VARCHAR;",
+            ),
+            (
+                "affiliate_logs",
+                "price",
+                "ALTER TABLE affiliate_logs ADD COLUMN price FLOAT;",
+            ),
+            (
+                "affiliate_logs",
+                "old_price",
+                "ALTER TABLE affiliate_logs ADD COLUMN old_price FLOAT;",
+            ),
+            (
+                "affiliate_logs",
+                "discount_percent",
+                "ALTER TABLE affiliate_logs ADD COLUMN discount_percent FLOAT;",
+            ),
+            (
+                "affiliate_logs",
+                "installment_text",
+                "ALTER TABLE affiliate_logs ADD COLUMN installment_text VARCHAR;",
+            ),
+            (
+                "affiliate_logs",
+                "pix_discount_text",
+                "ALTER TABLE affiliate_logs ADD COLUMN pix_discount_text VARCHAR;",
+            ),
+            (
+                "affiliate_logs",
+                "source",
+                "ALTER TABLE affiliate_logs ADD COLUMN source VARCHAR DEFAULT 'magalu';",
+            ),
+            (
                 "affiliate_configs",
                 "preferred_brands",
                 "ALTER TABLE affiliate_configs ADD COLUMN preferred_brands VARCHAR;",
@@ -317,6 +352,11 @@ try:
                 "affiliate_campaigns",
                 "last_run_at",
                 "ALTER TABLE affiliate_campaigns ADD COLUMN last_run_at TIMESTAMP;",
+            ),
+            (
+                "short_links",
+                "store_name",
+                "ALTER TABLE short_links ADD COLUMN store_name VARCHAR DEFAULT 'magalu';",
             ),
         ])
 

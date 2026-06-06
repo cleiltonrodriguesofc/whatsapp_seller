@@ -12,6 +12,8 @@ import logging
 import re
 import json
 import asyncio
+import os
+import urllib.parse
 import httpx
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
@@ -87,9 +89,87 @@ class MagaluGateway:
     BASE_URL = "https://www.magazinevoce.com.br"
     MAGALU_SEARCH_URL = "https://www.magazineluiza.com.br"
 
+    _free_proxies: list[str] = []
+
     def __init__(self, storefront_slug: str):
         self.storefront_slug = storefront_slug
         self.store_url = f"{self.BASE_URL}/magazine{storefront_slug}"
+
+    def _wrap_proxy_url(self, url: str) -> str:
+        """Wraps target URL with ScraperAPI proxy if key is set in environment."""
+        key = os.environ.get("SCRAPERAPI_KEY")
+        if key:
+            # We use ScraperAPI to simulate residential proxy IP rotations
+            return f"http://api.scraperapi.com?api_key={key}&url={urllib.parse.quote(url)}"
+        return url
+
+    async def _fetch_via_google_translate_proxy(self, url: str, headers: dict) -> str:
+        """Uses Google Translate's subdomain proxy to bypass WAF. Highly effective, completely free."""
+        # Convert https://www.magazineluiza.com.br/busca/notebook/ to 
+        # https://www-magazineluiza-com-br.translate.goog/busca/notebook/?_x_tr_sl=auto&_x_tr_tl=pt&_x_tr_hl=pt-BR
+        if not url.startswith("https://www.magazineluiza.com.br"):
+            raise ValueError("URL not supported by translate proxy")
+            
+        path = url.split("magazineluiza.com.br")[1]
+        translate_url = f"https://www-magazineluiza-com-br.translate.goog{path}?_x_tr_sl=auto&_x_tr_tl=pt&_x_tr_hl=pt-BR"
+        
+        logger.info("[magalu] Trying Google Translate proxy bypass for: %s", path)
+        try:
+            async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+                resp = await client.get(translate_url, headers=headers)
+                if resp.status_code == 200 and "captcha" not in resp.text.lower() and "protected by" not in resp.text.lower():
+                    logger.info("[magalu] Successfully scraped via Google Translate proxy!")
+                    return resp.text
+                else:
+                    logger.warning("[magalu] Google Translate proxy returned status %d or Captcha", resp.status_code)
+                    raise Exception("Google Translate proxy blocked")
+        except Exception as e:
+            logger.debug("[magalu] Google Translate proxy failed: %s", e)
+            raise e
+
+    async def _fetch_with_free_proxy(self, url: str, headers: dict) -> str:
+        """Attempts to fetch URL using rotated free BR proxies."""
+        if not self._free_proxies:
+            try:
+                # fetch a list of fresh BR proxies
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    r = await client.get("https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=BR&ssl=all&anonymity=all")
+                    if r.status_code == 200:
+                        self._free_proxies = [p.strip() for p in r.text.strip().split("\n") if p.strip()]
+                        logger.info("[magalu] Loaded %d free BR proxies", len(self._free_proxies))
+            except Exception as e:
+                logger.error("[magalu] Failed to load free proxies: %s", e)
+
+        if not self._free_proxies:
+            raise Exception("No free proxies available")
+
+        # Shuffle to distribute load
+        import random
+        random.shuffle(self._free_proxies)
+
+        # Try up to 5 proxies (timeout is short, so it won't block too long)
+        for proxy in self._free_proxies[:5]:
+            proxy = proxy.strip()
+            if not proxy:
+                continue
+            proxy_url = f"http://{proxy}"
+            try:
+                logger.info("[magalu] trying free proxy: %s", proxy_url)
+                async with httpx.AsyncClient(
+                    proxies={"http://": proxy_url, "https://": proxy_url},
+                    timeout=10.0,
+                    follow_redirects=True
+                ) as client:
+                    resp = await client.get(url, headers=headers)
+                    if resp.status_code == 200 and "captcha" not in resp.text.lower():
+                        logger.info("[magalu] successfully scraped via proxy %s", proxy)
+                        return resp.text
+                    else:
+                        logger.warning("[magalu] proxy %s returned status %d or CAPTCHA", proxy, resp.status_code)
+            except Exception as e:
+                logger.debug("[magalu] proxy %s failed: %s", proxy, e)
+
+        raise Exception("All free proxies failed or timed out")
 
     async def get_offers(
         self,
@@ -189,23 +269,44 @@ class MagaluGateway:
 
     # ── strategy 1: HTTP scraping of magazineluiza.com.br ─────────────
     async def _fetch_via_http_scrape(self, search_query: str, category_label: str) -> list[MagaluOffer]:
-        """Scrapes magazineluiza.com.br search results using Googlebot UA to get server-rendered HTML."""
+        """Scrapes magazineluiza.com.br search results using proxies to get server-rendered HTML."""
         search_slug = search_query.replace(" ", "+")
         url = f"{self.MAGALU_SEARCH_URL}/busca/{search_slug}/"
 
-        # Use Googlebot UA to bypass login/captcha walls and get SSR content
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "pt-BR,pt;q=0.9",
-            "Cache-Control": "no-cache",
-        }
+        scraperapi_key = os.environ.get("SCRAPERAPI_KEY")
+        if scraperapi_key:
+            target_url = self._wrap_proxy_url(url)
+            headers = {}
+        else:
+            target_url = url
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "pt-BR,pt;q=0.9",
+                "Cache-Control": "no-cache",
+            }
 
         try:
-            async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
-                resp = await client.get(url, headers=headers)
-                resp.raise_for_status()
-                html = resp.text
+            if scraperapi_key:
+                logger.info("[magalu] Routing search via ScraperAPI for '%s'", search_query)
+                async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+                    resp = await client.get(target_url)
+                    resp.raise_for_status()
+                    html = resp.text
+            else:
+                try:
+                    logger.info("[magalu] Trying Google Translate proxy for '%s'", search_query)
+                    html = await self._fetch_via_google_translate_proxy(target_url, headers)
+                except Exception as gt_err:
+                    logger.warning("[magalu] Google Translate proxy failed: %s. Trying free rotating proxies...", gt_err)
+                    try:
+                        html = await self._fetch_with_free_proxy(target_url, headers)
+                    except Exception as proxy_err:
+                        logger.warning("[magalu] Free proxy rotation failed: %s. Falling back to direct request.", proxy_err)
+                        async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+                            resp = await client.get(target_url, headers=headers)
+                            resp.raise_for_status()
+                            html = resp.text
         except Exception as e:
             logger.error("[magalu] HTTP scrape fetch error for '%s': %s", search_query, e)
             return []
@@ -555,26 +656,49 @@ class MagaluGateway:
     # ── strategy 2: storefront page scraping ──────────────────────────
 
     async def _fetch_via_storefront_scrape(self, search_query: str, category_label: str) -> list[MagaluOffer]:
-        """Scrapes the affiliate storefront page as a fallback."""
+        """Scrapes the affiliate storefront page using proxies as a fallback."""
         search_slug = search_query.replace(" ", "+")
         url = f"{self.store_url}/busca/{search_slug}/"
 
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "pt-BR,pt;q=0.9",
-            "Cache-Control": "no-cache",
-        }
+        scraperapi_key = os.environ.get("SCRAPERAPI_KEY")
+        if scraperapi_key:
+            target_url = self._wrap_proxy_url(url)
+            headers = {}
+        else:
+            target_url = url
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "pt-BR,pt;q=0.9",
+                "Cache-Control": "no-cache",
+            }
 
         try:
-            async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
-                resp = await client.get(url, headers=headers)
-                # Check for captcha
-                if "captcha" in resp.text.lower() or resp.status_code in (403, 429):
-                    logger.warning("[magalu] captcha or block on storefront for '%s'", search_query)
-                    return []
-                resp.raise_for_status()
-                html = resp.text
+            if scraperapi_key:
+                logger.info("[magalu] Routing storefront via ScraperAPI for '%s'", search_query)
+                async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+                    resp = await client.get(target_url)
+                    resp.raise_for_status()
+                    html = resp.text
+            else:
+                try:
+                    logger.info("[magalu] Trying Google Translate proxy for storefront '%s'", search_query)
+                    html = await self._fetch_via_google_translate_proxy(target_url, headers)
+                except Exception as gt_err:
+                    logger.warning("[magalu] Google Translate proxy failed: %s. Trying free rotating proxies...", gt_err)
+                    try:
+                        html = await self._fetch_with_free_proxy(target_url, headers)
+                    except Exception as proxy_err:
+                        logger.warning("[magalu] Free proxy storefront rotation failed: %s. Falling back to direct request.", proxy_err)
+                        async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+                            resp = await client.get(target_url, headers=headers)
+                            resp.raise_for_status()
+                            html = resp.text
+
+            if "captcha" in html.lower():
+                logger.warning("[magalu] CAPTCHA detected on storefront for '%s'", search_query)
+                return []
+
         except Exception as e:
             logger.error("[magalu] storefront scrape error for '%s': %s", search_query, e)
             return []

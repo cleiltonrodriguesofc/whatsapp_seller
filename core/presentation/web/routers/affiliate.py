@@ -56,8 +56,9 @@ async def affiliate_dashboard(
             campaigns.append({
                 "id": c.id,
                 "name": c.name,
-                "categories": [cat.strip() for cat in c.categories.split(",") if cat.strip()],
+                "categories": [cat.strip() for cat in (c.categories or "").split(",") if cat.strip()],
                 "preferred_brands": c.preferred_brands or "",
+                "custom_search_terms": c.custom_search_terms or "",
                 "min_discount": c.min_discount_percent,
                 "max_offers": c.max_offers,
                 "use_magalu": c.use_magalu,
