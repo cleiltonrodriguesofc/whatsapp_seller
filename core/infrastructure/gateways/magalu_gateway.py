@@ -157,7 +157,7 @@ class MagaluGateway:
                 logger.info("[magalu] trying free proxy: %s", proxy_url)
                 async with httpx.AsyncClient(
                     proxies={"http://": proxy_url, "https://": proxy_url},
-                    timeout=10.0,
+                    timeout=15.0,
                     follow_redirects=True
                 ) as client:
                     resp = await client.get(url, headers=headers)
