@@ -401,6 +401,7 @@ class AffiliateCampaignModel(Base):
     categories = Column(String, nullable=False) # comma separated
     preferred_brands = Column(String, nullable=True) # "Apple, Samsung"
     min_discount_percent = Column(Float, default=10.0)
+    max_offers = Column(Integer, default=5)
     
     # Targets
     send_to_status = Column(Boolean, default=True)

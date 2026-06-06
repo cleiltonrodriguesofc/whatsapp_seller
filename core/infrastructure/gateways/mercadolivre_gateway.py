@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 # ── category search terms for ml electronics ─────────────────────────────
 ML_CATEGORY_MAP = {
+    # Eletrônicos & Informática
     "notebook": {"query": "notebook", "label": "Notebooks", "category_id": "MLB1652"},
     "celular": {"query": "celular smartphone", "label": "Celulares", "category_id": "MLB1055"},
     "tablet": {"query": "tablet", "label": "Tablets", "category_id": "MLB1118"},
@@ -34,6 +35,35 @@ ML_CATEGORY_MAP = {
     "mouse": {"query": "mouse gamer sem fio", "label": "Mouses Gamer", "category_id": "MLB1034"},
     "teclado": {"query": "teclado gamer mecanico", "label": "Teclados Gamer", "category_id": "MLB1033"},
     "impressora": {"query": "impressora multifuncional", "label": "Impressoras", "category_id": "MLB1009"},
+    # Eletrodomésticos
+    "ar_condicionado": {"query": "ar condicionado split", "label": "Ar Condicionado", "category_id": "MLB1644"},
+    "geladeira": {"query": "geladeira frost free", "label": "Geladeiras", "category_id": "MLB1643"},
+    "maquina_lavar": {"query": "maquina de lavar roupa", "label": "Máquinas de Lavar", "category_id": "MLB1646"},
+    "fogao": {"query": "fogao 4 bocas 5 bocas", "label": "Fogões", "category_id": "MLB1642"},
+    "microondas": {"query": "microondas", "label": "Microondas", "category_id": "MLB1645"},
+    "fritadeira": {"query": "fritadeira sem oleo air fryer", "label": "Fritadeiras Air Fryer", "category_id": "MLB115201"},
+    "ventilador": {"query": "ventilador de mesa coluna", "label": "Ventiladores", "category_id": "MLB1648"},
+    "liquidificador": {"query": "liquidificador", "label": "Liquidificadores", "category_id": "MLB115197"},
+    "batedeira": {"query": "batedeira planetaria", "label": "Batedeiras", "category_id": "MLB115196"},
+    # Beleza & Cuidado Pessoal
+    "secador_cabelo": {"query": "secador de cabelo profissional", "label": "Secadores de Cabelo", "category_id": "MLB1274"},
+    "chapinha": {"query": "chapinha prancha", "label": "Chapinhas", "category_id": "MLB1275"},
+    "barbeador": {"query": "barbeador eletrico", "label": "Barbeadores Elétricos", "category_id": "MLB1276"},
+    "perfume": {"query": "perfume importado", "label": "Perfumes Importados", "category_id": "MLB1271"},
+    "skincare": {"query": "kit skincare", "label": "Skincare", "category_id": "MLB1248"},
+    # Casa & Jardim
+    "aspirador": {"query": "aspirador de po robo", "label": "Aspiradores Robô", "category_id": "MLB1647"},
+    "furadeira": {"query": "furadeira e parafusadeira", "label": "Ferramentas Elétricas", "category_id": "MLB1756"},
+    "cama_mesa_banho": {"query": "jogo de cama casal", "label": "Cama, Mesa e Banho", "category_id": "MLB1574"},
+    "decoracao": {"query": "quadros decorativos", "label": "Decoração", "category_id": "MLB1575"},
+    # Esporte & Lazer
+    "bicicleta": {"query": "bicicleta aro 29", "label": "Bicicletas", "category_id": "MLB1277"},
+    "tenis_corrida": {"query": "tenis de corrida", "label": "Tênis Esportivos", "category_id": "MLB1280"},
+    "whey_protein": {"query": "whey protein", "label": "Suplementos", "category_id": "MLB1285"},
+    # Bebês & Moda
+    "carrinho_bebe": {"query": "carrinho de bebe", "label": "Carrinhos de Bebê", "category_id": "MLB1384"},
+    "fralda": {"query": "fralda pampers huggies", "label": "Fraldas", "category_id": "MLB1388"},
+    "roupa_infantil": {"query": "kit roupa infantil", "label": "Moda Infantil", "category_id": "MLB1394"},
 }
 
 ML_SEARCH_API = "https://api.mercadolibre.com/sites/MLB/search"
@@ -83,7 +113,12 @@ class MercadoLivreGateway:
         self.profile_url = f"https://www.mercadolivre.com.br/social/{profile_slug}/lists" if profile_slug else ""
 
     def _build_affiliate_link(self, product_url: str) -> str:
-        """appends affiliate tracking params to a ml product url."""
+        """Appends affiliate tracking params to a ML product URL.
+
+        Uses two complementary tracking approaches:
+        1. 'affiliate' param (official ML affiliate tracking)
+        2. 'matt_tool' param (used by advanced affiliate tools)
+        """
         if not product_url:
             return product_url
         
@@ -91,18 +126,20 @@ class MercadoLivreGateway:
         parsed = urllib.parse.urlparse(product_url)
         query = dict(urllib.parse.parse_qsl(parsed.query))
         
-        # remove old matt_ parameters to avoid conflicts
+        # remove old tracking parameters to avoid conflicts
         keys_to_remove = [k for k in query.keys() if k.startswith("matt_")]
         for k in keys_to_remove:
             del query[k]
         
         if self.client_id:
+            # Official ML affiliate param
+            query["affiliate"] = self.client_id
+            # Also add matt_tool for tools that rely on it
             query["matt_tool"] = self.client_id
             if self.profile_slug:
                 query["matt_word"] = self.profile_slug
             query["matt_source"] = "social"
             query["matt_campaign"] = ""
-            query["forceInApp"] = "true"
         
         new_query = urllib.parse.urlencode(query)
         parsed = parsed._replace(query=new_query)

@@ -1004,7 +1004,7 @@ async def campaign_scheduler_loop() -> None:
                                 storefront_slug=config.storefront_slug or "",
                                 categories=categories,
                                 min_discount=campaign.min_discount_percent,
-                                max_offers=5,
+                                max_offers=campaign.max_offers or 5,
                                 group_jids=group_jids,
                                 theme_color=config.theme_color or "#0088ff",
                                 tagline=config.tagline or "tem na minha loja",

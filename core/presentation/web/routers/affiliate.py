@@ -59,6 +59,7 @@ async def affiliate_dashboard(
                 "categories": [cat.strip() for cat in c.categories.split(",") if cat.strip()],
                 "preferred_brands": c.preferred_brands or "",
                 "min_discount": c.min_discount_percent,
+                "max_offers": c.max_offers,
                 "use_magalu": c.use_magalu,
                 "use_ml": c.use_ml,
                 "send_to_status": c.send_to_status,
@@ -184,6 +185,7 @@ class AffiliateCampaignSchema(BaseModel):
     preferred_brands: str = ""
     custom_search_terms: str = ""
     min_discount: float = 10.0
+    max_offers: int = 5
     use_magalu: bool = True
     use_ml: bool = True
     send_to_status: bool = True
@@ -213,6 +215,7 @@ async def create_affiliate_campaign(
         preferred_brands=data.preferred_brands.strip(),
         custom_search_terms=data.custom_search_terms.strip(),
         min_discount_percent=data.min_discount,
+        max_offers=data.max_offers,
         use_magalu=data.use_magalu,
         use_ml=data.use_ml,
         send_to_status=data.send_to_status,
@@ -248,6 +251,7 @@ async def update_affiliate_campaign(
     campaign.preferred_brands = data.preferred_brands.strip()
     campaign.custom_search_terms = data.custom_search_terms.strip()
     campaign.min_discount_percent = data.min_discount
+    campaign.max_offers = data.max_offers
     campaign.use_magalu = data.use_magalu
     campaign.use_ml = data.use_ml
     campaign.send_to_status = data.send_to_status

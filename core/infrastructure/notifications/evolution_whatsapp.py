@@ -169,80 +169,170 @@ class EvolutionWhatsAppService(NotificationService):
     ) -> bool:
         """
         Sends a status update (text or image).
+
+        Strategy:
+        - If explicit jid_list provided → send in chunks of 250 with allContacts=False
+        - If no jid_list → try allContacts=True first (fastest, broadest reach)
+          - If allContacts=True fails → fetch contacts and send in chunks as fallback
         """
         url = f"{self.base_url}/message/sendStatus/{self.instance}"
         is_url = isinstance(content, str) and content.startswith("http")
 
-        # Evolution API v2 expects raw base64 for images (no data URI prefix)
         final_content = content
         if type == "image" and not is_url:
-            # Strip data URI prefix if present (data:image/jpeg;base64,XXX → XXX)
             if isinstance(content, str) and content.startswith("data:"):
                 final_content = content.split(",", 1)[-1]
             else:
                 final_content = content
 
-        # when no specific targets are provided, use allContacts mode
-        # (avoids sending thousands of jids which causes the api to time out)
-        use_all_contacts = not jid_list or len(jid_list) == 0
+        import time
+        import asyncio
 
-        payload: dict = {
-            "type": type,
-            "content": final_content,
-            "allContacts": use_all_contacts,
-        }
+        has_explicit_targets = jid_list and len(jid_list) > 0
 
-        if type == "image":
-            payload["caption"] = caption or ""
-            payload["mimetype"] = "image/jpeg"
-            payload["fileName"] = "status.jpg"
+        # ── Build base payload shared by all strategies ──────────────
+        def _build_payload(
+            use_all_contacts: bool = False,
+            targets_chunk: list | None = None,
+        ) -> dict:
+            payload: dict = {
+                "type": type,
+                "content": final_content,
+            }
+            if use_all_contacts:
+                payload["allContacts"] = True
+            else:
+                payload["allContacts"] = False
+                payload["statusJidList"] = targets_chunk or []
 
-        if type == "text":
-            payload["backgroundColor"] = backgroundColor
-            payload["font"] = font
+            if type == "image":
+                payload["caption"] = caption or ""
+                payload["mimetype"] = "image/jpeg"
+                payload["fileName"] = "status.jpg"
+            elif type == "text":
+                payload["backgroundColor"] = backgroundColor
+                payload["font"] = font
 
-        if not use_all_contacts:
-            payload["statusJidList"] = jid_list
+            return payload
 
-        try:
-            import time
+        # ── Helper: send a single request ─────────────────────────────
+        async def _send_one(payload: dict, label: str) -> bool:
             t0 = time.monotonic()
-            async with httpx.AsyncClient(timeout=httpx.Timeout(600.0, connect=30.0)) as client:
-                response = await client.post(url, json=payload, headers=self._headers())
+            try:
+                async with httpx.AsyncClient(
+                    timeout=httpx.Timeout(90.0, connect=30.0)
+                ) as client:
+                    response = await client.post(
+                        url, json=payload, headers=self._headers()
+                    )
+                    elapsed = round(time.monotonic() - t0, 1)
+
+                    if response.status_code >= 500:
+                        logger.error(
+                            "sendStatus %s server error (%s) after %ss: %s",
+                            label, response.status_code, elapsed,
+                            response.text[:300],
+                        )
+                        return False
+                    if response.status_code >= 400:
+                        logger.error(
+                            "sendStatus %s rejected (%s) after %ss: %s",
+                            label, response.status_code, elapsed,
+                            response.text[:300],
+                        )
+                        return False
+
+                    logger.info(
+                        "sendStatus %s success (http %s) in %ss",
+                        label, response.status_code, elapsed,
+                    )
+                    return True
+            except httpx.TimeoutException:
                 elapsed = round(time.monotonic() - t0, 1)
-                if response.status_code >= 500:
-                    logger.error(
-                        "evolution api sendstatus server error (%s) after %ss: %s | payload keys: %s",
-                        response.status_code,
-                        elapsed,
-                        response.text[:300],
-                        list(payload.keys()),
-                    )
-                    return False
-                if response.status_code >= 400:
-                    logger.error(
-                        "evolution api sendstatus rejected (%s) after %ss: %s",
-                        response.status_code,
-                        elapsed,
-                        response.text[:300],
-                    )
-                    return False
-                logger.info(
-                    "whatsapp status update sent (http %s) in %ss to %s",
-                    response.status_code,
-                    elapsed,
-                    "all contacts" if use_all_contacts else f"{len(jid_list)} targets",
+                logger.warning(
+                    "sendStatus %s timed out after %ss", label, elapsed
                 )
-                return True
-        except httpx.TimeoutException:
-            logger.warning(
-                "evolution api sendstatus timed out for %s targets",
-                len(jid_list) if jid_list else "all",
+                return False
+            except Exception as exc:
+                logger.error(
+                    "sendStatus %s exception: %s", label, exc
+                )
+                return False
+
+        # ── Strategy A: explicit JID list → chunk and send ───────────
+        if has_explicit_targets:
+            targets = list(set(jid_list))
+            logger.info(
+                "send_status: using explicit jid_list with %d targets",
+                len(targets),
+            )
+            chunk_size = 250
+            overall_success = True
+
+            for i in range(0, len(targets), chunk_size):
+                chunk = targets[i : i + chunk_size]
+                chunk_num = (i // chunk_size) + 1
+                total_chunks = (len(targets) // chunk_size) + 1
+                payload = _build_payload(targets_chunk=chunk)
+                success = await _send_one(
+                    payload, f"chunk {chunk_num}/{total_chunks}"
+                )
+                if not success:
+                    overall_success = False
+                if i + chunk_size < len(targets):
+                    await asyncio.sleep(2)
+
+            return overall_success
+
+        # ── Strategy B: no explicit targets → allContacts=True first ─
+        logger.info(
+            "send_status: no explicit targets → trying allContacts=True"
+        )
+        payload_all = _build_payload(use_all_contacts=True)
+        success = await _send_one(payload_all, "allContacts=True")
+        if success:
+            return True
+
+        # ── Strategy C: allContacts failed → fetch contacts, chunk ───
+        logger.warning(
+            "send_status: allContacts=True failed, falling back to "
+            "fetching contact list and sending in chunks"
+        )
+        contacts = await self.get_contacts()
+        targets = [
+            c.get("remoteJid") or c.get("id")
+            for c in contacts
+        ]
+        targets = [t for t in targets if t and t.endswith("@s.whatsapp.net")]
+        targets = list(set(targets))
+
+        if not targets:
+            logger.error(
+                "send_status: no contacts found even as fallback "
+                "— status will not be visible to anyone"
             )
             return False
-        except Exception as exc:
-            logger.error("evolution-api sendStatus failed with exception: %s", exc)
-            return False
+
+        logger.info(
+            "send_status: fallback sending to %d contacts in chunks",
+            len(targets),
+        )
+        chunk_size = 250
+        overall_success = True
+        for i in range(0, len(targets), chunk_size):
+            chunk = targets[i : i + chunk_size]
+            chunk_num = (i // chunk_size) + 1
+            total_chunks = (len(targets) // chunk_size) + 1
+            payload = _build_payload(targets_chunk=chunk)
+            ok = await _send_one(
+                payload, f"fallback chunk {chunk_num}/{total_chunks}"
+            )
+            if not ok:
+                overall_success = False
+            if i + chunk_size < len(targets):
+                await asyncio.sleep(2)
+
+        return overall_success
 
     async def send_group_text(self, group_jid: str, message: str) -> bool:
         return await self.send_text(group_jid, message)
