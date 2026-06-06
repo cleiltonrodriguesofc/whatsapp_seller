@@ -258,6 +258,66 @@ try:
                 "custom_search_terms",
                 "ALTER TABLE affiliate_campaigns ADD COLUMN custom_search_terms VARCHAR;",
             ),
+            (
+                "affiliate_campaigns",
+                "use_magalu",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN use_magalu BOOLEAN DEFAULT TRUE;",
+            ),
+            (
+                "affiliate_campaigns",
+                "use_ml",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN use_ml BOOLEAN DEFAULT TRUE;",
+            ),
+            (
+                "affiliate_campaigns",
+                "categories",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN categories VARCHAR DEFAULT 'notebook';",
+            ),
+            (
+                "affiliate_campaigns",
+                "preferred_brands",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN preferred_brands VARCHAR;",
+            ),
+            (
+                "affiliate_campaigns",
+                "min_discount_percent",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN min_discount_percent FLOAT DEFAULT 10.0;",
+            ),
+            (
+                "affiliate_campaigns",
+                "max_offers",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN max_offers INTEGER DEFAULT 5;",
+            ),
+            (
+                "affiliate_campaigns",
+                "send_to_status",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN send_to_status BOOLEAN DEFAULT TRUE;",
+            ),
+            (
+                "affiliate_campaigns",
+                "send_to_groups",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN send_to_groups BOOLEAN DEFAULT FALSE;",
+            ),
+            (
+                "affiliate_campaigns",
+                "group_jids",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN group_jids VARCHAR;",
+            ),
+            (
+                "affiliate_campaigns",
+                "is_active",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN is_active BOOLEAN DEFAULT TRUE;",
+            ),
+            (
+                "affiliate_campaigns",
+                "dispatch_hours",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN dispatch_hours VARCHAR DEFAULT '9,12,18';",
+            ),
+            (
+                "affiliate_campaigns",
+                "last_run_at",
+                "ALTER TABLE affiliate_campaigns ADD COLUMN last_run_at TIMESTAMP;",
+            ),
         ])
 
 
