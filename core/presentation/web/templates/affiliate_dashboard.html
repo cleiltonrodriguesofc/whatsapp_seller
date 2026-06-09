@@ -223,7 +223,19 @@
             {% endif %}
         </div>
 
-        
+        <!-- whatsapp group invite link -->
+        <div style="margin-bottom: 1.25rem;">
+            <label class="form-label">Link de Convite do Grupo VIP (WhatsApp)</label>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="text" id="whatsapp_group_invite_link" class="form-input"
+                       style="flex: 1;"
+                       placeholder="https://chat.whatsapp.com/..."
+                       value="{{ config.whatsapp_group_invite_link }}">
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                Usado na sua <a href="/vitrine/{{ config.storefront_slug or config.ml_profile_slug }}" target="_blank" style="color: #6366f1;">Vitrine Dinâmica</a> e na página de redirecionamento (Para anúncios no Google Ads).
+            </p>
+        </div>
 
         <!-- visual customization -->
         <h4 style="margin-bottom: 1rem; margin-top: 1.5rem; color: #a855f7;">🎨 Personalização da Arte</h4>
@@ -723,22 +735,23 @@
         const cats = getSelectedCategories();
         const mlEnabled = document.getElementById('ml_enabled').checked;
         const mlSlug = document.getElementById('ml_profile_slug').value.trim();
+        const storefrontSlug = document.getElementById('storefront_slug').value.trim();
 
-        if (!document.getElementById('storefront_slug').value.trim() && !mlSlug) {
+        if (!storefrontSlug && !mlSlug) {
             showToast('Preencha o nome da loja Magalu ou o slug do perfil Mercado Livre', 'error');
             return;
         }
 
         const payload = {
-            storefront_slug: document.getElementById('storefront_slug').value.trim(),
+            storefront_slug: storefrontSlug,
             store_type: document.getElementById('store_type').value,
             theme_color: document.getElementById('theme_color').value || '#0088ff',
             tagline: document.getElementById('tagline').value || 'tem na minha loja',
-            require_approval: false, // removed from global
-            // ml fields
+            require_approval: false, // removed from global config
             ml_profile_slug: mlSlug,
             ml_client_id: document.getElementById('ml_client_id')?.value?.trim() || '',
             ml_enabled: mlEnabled,
+            whatsapp_group_invite_link: document.getElementById('whatsapp_group_invite_link').value
         };
 
         try {

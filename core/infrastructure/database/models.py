@@ -371,6 +371,7 @@ class AffiliateConfigModel(Base):
     group_enabled = Column(Boolean, default=False)     # enable group broadcast
     group_jids = Column(Text, nullable=True)           # json array of group jids to broadcast to
     group_dispatch_hours = Column(String, default="9,12,15,18,21")  # group dispatch hours
+    whatsapp_group_invite_link = Column(String, nullable=True)  # Public invite link for Google Ads hook
 
     # ── promo card customization ──────────────────────────────────────
     store_type = Column(String, default="magalu")  # magalu, generica

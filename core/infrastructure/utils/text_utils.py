@@ -64,7 +64,7 @@ def parse_vcard(raw_text: str) -> list:
 
         # fallback to N field (structured name)
         if not name:
-            n_match = re.search(r"^N[;:][^\r\n]*?:(.+)$", block, re.MULTILINE | re.IGNORECASE)
+            n_match = re.search(r"^N(?:;[^:]*)?:(.*)$", block, re.MULTILINE | re.IGNORECASE)
             if n_match:
                 parts = n_match.group(1).strip().split(";")
                 name = " ".join(p.strip() for p in parts if p.strip())

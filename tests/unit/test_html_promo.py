@@ -9,6 +9,10 @@ from core.infrastructure.image.promo_card_generator import generate_promo_card
 from core.infrastructure.ai.openai_service import OpenAIService
 from core.infrastructure.database.session import SessionLocal
 from core.infrastructure.utils.shortener import get_or_create_shortlink
+from core.infrastructure.database.models import Base
+from core.infrastructure.database.session import engine
+
+Base.metadata.create_all(bind=engine)
 
 async def test_iphone_promo():
     print("Buscando iPhone no Magalu (scraper real)...")

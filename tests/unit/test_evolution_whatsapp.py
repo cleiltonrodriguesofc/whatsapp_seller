@@ -181,7 +181,7 @@ async def test_create_instance_payload(svc, mock_client):
     args, kwargs = mock_client.post.call_args
     payload = kwargs["json"]
     assert payload["instanceName"] == "test_inst"
-    assert payload["sync_full_history"] is False
+    assert payload["sync_full_history"] is True
     assert payload["reject_call"] is True
     assert payload["read_messages"] is False
     assert payload["read_status"] is False

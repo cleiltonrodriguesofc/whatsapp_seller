@@ -81,6 +81,7 @@ async def affiliate_dashboard(
             "ml_profile_slug": config_model.ml_profile_slug or "",
             "ml_client_id": getattr(config_model, 'ml_client_id', '') or "",
             "ml_enabled": config_model.ml_enabled or False,
+            "whatsapp_group_invite_link": getattr(config_model, 'whatsapp_group_invite_link', '') or "",
         }
     else:
         campaigns = []
@@ -94,6 +95,7 @@ async def affiliate_dashboard(
             "ml_profile_slug": "",
             "ml_client_id": "",
             "ml_enabled": False,
+            "whatsapp_group_invite_link": "",
         }
 
 
@@ -150,6 +152,7 @@ class AffiliateConfigSchema(BaseModel):
     ml_profile_slug: str = ""
     ml_client_id: str = ""
     ml_enabled: bool = False
+    whatsapp_group_invite_link: str = ""
 
 
 @router.post("/config")
@@ -174,6 +177,7 @@ async def save_affiliate_config(
     config.ml_profile_slug = data.ml_profile_slug.strip()
     config.ml_client_id = data.ml_client_id.strip()
     config.ml_enabled = data.ml_enabled
+    config.whatsapp_group_invite_link = data.whatsapp_group_invite_link.strip()
 
     db.commit()
     return JSONResponse({"success": True, "message": "Configurações globais salvas com sucesso!"})

@@ -62,7 +62,8 @@ async def generate_promo_card(
     # build avatar html from db-stored base64 or fallback to emoji
     avatar_html = "👨🏽‍🦱"
     if owner_avatar_b64:
-        avatar_html = f'<img src="data:image/jpeg;base64,{owner_avatar_b64}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;">'
+        img_src = owner_avatar_b64 if owner_avatar_b64.startswith("data:image") else f"data:image/jpeg;base64,{owner_avatar_b64}"
+        avatar_html = f'<img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover; object-position: center 15%;">'
 
     text_color = "white"
     if store_type == "mercadolivre":

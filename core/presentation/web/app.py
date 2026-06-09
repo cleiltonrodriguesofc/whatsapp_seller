@@ -41,6 +41,7 @@ from core.presentation.web.routers import (
     birthday,
     affiliate,
     shortener,
+    vitrine,
 )
 from core.presentation.web.scheduler import campaign_scheduler_loop
 
@@ -285,6 +286,11 @@ try:
             ),
             (
                 "affiliate_configs",
+                "whatsapp_group_invite_link",
+                "ALTER TABLE affiliate_configs ADD COLUMN whatsapp_group_invite_link VARCHAR;",
+            ),
+            (
+                "affiliate_configs",
                 "ml_categories",
                 "ALTER TABLE affiliate_configs ADD COLUMN ml_categories VARCHAR DEFAULT 'notebook,celular';",
             ),
@@ -483,3 +489,4 @@ app.include_router(admin.router)
 app.include_router(birthday.router)
 app.include_router(affiliate.router)
 app.include_router(shortener.router)
+app.include_router(vitrine.router)

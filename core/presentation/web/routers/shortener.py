@@ -43,4 +43,27 @@ async def redirect_shortlink(store_name: str, hash_id: str, request: Request, db
         logger.warning(f"Blocked open redirect attempt to: {link_record.original_url}")
         raise HTTPException(status_code=400, detail="URL de destino não autorizada.")
 
-    return RedirectResponse(url=link_record.original_url)
+    # Try to find the user to show their avatar and group link
+    owner_avatar = ""
+    group_link = ""
+    log_record = db.query(AffiliateLogModel).filter(AffiliateLogModel.original_url == link_record.original_url).first()
+    if log_record:
+        config = db.query(AffiliateConfigModel).filter(AffiliateConfigModel.user_id == log_record.user_id).first()
+        if config:
+            if config.owner_avatar_b64:
+                owner_avatar = config.owner_avatar_b64
+            if getattr(config, 'whatsapp_group_invite_link', None):
+                group_link = config.whatsapp_group_invite_link
+
+    store_label = "Mercado Livre" if "mercadolivre" in store_name.lower() or "ml" in store_name.lower() else "Magalu"
+
+    return templates.TemplateResponse(
+        "interstitial.html",
+        {
+            "request": request,
+            "destination_url": link_record.original_url,
+            "owner_avatar": owner_avatar,
+            "store_label": store_label,
+            "group_link": group_link
+        }
+    )
