@@ -349,8 +349,8 @@ async def generate_promo_card(
                     viewport={'width': 1080, 'height': 1920},
                     device_scale_factor=1
                 )
-                page.set_content(html, wait_until="networkidle")
-                page.wait_for_timeout(1000)
+                page.set_content(html, wait_until="load", timeout=15000)
+                page.wait_for_timeout(1500)
                 screenshot = page.screenshot(type="png")
                 browser.close()
                 return screenshot

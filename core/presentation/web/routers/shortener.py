@@ -58,8 +58,8 @@ async def redirect_shortlink(store_name: str, hash_id: str, request: Request, db
     store_label = "Mercado Livre" if "mercadolivre" in store_name.lower() or "ml" in store_name.lower() else "Magalu"
 
     return templates.TemplateResponse(
-        "interstitial.html",
-        {
+        name="interstitial.html",
+        context={
             "request": request,
             "destination_url": link_record.original_url,
             "owner_avatar": owner_avatar,
