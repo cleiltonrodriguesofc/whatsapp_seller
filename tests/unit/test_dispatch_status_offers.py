@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from core.application.use_cases.dispatch_status_offers import DispatchStatusOffers
 from core.domain.entities import AffiliateOffer
 

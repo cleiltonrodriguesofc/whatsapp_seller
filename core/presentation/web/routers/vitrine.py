@@ -27,7 +27,7 @@ async def public_vitrine(request: Request, store_slug: str, db: Session = Depend
         db.query(AffiliateLogModel)
         .filter(AffiliateLogModel.user_id == config.user_id)
         .filter(AffiliateLogModel.status == "sent")
-        .filter(AffiliateLogModel.short_url != None)
+        .filter(AffiliateLogModel.short_url != None)  # noqa: E711 — SQLAlchemy requires != None for IS NOT NULL
         .order_by(desc(AffiliateLogModel.created_at))
         .limit(50)
         .all()

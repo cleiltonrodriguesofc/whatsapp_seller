@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from core.infrastructure.database.models import InstanceModel, AffiliateConfigModel, AffiliateLogModel, AffiliateCampaignModel
 from core.infrastructure.database.session import get_db
-from core.infrastructure.gateways.magalu_gateway import MagaluGateway, CATEGORY_MAP
+from core.infrastructure.gateways.magalu_gateway import MagaluGateway
 from core.infrastructure.image.promo_card_generator import generate_promo_card
 from pydantic import BaseModel
 from core.presentation.web.dependencies import login_required, templates
@@ -377,15 +377,15 @@ async def get_affiliate_logs(
         .all()
     )
     return [{
-        "id": l.id,
-        "product_title": l.product_title,
-        "image_url": l.image_url,
-        "status": l.status,
-        "price": l.price,
-        "discount_percent": l.discount_percent,
-        "created_at": l.created_at.strftime("%H:%M:%S"),
-        "error": l.error_message
-    } for l in logs]
+        "id": log.id,
+        "product_title": log.product_title,
+        "image_url": log.image_url,
+        "status": log.status,
+        "price": log.price,
+        "discount_percent": log.discount_percent,
+        "created_at": log.created_at.strftime("%H:%M:%S"),
+        "error": log.error_message
+    } for log in logs]
 
 
 # ── fetch offers (no send) ─────────────────────────────────────────

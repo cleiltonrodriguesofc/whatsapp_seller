@@ -818,7 +818,6 @@ async def evolution_webhook(
 
             push_name = msg.get("pushName", "")
             name = push_name or remote_jid.split("@")[0]
-            target_type = "group" if "@g.us" in remote_jid else "chat"
 
             target_repo.upsert_sync(
                 [{"remoteJid": remote_jid, "pushName": name}],

@@ -1,16 +1,15 @@
 import asyncio
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from core.infrastructure.database.session import SessionLocal, engine
-from core.infrastructure.database.models import ShortLinkModel
-from core.infrastructure.gateways.magalu_gateway import MagaluGateway
-from core.infrastructure.image.promo_card_generator import generate_promo_card
-from core.infrastructure.ai.openai_service import OpenAIService
-from core.infrastructure.utils.shortener import get_or_create_shortlink
-from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService
+from core.infrastructure.database.session import SessionLocal, engine  # noqa: E402
+from core.infrastructure.database.models import ShortLinkModel  # noqa: E402
+from core.infrastructure.gateways.magalu_gateway import MagaluGateway  # noqa: E402
+from core.infrastructure.image.promo_card_generator import generate_promo_card  # noqa: E402
+from core.infrastructure.ai.openai_service import OpenAIService  # noqa: E402
+from core.infrastructure.utils.shortener import get_or_create_shortlink  # noqa: E402
+from core.infrastructure.notifications.evolution_whatsapp import EvolutionWhatsAppService  # noqa: E402
 
 async def run_e2e():
     print("=== TESTE END-TO-END DA MÁQUINA DE OFERTAS ===")
@@ -76,11 +75,11 @@ async def run_e2e():
     # 6. Disparo via Evolution API
     print("\n[5/5] Disparando para o WhatsApp Status...")
     import base64
-    b64_img = base64.b64encode(card_bytes).decode("utf-8")
+    base64.b64encode(card_bytes).decode("utf-8")
     
     try:
         # Se você tiver a instância conectada, isso vai postar no Status!
-        whatsapp = EvolutionWhatsAppService(instance_name=instance_name)
+        EvolutionWhatsAppService(instance_name=instance_name)
         # Uncomment below to actually send if the instance is correct
         # response = await whatsapp.send_status(content=b64_img, type="image", caption=copy)
         # print(" -> Status publicado com sucesso!", response)

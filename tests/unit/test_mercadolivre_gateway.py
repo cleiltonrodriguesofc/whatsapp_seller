@@ -1,9 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-import httpx
 
 from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
-from core.domain.entities import AffiliateOffer
 
 
 @pytest.fixture(autouse=True)

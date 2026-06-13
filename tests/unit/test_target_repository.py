@@ -2,8 +2,7 @@
 Unit tests for SQLTargetRepository.upsert_sync — covering the
 name-preservation logic and Evolution API field variations.
 """
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from core.infrastructure.database.repositories import SQLTargetRepository
 from core.infrastructure.database.models import WhatsAppTargetModel
 

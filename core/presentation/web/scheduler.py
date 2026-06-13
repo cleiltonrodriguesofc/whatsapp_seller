@@ -34,7 +34,6 @@ from core.infrastructure.notifications.evolution_whatsapp import (
     EvolutionWhatsAppService,
 )
 from core.application.use_cases.send_birthday_messages import SendBirthdayMessages
-from core.application.use_cases.dispatch_status_offers import DispatchStatusOffers
 from core.infrastructure.gateways.magalu_gateway import MagaluGateway
 from core.infrastructure.gateways.mercadolivre_gateway import MercadoLivreGateway
 
@@ -920,20 +919,19 @@ async def campaign_scheduler_loop() -> None:
             if current_time_str == "09:00" and _last_birthday_run != now.strftime("%Y-%m-%d"):
                 _last_birthday_run = now.strftime("%Y-%m-%d")
                 logger.info("scheduler: running daily birthday check")
-                active_templates = db.query(BirthdayTemplateModel).filter(BirthdayTemplateModel.is_enabled == True).all()
+                active_templates = db.query(BirthdayTemplateModel).filter(BirthdayTemplateModel.is_enabled).all()
                 for tpl in active_templates:
                     asyncio.create_task(execute_birthday_task(tpl.user_id))
 
             # affiliate check (runs at configured hours)
             global _affiliate_runs_by_user
-            active_campaigns = db.query(AffiliateCampaignModel).filter(AffiliateCampaignModel.is_active == True).all()
+            active_campaigns = db.query(AffiliateCampaignModel).filter(AffiliateCampaignModel.is_active).all()
             for campaign in active_campaigns:
                 config = db.query(AffiliateConfigModel).filter(AffiliateConfigModel.user_id == campaign.user_id).first()
                 if not config:
                     continue
 
                 has_magalu = bool(config.storefront_slug) and campaign.use_magalu
-                ml_client_id = getattr(config, 'ml_client_id', '') or ''
                 has_ml = bool(config.ml_enabled) and campaign.use_ml
 
                 if not has_magalu and not has_ml:

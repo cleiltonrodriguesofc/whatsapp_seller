@@ -1,8 +1,5 @@
 import asyncio
-from playwright.async_api import async_playwright
-import os
 
-import asyncio
 import time
 from core.infrastructure.gateways.magalu_gateway import MagaluGateway
 from core.infrastructure.image.promo_card_generator import generate_promo_card
