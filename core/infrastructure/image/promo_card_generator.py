@@ -6,7 +6,6 @@ using html/css rendered via playwright for pixel-perfect results.
 
 import base64
 import logging
-from playwright.async_api import async_playwright
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -129,13 +128,12 @@ async def generate_promo_card(
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
         <style>
             * {{ box-sizing: border-box; }}
             body {{
                 margin: 0; padding: 0;
                 width: 1080px; height: 1920px;
-                font-family: 'Montserrat', sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
                 background: {theme_color};
                 display: flex; flex-direction: column; align-items: center;
                 overflow: hidden;
@@ -344,19 +342,25 @@ async def generate_promo_card(
         def _render_sync(html):
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
                 page = browser.new_page(
                     viewport={'width': 1080, 'height': 1920},
                     device_scale_factor=1
                 )
-                page.set_content(html, wait_until="load", timeout=15000)
-                page.wait_for_timeout(1500)
+                # Use domcontentloaded instead of load to avoid blocking
+                # on external resources (Google Fonts) in restricted environments.
+                page.set_content(html, wait_until="domcontentloaded", timeout=20000)
+                page.wait_for_timeout(2000)
                 screenshot = page.screenshot(type="png")
                 browser.close()
                 return screenshot
 
         screenshot = await asyncio.to_thread(_render_sync, html_content)
+        if not screenshot:
+            logger.error("[promo-card] playwright returned empty screenshot")
+            return b""
+        logger.info("[promo-card] card generated successfully (%d bytes)", len(screenshot))
         return screenshot
     except Exception as e:
-        logger.error("[promo-card] playwright generation failed: %s", e)
+        logger.error("[promo-card] playwright generation failed: %s", e, exc_info=True)
         return b""

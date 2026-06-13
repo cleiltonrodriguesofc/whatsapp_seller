@@ -1,18 +1,17 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from core.infrastructure.database.session import get_db
 from core.infrastructure.database.models import ShortLinkModel, AffiliateLogModel, AffiliateConfigModel
 from core.presentation.web.dependencies import templates
 
-router = APIRouter(tags=["Shortener"])
-
 from urllib.parse import urlparse
 import logging
 
+router = APIRouter(tags=["Shortener"])
+
 logger = logging.getLogger(__name__)
 
-@router.get("/oferta/{store_name}/{hash_id}", response_class=RedirectResponse)
+@router.get("/oferta/{store_name}/{hash_id}")
 async def redirect_shortlink(store_name: str, hash_id: str, request: Request, db: Session = Depends(get_db)):
     """Redirects a shortlink to the original affiliate url."""
     link_record = db.query(ShortLinkModel).filter(
@@ -58,6 +57,7 @@ async def redirect_shortlink(store_name: str, hash_id: str, request: Request, db
     store_label = "Mercado Livre" if "mercadolivre" in store_name.lower() or "ml" in store_name.lower() else "Magalu"
 
     return templates.TemplateResponse(
+        request=request,
         name="interstitial.html",
         context={
             "request": request,
