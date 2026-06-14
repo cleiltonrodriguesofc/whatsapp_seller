@@ -345,15 +345,21 @@ class EvolutionWhatsAppService(NotificationService):
           2. POST /chat/findChats   — active conversations (has contacts not in phonebook)
         Merges by JID, prioritising the phonebook name so saved contact names
         are preserved.  Filters to @s.whatsapp.net and @lid JIDs only.
+        Uses a high limit to ensure all contacts are fetched (Evolution API paginates by default).
         """
         phonebook: list[dict] = []
         chats: list[dict] = []
 
         # ── 1. Phonebook (findContacts) — saved contact names ──
+        # Use a high limit to bypass default pagination (Evolution API defaults to ~100-200)
         url_contacts = f"{self.base_url}/chat/findContacts/{self.instance}"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url_contacts, json={"where": {}}, headers=self._headers())
+                res = await client.post(
+                    url_contacts,
+                    json={"where": {}, "limit": 10000},
+                    headers=self._headers()
+                )
                 res.raise_for_status()
                 data = res.json()
                 if isinstance(data, dict):
@@ -373,27 +379,43 @@ class EvolutionWhatsAppService(NotificationService):
             logger.warning("Failed to fetch from findContacts: %s", exc)
 
         # ── 2. Active chats (findChats) — broader coverage ──
+        # Paginate to collect all chats: fetch in pages of 1000 until exhausted
         url_chats = f"{self.base_url}/chat/findChats/{self.instance}"
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                res = await client.post(url_chats, json={}, headers=self._headers())
-                res.raise_for_status()
-                data = res.json()
-                if isinstance(data, dict):
-                    data = data.get("data", data.get("chats", data.get("users", [])))
-                if isinstance(data, list):
-                    chats = [
+        skip = 0
+        page_size = 1000
+        while True:
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    res = await client.post(
+                        url_chats,
+                        json={"limit": page_size, "skip": skip},
+                        headers=self._headers()
+                    )
+                    res.raise_for_status()
+                    data = res.json()
+                    if isinstance(data, dict):
+                        data = data.get("data", data.get("chats", data.get("users", [])))
+                    if not isinstance(data, list) or len(data) == 0:
+                        break
+                    page = [
                         c for c in data
                         if isinstance(c, dict)
                         and (c.get("remoteJid", "").endswith("@s.whatsapp.net") or c.get("remoteJid", "").endswith("@lid"))
                         and c.get("remoteJid") != "0@s.whatsapp.net"
                     ]
-            logger.info(
-                "[get_contacts] findChats returned %d contacts for %s",
-                len(chats), self.instance,
-            )
-        except Exception as exc:
-            logger.warning("Failed to fetch from findChats: %s", exc)
+                    chats.extend(page)
+                    if len(data) < page_size:
+                        # Last page — no more records
+                        break
+                    skip += page_size
+            except Exception as exc:
+                logger.warning("Failed to fetch from findChats (skip=%d): %s", skip, exc)
+                break
+
+        logger.info(
+            "[get_contacts] findChats returned %d contacts for %s",
+            len(chats), self.instance,
+        )
 
         # ── 3. Merge: phonebook names take priority ──
         merged: dict[str, dict] = {}
@@ -425,6 +447,7 @@ class EvolutionWhatsAppService(NotificationService):
             len(result), self.instance, len(phonebook), len(chats),
         )
         return result
+
 
     async def get_active_chats(self) -> list:
         """

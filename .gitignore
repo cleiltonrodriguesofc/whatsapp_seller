@@ -52,3 +52,5 @@ htmlcov/
 *.txt
 implementation_plan*.md
 coverage.xml
+
+tests/scratch_*.py
