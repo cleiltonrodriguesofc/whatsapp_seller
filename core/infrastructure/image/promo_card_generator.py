@@ -4,11 +4,20 @@ generates a visually appealing card matching the official magazine voce design
 using html/css rendered via playwright for pixel-perfect results.
 """
 
+import asyncio
 import base64
 import logging
 import httpx
 
 logger = logging.getLogger(__name__)
+
+_browser_semaphore = None
+
+def _get_semaphore():
+    global _browser_semaphore
+    if _browser_semaphore is None:
+        _browser_semaphore = asyncio.Semaphore(1)
+    return _browser_semaphore
 
 async def _download_image_b64(url: str) -> str:
     """downloads an image and returns it as a base64 data URI."""
@@ -337,10 +346,9 @@ async def generate_promo_card(
     """
 
     try:
-        import asyncio
-        
         def _render_sync(html):
             from playwright.sync_api import sync_playwright
+            import gc
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
                 page = browser.new_page(
@@ -353,9 +361,13 @@ async def generate_promo_card(
                 page.wait_for_timeout(2000)
                 screenshot = page.screenshot(type="png")
                 browser.close()
-                return screenshot
+            gc.collect()
+            return screenshot
 
-        screenshot = await asyncio.to_thread(_render_sync, html_content)
+        sem = _get_semaphore()
+        async with sem:
+            screenshot = await asyncio.to_thread(_render_sync, html_content)
+            
         if not screenshot:
             logger.error("[promo-card] playwright returned empty screenshot")
             return b""
